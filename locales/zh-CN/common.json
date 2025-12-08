@@ -31,7 +31,7 @@
   "batchDelete": "批量删除",
   "blog": "产品博客",
   "branching": "创建子话题",
-  "branchingDisable": "「子话题」功能在当前模式下不可用，如需该功能，请切换到 Postgres/Pglite DB 模式或使用 LobeHub Cloud",
+  "branchingDisable": "「子话题」功能在当前模式下不可用，如需该功能，请切换到 Postgres/Pglite DB 模式或使用 Proto Chat Cloud",
   "branchingRequiresSavedTopic": "当前话题未保存，保存后才可以使用子话题能力",
   "cancel": "取消",
   "changelog": "更新日志",
@@ -147,8 +147,8 @@
     "painting": "AI 绘画",
     "searchPlaceholder": "输入命令或搜索...",
     "settings": "设置",
-    "starOnGitHub": "在 GitHub 上给我们 Star",
-    "submitIssue": "提交问题",
+    "starOnGitHub": "",
+    "submitIssue": "",
     "theme": "主题",
     "themeAuto": "跟随系统",
     "themeDark": "深色模式",
@@ -188,19 +188,19 @@
   "footer": {
     "action": {
       "feedback": "分享您宝贵的建议",
-      "star": "在 GitHub 给添加星标"
+      "star": ""
     },
     "and": "并",
     "feedback": {
       "action": "分享反馈",
       "desc": "您的每一个想法和建议对我们来说都弥足珍贵，我们迫不及待地想知道您的看法！欢迎联系我们提供产品功能和使用体验反馈，帮助我们将 {{appName}} 建设得更好。",
-      "title": "在 GitHub 分享您宝贵的反馈"
+      "title": "分享您宝贵的反馈"
     },
     "later": "稍后",
     "star": {
-      "action": "点亮星标",
-      "desc": "如果您喜爱我们的产品，并希望支持我们，可以去 GitHub 给我们点一颗星吗？这个小小的动作对我们来说意义重大，能激励我们为您持续提供特性体验。",
-      "title": "在 GitHub 为我们点亮星标"
+      "action": "",
+      "desc": "",
+      "title": ""
     },
     "title": "喜欢我们的产品？"
   },

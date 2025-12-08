@@ -7,7 +7,6 @@ import {
   CircleUserRound,
   Cloudy,
   Download,
-  Feather,
   FileClockIcon,
   HardDriveDownload,
   LifeBuoy,
@@ -24,14 +23,7 @@ import type { MenuProps } from '@/components/Menu';
 import { enableAuth } from '@/const/auth';
 import { BRANDING_EMAIL, LOBE_CHAT_CLOUD, SOCIAL_URL } from '@/const/branding';
 import { DEFAULT_DESKTOP_HOTKEY_CONFIG } from '@/const/desktop';
-import {
-  CHANGELOG,
-  DOCUMENTS_REFER_URL,
-  GITHUB_ISSUES,
-  OFFICIAL_URL,
-  UTM_SOURCE,
-  mailTo,
-} from '@/const/url';
+import { CHANGELOG, DOCUMENTS_REFER_URL, OFFICIAL_URL, UTM_SOURCE, mailTo } from '@/const/url';
 import { isDesktop } from '@/const/version';
 import DataImporter from '@/features/DataImporter';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
@@ -163,15 +155,6 @@ export const useMenu = () => {
           label: (
             <a href={DOCUMENTS_REFER_URL} rel="noopener noreferrer" target="_blank">
               {t('userPanel.docs')}
-            </a>
-          ),
-        },
-        {
-          icon: <Icon icon={Feather} />,
-          key: 'feedback',
-          label: (
-            <a href={GITHUB_ISSUES} rel="noopener noreferrer" target="_blank">
-              {t('userPanel.feedback')}
             </a>
           ),
         },
