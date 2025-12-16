@@ -44,6 +44,7 @@
     "db:generate": "drizzle-kit generate && npm run db:generate-client && npm run workflow:dbml",
     "db:generate-client": "tsx ./scripts/migrateClientDB/compile-migrations.ts",
     "db:migrate": "MIGRATION_DB=1 tsx ./scripts/migrateServerDB/index.ts",
+    "db:fix-casdoor": "powershell -ExecutionPolicy Bypass -File ./scripts/fix-casdoor-verifications.ps1",
     "db:studio": "drizzle-kit studio",
     "db:visualize": "dbdocs build docs/development/database-schema.dbml --project lobe-chat",
     "desktop:build": "npm run desktop:build-next && npm run desktop:prepare-dist && npm run desktop:build-electron",

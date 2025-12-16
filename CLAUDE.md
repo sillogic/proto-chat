@@ -1,102 +1,281 @@
 # CLAUDE.md
 
-This document serves as a shared guideline for all team members when using Claude Code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Tech Stack
+## Project Overview
 
-read @.cursor/rules/project-introduce.mdc
+LobeChat is an open-source, modern-design AI Agent Workspace (previously LobeChat) that supports speech synthesis, multimodal, and extensible Function Call plugin systems. It's a Next.js 16 application with React 19, built as a monorepo with TypeScript.
 
-## Directory Structure
+**Supported platforms:**
+- Web desktop/mobile
+- Desktop (Electron)
+- Mobile app (React Native) - coming soon
 
-read @.cursor/rules/project-structure.mdc
+**Logo emoji:** 🤯
 
-## Development
+## Technology Stack
 
-### Git Workflow
+- **Frontend:** Next.js 16, React 19, TypeScript
+- **UI Framework:** `@lobehub/ui`, Ant Design
+- **Styling:** antd-style (CSS-in-JS), lucide-react, `@ant-design/icons`
+- **Layout:** react-layout-kit
+- **State Management:** Zustand, nuqs (search params), SWR (data fetch), aHooks
+- **Utilities:** dayjs (time), lodash-es
+- **Backend:** tRPC (type-safe), PGLite (client DB), Neon PostgreSQL (server DB), Drizzle ORM
+- **Testing:** Vitest
+- **Package Manager:** pnpm (monorepo), bun (script execution), bunx (executables)
 
-- The current release branch is `next` instead of `main` until v2.0.0 is officially released
-- use rebase for git pull
-- git commit message should prefix with gitmoji
-- git branch name format example: tj/feat/feature-name
-- use .github/PULL_REQUEST_TEMPLATE.md to generate pull request description
+## Architecture
+
+### High-Level Structure
+
+This is a monorepo with workspace packages using `@lobechat/` namespace.
+
+**Data Flow Architecture:**
+- **Web with ClientDB:** React UI → Client Service → Direct Model Access → PGLite (Web WASM)
+- **Web with ServerDB:** React UI → Client Service → tRPC Lambda → Server Services → PostgreSQL (Remote)
+- **Desktop (Cloud sync disabled):** Electron UI → Client Service → tRPC Lambda → Local Server Services → PGLite (Node WASM)
+- **Desktop (Cloud sync enabled):** Electron UI → Client Service → tRPC Lambda → Cloud Server Services → PostgreSQL (Remote)
+
+### Key Directories
+
+- `src/components`, `src/features` - UI Components
+- `src/layout` - Global providers
+- `src/store` - Zustand stores
+- `src/services/` - Cross-platform services (clientDB: `client.ts`, serverDB: `server.ts`)
+- `src/app/(backend)/webapi` - REST API routers
+- `src/server/routers/{edge|lambda|async|desktop|tools}` - tRPC routers
+- `src/server/services` - Server-only services (can access serverDB)
+- `src/server/modules` - Server-only third-party modules (no DB access)
+- `packages/database/src/schemas` - Drizzle schemas
+- `packages/database/src/models` - CRUD models
+- `packages/database/src/repositories` - BFF queries
+- `src/libs` - Third-party integrations (analytics, oidc, etc.)
+
+## Development Commands
 
 ### Package Management
+```bash
+# Install dependencies
+pnpm install
 
-This repository adopts a monorepo structure.
+# Run scripts (use bun)
+bun run <script-name>
 
-- Use `pnpm` as the primary package manager for dependency management
-- Use `bun` to run npm scripts
-- Use `bunx` to run executable npm packages
+# Run executable packages
+bunx <package-name>
+```
 
-### TypeScript Code Style Guide
+### Development
+```bash
+# Start development server (web)
+bun run dev              # Port 3010
 
-see @.cursor/rules/typescript.mdc
+# Start development server (desktop)
+bun run dev:desktop      # Port 3015
 
-### Testing
+# Start development server (mobile)
+bun run dev:mobile       # Port 3018
+```
 
-- **Required Rule**: read `@.cursor/rules/testing-guide/testing-guide.mdc` before writing tests
-- **Command**:
-  - web: `bunx vitest run --silent='passed-only' '[file-path-pattern]'`
-  - packages(eg: database): `cd packages/database && bunx vitest run --silent='passed-only' '[file-path-pattern]'`
+### Building
+```bash
+# Build for production
+bun run build
 
-**Important**:
+# Build with bundle analysis
+bun run build:analyze
 
-- wrap the file path in single quotes to avoid shell expansion
-- Never run `bun run test` etc to run tests, this will run all tests and cost about 10mins
-- If trying to fix the same test twice, but still failed, stop and ask for help.
+# Build for Docker
+bun run build:docker
 
-### Typecheck
+# Build desktop app
+bun run desktop:build
+```
 
-- use `bun run typecheck` to check type errors.
+### Type Checking and Linting
+```bash
+# Type checking
+bun run typecheck
 
-### i18n
+# Linting (includes type checking)
+bun run lint
 
-- **Keys**: Add to `src/locales/default/namespace.ts`
-- **Dev**: Translate `locales/zh-CN/namespace.json` and `locales/en-US/namespace.json` locales file only for dev preview
-- DON'T run `pnpm i18n`, let CI auto handle it
+# Individual linting commands
+bun run lint:ts          # TypeScript linting
+bun run lint:style       # Style linting
+bun run lint:circular    # Circular dependency check
+```
+
+### Database Operations
+```bash
+# Generate database schema and client
+bun run db:generate
+
+# Run database migrations
+bun run db:migrate
+
+# Open database studio
+bun run db:studio
+
+# Visualize database schema
+bun run db:visualize
+```
+
+### Testing (CRITICAL: Read testing guide before running tests)
+
+**⚠️ IMPORTANT:** This project has 3000+ tests that take ~10 minutes to run. Always use file filtering.
+
+```bash
+# ❌ NEVER run these - will run all tests and take 10+ minutes
+bun run test
+bunx vitest run
+
+# ✅ CORRECT - Run specific tests with file filtering
+bunx vitest run --silent='passed-only' 'user.test.ts'
+bunx vitest run --silent='passed-only' 'src/components/**/*.test.tsx'
+
+# Run tests with coverage
+bunx vitest run --silent='passed-only' --coverage 'filename.test.ts'
+
+# Run tests for packages (e.g., database)
+cd packages/database && bunx vitest run --silent='passed-only' '[file-pattern]'
+
+# Run server database tests (requires TEST_SERVER_DB=1)
+cd packages/database && TEST_SERVER_DB=1 bunx vitest run --silent='passed-only' '[file-pattern]'
+```
+
+**Testing Rules:**
+- Always read `.cursor/rules/testing-guide/testing-guide.mdc` before writing tests
+- If you fail to fix the same test twice, stop and ask for help
+- Test files should be in the same directory as source files with `.test.ts` or `.test.tsx` suffix
+
+## Git Workflow
+
+- Current release branch: `next` (not `main`) until v2.0.0 release
+- Use rebase for git pull (`git pull --rebase`)
+- Commit messages must prefix with gitmoji
+- Branch name format: `tj/feat/feature-name`
+- Use `.github/PULL_REQUEST_TEMPLATE.md` for PR descriptions
+
+## Internationalization (i18n)
+
+**Framework:** react-i18next with Next.js app router
+**Source language:** Chinese (zh-CN)
+**Supported languages:** 18 languages including English, Japanese, Korean, Arabic
+
+**Workflow:**
+1. **Adding new keys:** Add to `src/locales/default/[namespace].ts` files
+2. **Export new namespaces:** Update `src/locales/default/index.ts`
+3. **Development preview:** Translate `locales/zh-CN/namespace.json` and `locales/en-US/namespace.json` only
+4. **DO NOT** run `pnpm i18n` manually - let CI handle automatic translation
+
+**Usage in components:**
+```tsx
+import { useTranslation } from 'react-i18next';
+
+const { t } = useTranslation('common'); // namespace
+return <div>{t('key.with.nested.structure')}</div>;
+```
+
+## Code Style Guidelines
+
+### TypeScript
+- Prefer interface over type for object shapes
+- Use `@ts-expect-error` over `@ts-ignore` over `as any`
+- Avoid explicit type annotations when TypeScript can infer
+- Prefer async/await over promise chains
+- Use the most accurate types possible (e.g., `Record<PropertyKey, unknown>` over `object`)
+
+### UI/UX
+- Use components from `@lobehub/ui` or Ant Design instead of raw HTML
+- Design for dark mode and mobile responsiveness
+- Use antd-style token system instead of hard-coded colors
+- Select appropriate component variants
+
+### Performance
+- Prefer `for…of` loops over index-based `for` loops
+- Query only required database columns
+- Convert sequential async flows to concurrent with `Promise.all` where safe
+- Reuse existing utils from `packages/utils`
+
+### Imports
+- When importing directory modules, prefer explicit index paths (`@/db/index` over `@/db`)
 
 ## Linear Issue Management
 
-When working with Linear issues:
+When working on Linear issues:
 
-1. **Retrieve issue details** before starting work using `mcp__linear-server__get_issue`
-2. **Check for sub-issues**: If the issue has sub-issues, retrieve and review ALL sub-issues using `mcp__linear-server__list_issues` with `parentId` filter before starting work
-3. **Update issue status** when completing tasks using `mcp__linear-server__update_issue`
-4. **MUST add completion comment** using `mcp__linear-server__create_comment`
+1. **Before starting:** Get issue details using `mcp__linear-server__get_issue`
+2. **Check sub-issues:** List all sub-issues with `mcp__linear-server__list_issues` using `parentId` filter
+3. **Per-issue completion:** Update status and add comment for EACH issue immediately after completion
+4. **Required comment:** Add completion summary using `mcp__linear-server__create_comment`
 
-### Completion Comment (REQUIRED)
-
-**Every time you complete an issue, you MUST add a comment summarizing the work done.** This is critical for:
-
-- Team visibility and knowledge sharing
-- Code review context
-- Future reference and debugging
-
-### IMPORTANT: Per-Issue Completion Rule
-
-**When working on multiple issues (e.g., parent issue with sub-issues), you MUST update status and add comment for EACH issue IMMEDIATELY after completing it.** Do NOT wait until all issues are done to update them in batch.
-
-**Workflow for EACH individual issue:**
-
-1. Complete the implementation for this specific issue
-2. Run type check: `bun run typecheck`
+**Workflow for each issue:**
+1. Complete implementation
+2. Run `bun run typecheck`
 3. Run related tests if applicable
 4. Create PR if needed
-5. **IMMEDIATELY** update issue status to **"In Review"** (NOT "Done"): `mcp__linear-server__update_issue`
-6. **IMMEDIATELY** add completion comment: `mcp__linear-server__create_comment`
-7. Only then move on to the next issue
+5. **IMMEDIATELY** update status to "In Review" (not "Done")
+6. **IMMEDIATELY** add completion comment
+7. Then move to next issue
 
-**Note:** Issue status should be set to **"In Review"** when PR is created. The status will be updated to **"Done"** only after the PR is merged (usually handled by Linear-GitHub integration or manually).
+## Important Files and References
 
-**❌ Wrong approach:**
+### Cursor Rules (Project Guidelines)
+- `.cursor/rules/project-introduce.mdc` - Tech stack overview
+- `.cursor/rules/project-structure.mdc` - Detailed architecture
+- `.cursor/rules/typescript.mdc` - TypeScript style guide
+- `.cursor/rules/testing-guide/testing-guide.mdc` - **MUST READ** before testing
+- `.cursor/rules/i18n.mdc` - Internationalization guide
+- `.cursor/rules/rules-index.mdc` - Index of all rules
 
-- Complete Issue A → Complete Issue B → Complete Issue C → Update all statuses → Add all comments
-- Mark issue as "Done" immediately after creating PR
+### Configuration
+- `package.json` - Scripts and dependencies
+- `next.config.mjs` - Next.js configuration
+- `vitest.config.ts` - Test configuration
+- `drizzle.config.ts` - Database configuration
 
-**✅ Correct approach:**
+### Database
+- `packages/database/src/schemas/` - Drizzle ORM schemas
+- `packages/database/src/models/` - Database models
+- `packages/database/src/repositories/` - Database query repositories
 
-- Complete Issue A → Create PR → Update A status to "In Review" → Add A comment → Complete Issue B → ...
+## Security Best Practices
 
-## Rules Index
+- Never log user private information (API keys, tokens, etc.)
+- Don't use `import { log } from 'debug'` - it logs directly to console
+- Validate inputs at system boundaries (user input, external APIs)
+- Avoid meaningless null/undefined parameters in function contracts
 
-Some useful project rules are listed in @.cursor/rules/rules-index.mdc
+## Testing Strategy
+
+### Two Testing Environments
+1. **Client Database (DOM Environment):** Happy DOM + PGLite (browser WASM)
+2. **Server Database (Node Environment):** Node.js + PostgreSQL (use `TEST_SERVER_DB=1`)
+
+### Test Organization
+- Test files co-located with source files (`Component.test.tsx`)
+- Test fixtures in `fixtures/` folders
+- Some packages use `__tests__/` directories
+
+### Mock Strategy
+- Mock I/O operations (file system, network) but use realistic data formats
+- Prefer `vi.stubGlobal()` and `vi.spyOn()` over direct global manipulation
+- Use `@vitest-environment happy-dom` for browser API testing
+
+## Common Gotchas
+
+### Module Pollution
+If tests behave differently when run together vs. individually:
+- Suspect module pollution
+- Use `vi.resetModules()` in `beforeEach()` to clear module cache
+
+### Circular Dependencies
+- Check with `bun run lint:circular`
+- Pay attention to import cycles between services and stores
+
+### Performance
+- Full test suite takes ~10 minutes - always filter tests
+- Use `--silent='passed-only'` to reduce noise
+- Database migrations can be slow - use `TEST_SERVER_DB=1` sparingly
