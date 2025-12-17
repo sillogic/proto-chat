@@ -1,0 +1,48 @@
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'protochat-admin-jwt-secret-key-change-in-production';
+
+// 生成一个测试JWT token
+function generateTestToken() {
+  const payload = {
+    id: 'test-user-123',
+    username: 'admin',
+    email: 'admin@protochat.com',
+    role: 'admin',
+    permissions: [
+      'users.read',
+      'users.write',
+      'plans.read',
+      'plans.write',
+      'stats.read',
+      'system.admin'
+    ]
+  };
+
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+  console.log('Generated test token:');
+  console.log(token);
+
+  return token;
+}
+
+// 验证token
+function verifyToken(token) {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('Token is valid:', decoded);
+    return decoded;
+  } catch (error) {
+    console.error('Token verification failed:', error.message);
+    return null;
+  }
+}
+
+// 运行测试
+const testToken = generateTestToken();
+verifyToken(testToken);
+
+// 测试一个过期的token
+console.log('\n--- Testing expired token ---');
+const expiredToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InByb3RvY2hhdC1hZG1pbiIsIm5hbWUiOiJhZG1pbiIsImNyZWF0ZWRUaW1lIjoiMjAyNS0xMi0xN1QxMzoyNzo0MSswODowMCIsInVwZGF0ZWRUaW1lIjoiMjAyNS0xMi0xN1QwNToyODozNVoiLCJkZWxldGVkVGltZSI6IiIsImlkIjoiZTEzYTFiMjMtYjdmMC00NGRhLThiNjEtOGVmZDJjMWU4MDllIiwidHlwZSI6Im5vcm1hbC11c2VyIiwicGFzc3dvcmQiOiIiLCJwYXNzd29yZFNhbHQiOiIiLCJwYXNzd29yZFR5cGUiOiJwbGFpbiIsImRpc3BsYXlOYW1lIjoiYWRtaW4iLCJmaXJzdE5hbWUiOiIiLCJsYXN0TmFtZSI6IiIsImF2YXRhciI6Imh0dHBzOi8vY2RuLmNhc2Jpbi5vcmcvaW1nL2Nhc2Jpbi5zdmciLCJhdmF0YXJUeXBlIjoiIiwicGVybWFuZW50QXZhdGFyIjoiIiwiZW1haWwiOiJvZTF2eW1AZXhhbXBsZS5jb20iLCJlbWFpbFZlcmlmaWVkIjpmYWxzZSwicGhvbmUiOiI4NTQ1NzIwMDU4MyIsImNvdW50cnlDb2RlIjoiVVMiLCJyZWdpb24iOiIiLCJsb2NhdGlvbiI6IiIsImFkZHJlc3MiOltdLCJhZmZpbGlhdGlvbiI6IkV4YW1wbGUgSW5jLiIsInRpdGxlIjoiIiwiaWREYXJkVHlwZSI6IiIsImlkQ2FyZCI6IiIsImhvbWVwYWdlIjoiIiwiYmlvIjoiIiwibGFuZ3VhZ2UiOiIiLCJnZW5kZXIiOiIiLCJiaXJ0aGRheSI6IiIsImVkdWNhdGlvbiI6IiIsInNjb3JlIjowLCJrYXJtYSI6MCwicmFua2luZyI6MSwiaXNEZWZhdWx0QXZhdGFyIjpmYWxzZSwiaXNPbmxpbmUiOmZhbHNlLCJpc0FkbWluIjpmYWxzZSwiaXNGb3JiaWRkZW4iOmZhbHNlLCJpc0RlbGV0ZWQiOmZhbHNlLCJzaWdudXBBcHBsaWNhdGlvbiI6IlByb3RvQ2hhdCBBZG1pbiBTeXN0ZW0iLCJoYXNoIjoiIiwicHJlSGFzaCI6IiIsImFjY2Vzc0tleSI6IiIsImFjY2Vzc1NlY3JldCI6IiIsImdpdGh1YiI6IiIsImdvb2dsZSI6IiIsInFxIjoiIiwid2VjaGF0IjoiIiwiZmFjZWJvb2siOiIiLCJkaW5ndGFsayI6IiIsIndlaWJvIjoiIiwiZ2l0ZWUiOiIiLCJsaW5rZWRpbiI6IiIsIndlY29tIjoiIiwibGFyayI6IiIsImdpdGxhYiI6IiIsImNyZWF0ZWRJcCI6IiIsImxhc3RTaWduaW5UaW1lIjoiIiwibGFzdFNpZ25pbklwIjoiIiwicHJlZmVycmVkTWZhVHlwZSI6IiIsInJlY292ZXJ5Q29kZXMiOm51bGwsInRvdHBTZWNyZXQiOiIiLCJtZmFQaG9uZUVuYWJsZWQiOmZhbHNlLCJtZmFFbWFpbEVuYWJsZWQiOmZhbHNlLCJsZGFwIjoiIiwicHJvcGVydGllcyI6e30sInJvbGVzIjpbXSwicGVybWlzc2lvbnMiOltdLCJncm91cHMiOltdLCJsYXN0U2lnbmluV3JvbmdUaW1lIjoiIiwic2lnbmluV3JvbmdUaW1lcyI6MCwibWFuYWdlZEFjY291bnRzIjpudWxsLCJ0b2tlblR5cGUiOiJhY2Nlc3MtdG9rZW4iLCJ0YWciOiJzdGFmZiIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJhenAiOiJhZG1pbi1jbGllbnQtaWQiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDAiLCJzdWIiOiJlMTNhMWIyMy1iN2YwLTQ0ZGEtOGI2MS04ZWZkMmMxZTgwOWUiLCJhdWQiOlsiYWRtaW4tY2xpZW50LWlkIl0sImV4cCI6MTc2NjU2OTQzNCwibmJmIjoxNzY1OTY0NjM0LCJpYXQiOjE3NjU5NjQ2MzQsImp0aSI6ImFkbWluLzBhMzcwZWJjLTdjYWEtNDUwMy05OWEyLTQ5MzY1Mzk5MTIxZSJ9.4y5p7B8uGu_EqN9GMtt4uuuqq4p1yEOLz1PZGEb4ki7OKaaVCcPQw1rGXdkT_6D5eGed5LZucH8f0vRAhXFUCyK153tGJU3lE7cVESpIp1FZxCz9uvqnQR8Ev_D0HqxG5LE0cPhwGz3fqAC5xFtiHuSztTVSLsWVeJQ7xaH5Wii5bi72sNMt60irM2B1B_IwYeauibs3v5B70Ney7thVTRgu4d7AborVujYbbF9XMjDEygUIK8bA8z9RzpuxNRzgY-IqPgVV30i0T-uwPvW0-z3KI56b7b1KU4LPegRPRZjco6tSf8uxAhQLR2gt_LQxjsNYb6csqOc6GWiglNFa296AKG15RdFjSDb9cqzARvhcspPODCY9Wg8al6uZR0HjVUJaHpYDoeYpWBv3FcY-V1pH-XOVCLlCM6g6cVIGI7h7aJYfIgbYR8rDf0zW2uFDG6h0h7B4-AOsfDPSx6Y-RomUqK_XzYcrXJMAI9-_kg1rZKSwtuJgZ-H-NS91rgbJhkzLBFVR0YzjOkVIkZACIwfUIooiB1GivFHoMvNp_L9oY0aJb4jhv4xdPijrTwWE3p6kMjs1GKBwxqbZP_KLyEUSnF2322MvlnImeBL0nBDnEDu2iLn4ekg-VPDkzOtLXxmJ37dXWjauCkNX0Uo_QmlF2jpWOuSahQ-olV1jLIg';
+verifyToken(expiredToken);

@@ -7,7 +7,6 @@ import { eq, desc, and, sql } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
 
 // 创建管理员用户的验证schema
 const createAdminSchema = z.object({

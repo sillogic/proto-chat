@@ -2,18 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { createServer } from 'http';
-
-// 加载环境变量
-dotenv.config();
+import { createServer } from 'node:http';
 
 // 导入路由
 import authRoutes from './routes/auth';
 import authCasdoorRoutes from './routes/auth-casdoor';
 import adminRoutes from './routes/admin';
-import userRoutes from './routes/users';
-import userManagementRoutes from './routes/user-management';
+import userRoutes from './routes/users-simplified';
 import dashboardRoutes from './routes/dashboard';
+
+// 加载环境变量
+dotenv.config();
 
 const app = express();
 const server = createServer(app);
@@ -26,10 +25,10 @@ app.use(helmet({
 
 // CORS配置
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:8001',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: process.env.CORS_ORIGIN || 'http://localhost:8001',
 };
 
 app.use(cors(corsOptions));
@@ -48,10 +47,10 @@ app.use((req, res, next) => {
 // 健康检查端点
 app.get('/health', (req, res) => {
   res.json({
+    environment: process.env.NODE_ENV,
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV,
   });
 });
 
@@ -60,15 +59,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auth/casdoor', authCasdoorRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/user-management', userManagementRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 // 404处理
 app.use((req, res) => {
   res.status(404).json({
-    success: false,
     message: 'API端点不存在',
     path: req.path,
+    success: false,
   });
 });
 
@@ -77,8 +75,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   console.error('Global error handler:', err);
 
   res.status(err.status || 500).json({
-    success: false,
     message: err.message || '服务器内部错误',
+    success: false,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 });

@@ -34,9 +34,15 @@ const UsersPage: React.FC = () => {
     {
       title: '用户ID',
       dataIndex: 'id',
-      width: 120,
+      width: 200,
       ellipsis: true,
       copyable: true,
+    },
+    {
+      title: '用户名',
+      dataIndex: 'username',
+      width: 150,
+      ellipsis: true,
     },
     {
       title: '邮箱',
@@ -45,17 +51,20 @@ const UsersPage: React.FC = () => {
       ellipsis: true,
     },
     {
-      title: '名称',
-      dataIndex: 'name',
+      title: '姓名',
+      dataIndex: 'fullName',
       width: 150,
       ellipsis: true,
+      render: (_, record) => {
+        return record.fullName || record.username || '未设置';
+      },
     },
     {
       title: '套餐类型',
       dataIndex: 'planType',
       width: 120,
       render: (planType) => {
-        const config = planTypeConfig[planType as keyof typeof planTypeConfig];
+        const config = planTypeConfig[planType as keyof typeof planTypeConfig] || planTypeConfig.free;
         return <Tag color={config.color}>{config.text}</Tag>;
       },
       valueType: 'select',
@@ -71,7 +80,8 @@ const UsersPage: React.FC = () => {
       dataIndex: 'monthlyTokenLimit',
       width: 120,
       render: (limit) => {
-        return limit > 0 ? `${limit.toLocaleString()}` : '无限制';
+        const numLimit = parseInt(limit) || 0;
+        return numLimit > 0 ? `${numLimit.toLocaleString()}` : '无限制';
       },
     },
     {
@@ -79,22 +89,24 @@ const UsersPage: React.FC = () => {
       dataIndex: 'monthlyApiCallsLimit',
       width: 120,
       render: (limit) => {
-        return limit > 0 ? `${limit.toLocaleString()}` : '无限制';
+        const numLimit = parseInt(limit) || 0;
+        return numLimit > 0 ? `${numLimit.toLocaleString()}` : '无限制';
       },
     },
     {
       title: '状态',
-      dataIndex: 'status',
+      dataIndex: 'banned',
       width: 100,
-      render: (status) => {
-        const config = statusConfig[status as keyof typeof statusConfig];
-        return <Tag color={config.color}>{config.text}</Tag>;
+      render: (banned) => {
+        if (banned) {
+          return <Tag color="red">已封禁</Tag>;
+        }
+        return <Tag color="green">正常</Tag>;
       },
       valueType: 'select',
       valueEnum: {
-        active: { text: '正常', status: 'Success' },
-        suspended: { text: '已停用', status: 'Error' },
-        expired: { text: '已过期', status: 'Warning' },
+        false: { text: '正常', status: 'Success' },
+        true: { text: '已封禁', status: 'Error' },
       },
     },
     {
@@ -107,8 +119,8 @@ const UsersPage: React.FC = () => {
       },
     },
     {
-      title: '最后登录',
-      dataIndex: 'lastLoginAt',
+      title: '最后活跃',
+      dataIndex: 'lastActiveAt',
       width: 180,
       valueType: 'dateTime',
       render: (date) => {
@@ -126,23 +138,23 @@ const UsersPage: React.FC = () => {
               icon={<EditOutlined />}
               onClick={() => handleEditUser(record)}
             >
-              编辑
+              编辑套餐
             </Button>
-            {record.status === 'active' ? (
+            {record.banned ? (
               <Button
                 type="link"
-                danger
-                icon={<StopOutlined />}
-                onClick={() => handleUpdateUserStatus(record.id, 'suspended')}
+                onClick={() => handleUpdateUserStatus(record.id, false)}
               >
-                停用
+                解封
               </Button>
             ) : (
               <Button
                 type="link"
-                onClick={() => handleUpdateUserStatus(record.id, 'active')}
+                danger
+                icon={<StopOutlined />}
+                onClick={() => handleUpdateUserStatus(record.id, true)}
               >
-                启用
+                封禁
               </Button>
             )}
           </Space>
@@ -163,10 +175,11 @@ const UsersPage: React.FC = () => {
   };
 
   // 更新用户状态
-  const handleUpdateUserStatus = async (userId: string, status: 'active' | 'suspended' | 'expired') => {
+  const handleUpdateUserStatus = async (userId: string, banned: boolean) => {
     try {
-      await updateUserStatus(userId, status);
-      message.success('用户状态更新成功');
+      const action = banned ? '封禁' : '解封';
+      await updateUserStatus(userId, { banned, banReason: banned ? '管理员操作' : undefined });
+      message.success(`用户${action}成功`);
       actionRef.current?.reload();
     } catch (error) {
       message.error('用户状态更新失败');
@@ -212,9 +225,9 @@ const UsersPage: React.FC = () => {
         request={async (params) => {
           const response = await getUserList(params);
           return {
-            data: response.data,
+            data: response.data?.users || [],
             success: response.success,
-            total: response.total,
+            total: response.data?.pagination?.total || 0,
           };
         }}
         columns={columns}

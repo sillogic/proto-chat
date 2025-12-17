@@ -5,11 +5,12 @@ import { z } from 'zod';
 import { db, checkAndCreateTables } from '../config/database';
 import { adminUsers } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/auth';
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_SECRET_LOCAL = JWT_SECRET;
+const JWT_EXPIRES_IN_LOCAL = JWT_EXPIRES_IN;
 
 // 登录验证schema
 const loginSchema = z.object({
@@ -64,8 +65,8 @@ async function ensureDefaultAdmin() {
   }
 }
 
-// 确保默认管理员存在
-ensureDefaultAdmin();
+// 确保默认管理员存在 - 已禁用自动创建
+// ensureDefaultAdmin();
 
 // POST /api/auth/login - 管理员登录
 router.post('/login', async (req, res) => {
@@ -123,8 +124,8 @@ router.post('/login', async (req, res) => {
         role: user.role,
         permissions: user.permissions,
       },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      JWT_SECRET_LOCAL,
+      { expiresIn: JWT_EXPIRES_IN_LOCAL }
     );
 
     // 更新最后登录时间

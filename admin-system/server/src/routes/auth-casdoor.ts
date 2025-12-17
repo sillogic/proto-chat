@@ -1,14 +1,12 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { db } from '../config/database';
-import { adminUsers } from '../db/schema';
-import { eq } from 'drizzle-orm';
 import { casdoorSyncService } from '../services/casdoor-sync';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/auth';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_SECRET_LOCAL = JWT_SECRET;
+const JWT_EXPIRES_IN_LOCAL = JWT_EXPIRES_IN;
 
 // 存储临时状态（生产环境建议使用Redis）
 const stateStore = new Map<string, { redirectTo?: string; timestamp: number }>();
@@ -102,76 +100,25 @@ router.get('/callback', async (req, res) => {
       email: userInfo.email,
     });
 
-    // 移除角色检查，所有通过 Casdoor 认证的用户都可以访问后台系统
-    // 给予管理员权限以访问后台系统功能
-    const userType = 'admin';
-    const permissions = [
-      // 后台系统权限
-      'users.read', 'users.write',
-      'plans.read', 'plans.write',
-      'api_keys.read', 'api_keys.write',
-      'stats.read', 'stats.write',
-      'system.admin'
-    ];
-
-    console.log('🔍 User granted admin access:', {
-      userType,
-      permissionsCount: permissions.length
-    });
-
-    // 检查是否已存在本地管理员记录
-    const existingAdmin = await db
-      .select()
-      .from(adminUsers)
-      .where(eq(adminUsers.username, userInfo.name))
-      .limit(1);
-
-    let adminUser;
-    if (existingAdmin.length === 0) {
-      // 创建新的管理员记录
-      const [newAdmin] = await db.insert(adminUsers).values({
-        username: userInfo.name,
-        email: userInfo.email,
-        passwordHash: '', // Casdoor用户不需要本地密码
-        role: userType,
-        permissions,
-        isActive: true,
-        casdoorId: userInfo.id,
-        lastLoginAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }).returning();
-      adminUser = newAdmin;
-    } else {
-      // 更新现有管理员信息
-      adminUser = existingAdmin[0];
-      await db
-        .update(adminUsers)
-        .set({
-          email: userInfo.email,
-          role: userType,
-          permissions,
-          casdoorId: userInfo.id,
-          lastLoginAt: new Date(),
-          updatedAt: new Date()
-        })
-        .where(eq(adminUsers.id, adminUser.id));
-    }
+    const userType = 'user';
+    const permissions: string[] = [];
 
     // 生成JWT令牌
     const token = jwt.sign(
       {
-        id: adminUser.id,
-        username: adminUser.username,
-        email: adminUser.email,
-        role: adminUser.role,
-        permissions: adminUser.permissions,
+        id: userInfo.id,
+        username: userInfo.name,
+        email: userInfo.email,
+        displayName: userInfo.displayName || userInfo.name,
+        avatar: userInfo.avatar,
+        role: userType,
+        permissions,
         casdoorId: userInfo.id,
         userType,
         authMethod: 'casdoor',
       },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      JWT_SECRET_LOCAL,
+      { expiresIn: JWT_EXPIRES_IN_LOCAL }
     );
 
     // 获取重定向URL
@@ -183,13 +130,13 @@ router.get('/callback', async (req, res) => {
       data: {
         token,
         user: {
-          id: adminUser.id,
-          username: adminUser.username,
-          name: userInfo.displayName || userInfo.name || adminUser.username,
-          displayName: userInfo.displayName || userInfo.name || adminUser.username,
-          email: adminUser.email,
-          role: adminUser.role,
-          permissions: adminUser.permissions,
+          id: userInfo.id,
+          username: userInfo.name,
+          name: userInfo.displayName || userInfo.name,
+          displayName: userInfo.displayName || userInfo.name,
+          email: userInfo.email,
+          role: userType,
+          permissions,
           userType,
           authMethod: 'casdoor',
           avatar: userInfo.avatar,

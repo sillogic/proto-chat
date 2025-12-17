@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from '../config/database';
-import { users, userPlans, systemStats } from '../db/schema';
+import { users, systemStats } from '../db/schema';
 import { eq, desc, and, count, gte, lte, sql, ne } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 
@@ -56,16 +56,13 @@ router.get('/stats', requirePermission('stats.read'), async (req: AuthenticatedR
       .where(gte(users.createdAt, startDate));
 
     // 获取各套餐用户分布
-    const planDistributionResult = await db
-      .select({
-        planType: userPlans.planType,
-        count: count(),
-      })
-      .from(userPlans)
-      .where(and(
-        eq(userPlans.isActive, true)
-      ))
-      .groupBy(userPlans.planType);
+    const planDistributionResult = await db.execute(sql.raw(`
+      SELECT
+        current_plan as planType,
+        COUNT(*) as count
+      FROM user_extensions
+      GROUP BY current_plan
+    `));
 
     // 获取最近7天的用户增长趋势
     const userGrowthTrend = [];

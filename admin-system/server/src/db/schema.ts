@@ -1,22 +1,6 @@
 import { pgTable, text, timestamp, boolean, integer, jsonb } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-// 管理员用户表
-export const adminUsers = pgTable('admin_users', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  username: text('username').unique().notNull(),
-  email: text('email').unique().notNull(),
-  passwordHash: text('password_hash'),
-  role: text('role').default('admin').notNull(),
-  permissions: jsonb('permissions').$type<string[]>().default([]).notNull(),
-  isActive: boolean('is_active').default(true).notNull(),
-  lastLoginAt: timestamp('last_login_at'),
-  casdoorId: text('casdoor_id'), // Casdoor用户ID
-  authMethod: text('auth_method').default('local').notNull(), // local, casdoor
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
 // 用户表 (引用主系统的用户表结构)
 export const users = pgTable('users', {
   id: text('id').primaryKey().notNull(),
@@ -28,7 +12,6 @@ export const users = pgTable('users', {
   firstName: text('first_name'),
   lastName: text('last_name'),
   fullName: text('full_name'),
-  displayName: text('display_name'),
   isOnboarded: boolean('is_onboarded').default(false),
   clerkCreatedAt: timestamp('clerk_created_at'),
   emailVerified: boolean('email_verified').default(false).notNull(),
@@ -41,20 +24,7 @@ export const users = pgTable('users', {
   twoFactorEnabled: boolean('two_factor_enabled').default(false),
   phoneNumberVerified: boolean('phone_number_verified'),
   lastActiveAt: timestamp('last_active_at').defaultNow().notNull(),
-  settings: jsonb('settings').default({}), // 用户设置，包括casdoorId等信息
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
-// 用户套餐表
-export const userPlans = pgTable('user_plans', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  planType: text('plan_type').notNull(), // free, basic, pro, enterprise
-  planName: text('plan_name').notNull(),
-  features: jsonb('features').$type<Record<string, any>>().default({}).notNull(),
-  expiresAt: timestamp('expires_at'),
-  isActive: boolean('is_active').default(true).notNull(),
+  accessedAt: timestamp('accessed_at'), // 访问时间
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -84,10 +54,6 @@ export const systemStats = pgTable('system_stats', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export type AdminUser = typeof adminUsers.$inferSelect;
-export type NewAdminUser = typeof adminUsers.$inferInsert;
-
 export type User = typeof users.$inferSelect;
-export type UserPlan = typeof userPlans.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type SystemStat = typeof systemStats.$inferSelect;

@@ -141,10 +141,10 @@ export async function updateUser(userId: string, params: {
 }
 
 // 更新用户状态（启用/禁用）
-export async function updateUserStatus(userId: string, banned: boolean): Promise<{ success: boolean }> {
-  return request(`/api/user-management/${userId}/status`, {
+export async function updateUserStatus(userId: string, params: { banned: boolean; banReason?: string }): Promise<{ success: boolean }> {
+  return request(`/api/users/${userId}/status`, {
     method: 'PUT',
-    data: { banned },
+    data: params,
   });
 }
 

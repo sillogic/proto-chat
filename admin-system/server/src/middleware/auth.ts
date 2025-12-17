@@ -1,8 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../config/database';
-import { adminUsers } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { users } from '../db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { JWT_SECRET } from '../config/auth';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -14,7 +15,6 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
 
 export const authenticateToken = async (
   req: AuthenticatedRequest,
@@ -32,32 +32,30 @@ export const authenticateToken = async (
       });
     }
 
-    // 验证JWT令牌
     const decoded = jwt.verify(token, JWT_SECRET) as any;
 
-    // 从数据库获取用户信息
-    const user = await db
-      .select({
-        id: adminUsers.id,
-        username: adminUsers.username,
-        email: adminUsers.email,
-        role: adminUsers.role,
-        permissions: adminUsers.permissions,
-        isActive: adminUsers.isActive,
-      })
-      .from(adminUsers)
-      .where(eq(adminUsers.id, decoded.id))
-      .limit(1);
+    // 简化：直接信任Casdoor的JWT，不需要在lobechat表中查找用户
+    // 管理员用户通过Casdoor管理，权限通过Casdoor角色控制
 
-    if (user.length === 0 || !user[0].isActive) {
-      return res.status(401).json({
-        success: false,
-        message: '用户不存在或已被禁用',
-      });
-    }
+    // 设置默认权限（后续可以扩展为从Casdoor角色映射）
+    const userData = {
+      id: decoded.id,
+      username: decoded.username || decoded.name || 'admin',
+      email: decoded.email,
+      role: decoded.role || 'admin',
+      permissions: [
+        'users.read',
+        'users.write',
+        'plans.read',
+        'plans.write',
+        'stats.read',
+        'system.admin'
+      ], // 管理员默认权限
+      is_active: true
+    };
 
     // 将用户信息附加到请求对象
-    req.user = user[0];
+    req.user = userData;
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
