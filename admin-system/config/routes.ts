@@ -23,6 +23,17 @@ export default [
     ],
   },
   {
+    path: '/auth',
+    layout: false,
+    routes: [
+      {
+        name: 'casdoor-callback',
+        path: '/auth/casdoor/callback',
+        component: './auth/casdoor-callback',
+      },
+    ],
+  },
+  {
     path: '/dashboard',
     name: 'dashboard',
     icon: 'DashboardOutlined',

@@ -7,10 +7,13 @@ export interface APIResponse<T = any> {
 
 // 管理员用户信息
 export interface AdminUser {
-  id: number;
+  id: string;
   username: string;
   email: string;
   role: string;
+  permissions: string[];
+  authMethod?: 'local' | 'casdoor';
+  casdoorId?: string;
 }
 
 // 登录请求参数
@@ -19,12 +22,21 @@ export interface LoginParams {
   password: string;
 }
 
+// Casdoor登录响应
+export interface CasdoorAuthResponse {
+  success: boolean;
+  data: {
+    authUrl: string;
+  };
+}
+
 // 登录响应
 export interface LoginResult {
   success: boolean;
   data?: {
     token: string;
     user: AdminUser;
+    redirectTo?: string;
   };
   message?: string;
 }

@@ -34,14 +34,7 @@ import { uploadRouter } from './upload';
 import { usageRouter } from './usage';
 import { userRouter } from './user';
 
-// 导入管理后台路由
-import { adminRouter } from '@/server/api/admin';
-
-export const appRouter = router({
-  // Admin routes
-  admin: adminRouter,
-
-  // Existing routes
+export const lambdaRouter = router({
   agent: agentRouter,
   aiChat: aiChatRouter,
   aiModel: aiModelRouter,
@@ -57,6 +50,7 @@ export const appRouter = router({
   generationBatch: generationBatchRouter,
   generationTopic: generationTopicRouter,
   group: groupRouter,
+  healthcheck: publicProcedure.query(() => "i'm live!"),
   image: imageRouter,
   importer: importerRouter,
   klavis: klavisRouter,
@@ -74,4 +68,4 @@ export const appRouter = router({
   user: userRouter,
 });
 
-export type AppRouter = typeof appRouter;
+export type LambdaRouter = typeof lambdaRouter;

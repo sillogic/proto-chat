@@ -12,9 +12,9 @@
 export default {
   // 开发环境代理配置
   dev: {
-    // localhost:8001/api/** -> http://localhost:3010/api/**
+    // localhost:8001/api/** -> http://localhost:8002/api/** (独立的后台API服务器)
     '/api/': {
-      target: 'http://localhost:3010',
+      target: 'http://localhost:8002',
       changeOrigin: true,
       secure: false,
     },
@@ -25,14 +25,14 @@ export default {
    */
   test: {
     '/api/': {
-      target: 'http://localhost:3010',
+      target: 'http://localhost:8002',
       changeOrigin: true,
       secure: false,
     },
   },
   pre: {
     '/api/': {
-      target: 'http://localhost:3010',
+      target: 'http://localhost:8002',
       changeOrigin: true,
       secure: false,
     },
