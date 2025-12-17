@@ -76,7 +76,7 @@ export const layout: RunTimeLayoutConfig = ({
       },
     },
     waterMarkProps: {
-      content: initialState?.currentUser?.name,
+      content: initialState?.currentUser?.displayName || initialState?.currentUser?.name || initialState?.currentUser?.username || '用户',
     },
     footerRender: () => <Footer />,
     onPageChange: () => {
