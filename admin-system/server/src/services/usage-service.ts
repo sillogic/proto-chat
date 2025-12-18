@@ -4,6 +4,7 @@ import { eq, sql, and, gte, lte } from 'drizzle-orm';
 import { UserExtension } from '../db/user-extensions-schema';
 
 export class UsageService {
+
   // 获取用户月度使用统计（基于现有业务表）
   async getUserMonthlyUsage(userId: string) {
     const monthStart = new Date();
@@ -169,8 +170,10 @@ export class UsageService {
       SELECT
         u.id,
         u.username,
+        u.full_name,
         u.email,
-        u.created_at as user_created_at,
+        u.created_at,
+        u.last_active_at,
         ue.current_plan,
         ue.monthly_token_limit,
         ue.monthly_api_calls_limit,

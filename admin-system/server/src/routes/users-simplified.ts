@@ -24,7 +24,7 @@ router.get('/', requirePermission('users.read'), async (req: AuthenticatedReques
     let filteredUsers = result.users;
     if (search) {
       filteredUsers = result.users.filter(user =>
-        user.username?.toLowerCase().includes(search.toLowerCase()) ||
+        user.full_name?.toLowerCase().includes(search.toLowerCase()) ||
         user.email?.toLowerCase().includes(search.toLowerCase())
       );
     }

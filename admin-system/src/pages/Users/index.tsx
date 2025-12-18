@@ -32,31 +32,19 @@ const UsersPage: React.FC = () => {
   // 表格列定义
   const columns: ProColumns<User>[] = [
     {
-      title: '用户ID',
-      dataIndex: 'id',
-      width: 200,
-      ellipsis: true,
-      copyable: true,
-    },
-    {
-      title: '用户名',
-      dataIndex: 'username',
-      width: 150,
-      ellipsis: true,
-    },
-    {
       title: '邮箱',
       dataIndex: 'email',
-      width: 200,
+      width: 220,
       ellipsis: true,
+      fixed: 'left',
     },
     {
-      title: '姓名',
-      dataIndex: 'fullName',
+      title: '显示名',
+      dataIndex: 'full_name',
       width: 150,
       ellipsis: true,
       render: (_, record) => {
-        return record.fullName || record.username || '未设置';
+        return record.full_name || '未设置';
       },
     },
     {
@@ -98,38 +86,80 @@ const UsersPage: React.FC = () => {
       dataIndex: 'banned',
       width: 100,
       render: (banned) => {
-        if (banned) {
+        // 处理数据库中的布尔值 f/t
+        const isBanned = banned === true || banned === 't' || banned === 1;
+        if (isBanned) {
           return <Tag color="red">已封禁</Tag>;
         }
         return <Tag color="green">正常</Tag>;
       },
-      valueType: 'select',
-      valueEnum: {
-        false: { text: '正常', status: 'Success' },
-        true: { text: '已封禁', status: 'Error' },
+      filters: [
+        {
+          text: '正常',
+          value: false,
+        },
+        {
+          text: '已封禁',
+          value: true,
+        },
+      ],
+      onFilter: (value, record) => {
+        const isBanned = record.banned === true || record.banned === 't' || record.banned === 1;
+        return isBanned === value;
       },
     },
     {
       title: '注册时间',
-      dataIndex: 'createdAt',
+      dataIndex: 'created_at',
       width: 180,
-      valueType: 'dateTime',
       render: (date) => {
-        return new Date(date).toLocaleString();
+        if (!date) return '-';
+        try {
+          // 处理可能的时间格式
+          const dateObj = new Date(date);
+          if (isNaN(dateObj.getTime())) {
+            // 如果Date解析失败，尝试其他格式
+            const dateStr = String(date);
+            // 移除时区部分再尝试
+            const dateWithoutTimezone = dateStr.replace(/[+-]\d{2}:\d{2}$/, '');
+            const fallbackDate = new Date(dateWithoutTimezone);
+            return isNaN(fallbackDate.getTime()) ? '-' : fallbackDate.toLocaleString();
+          }
+          return dateObj.toLocaleString();
+        } catch (error) {
+          console.error('时间解析错误:', error, '原始值:', date);
+          return '-';
+        }
       },
     },
     {
       title: '最后活跃',
-      dataIndex: 'lastActiveAt',
+      dataIndex: 'last_active_at',
       width: 180,
-      valueType: 'dateTime',
       render: (date) => {
-        return date ? new Date(date).toLocaleString() : '-';
+        if (!date) return '-';
+        try {
+          // 处理可能的时间格式
+          const dateObj = new Date(date);
+          if (isNaN(dateObj.getTime())) {
+            // 如果Date解析失败，尝试其他格式
+            const dateStr = String(date);
+            // 移除时区部分再尝试
+            const dateWithoutTimezone = dateStr.replace(/[+-]\d{2}:\d{2}$/, '');
+            const fallbackDate = new Date(dateWithoutTimezone);
+            return isNaN(fallbackDate.getTime()) ? '-' : fallbackDate.toLocaleString();
+          }
+          return dateObj.toLocaleString();
+        } catch (error) {
+          console.error('时间解析错误:', error, '原始值:', date);
+          return '-';
+        }
       },
     },
     {
       title: '操作',
       width: 180,
+      fixed: 'right', // 固定在右侧
       render: (_, record) => {
         return (
           <Space>
@@ -231,6 +261,8 @@ const UsersPage: React.FC = () => {
           };
         }}
         columns={columns}
+        scroll={{ x: 1200 }} // 启用横向滚动
+      sticky={{ offsetHeader: 0 }} // 启用粘性表头
         pagination={{
           defaultPageSize: 20,
           showSizeChanger: true,
