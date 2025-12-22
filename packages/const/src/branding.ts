@@ -5,7 +5,7 @@
 export const LOBE_CHAT_CLOUD = 'Proto Chat Cloud';
 
 export const BRANDING_NAME = 'Proto Chat';
-export const BRANDING_LOGO_URL = '';
+export const BRANDING_LOGO_URL = '/logo.png';
 
 export const ORG_NAME = 'Proto Chat';
 
