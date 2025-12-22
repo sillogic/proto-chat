@@ -1,12 +1,13 @@
 'use client';
 
-import { Avatar, GroupAvatar } from '@lobehub/ui';
+import { GroupAvatar } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { createStyles } from 'antd-style';
 import { Suspense, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
+import AgentAvatar from '@/components/AgentAvatar';
 import { DEFAULT_AVATAR } from '@/const/meta';
 import { useInitAgentConfig } from '@/hooks/useInitAgentConfig';
 import { useOpenChatSettings } from '@/hooks/useInterceptingRoutes';
@@ -120,7 +121,7 @@ const Main = memo<{ className?: string }>(({ className }) => {
   return (
     <Flexbox align={'center'} className={className} gap={12} horizontal>
       {!isPinned && !showSessionPanel && <TogglePanelButton />}
-      <Avatar
+      <AgentAvatar
         avatar={avatar}
         background={backgroundColor}
         onClick={() => openChatSettings()}

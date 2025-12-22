@@ -1,15 +1,11 @@
 import { ActionIcon } from '@lobehub/ui';
 import { useTheme } from 'antd-style';
 import { Wand2 } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
-import { useGlobalStore } from '@/store/global';
-import { globalGeneralSelectors } from '@/store/global/selectors';
-
-const EmojiPicker = dynamic(() => import('@lobehub/ui/es/EmojiPicker'), { ssr: false });
+import IconPicker from '@/components/IconPicker';
 
 export interface AutoGenerateAvatarProps {
   background?: string;
@@ -24,7 +20,6 @@ const AutoGenerateAvatar = memo<AutoGenerateAvatarProps>(
   ({ loading, background, value, onChange, onGenerate, canAutoGenerate }) => {
     const { t } = useTranslation('common');
     const theme = useTheme();
-    const locale = useGlobalStore(globalGeneralSelectors.currentLanguage);
 
     return (
       <Flexbox
@@ -41,15 +36,11 @@ const AutoGenerateAvatar = memo<AutoGenerateAvatarProps>(
           width: 'fit-content',
         }}
       >
-        <EmojiPicker
+        <IconPicker
           background={background || theme.colorFillTertiary}
           loading={loading}
-          locale={locale}
           onChange={onChange}
           size={48}
-          style={{
-            background: theme.colorFillTertiary,
-          }}
           value={value}
         />
         <ActionIcon

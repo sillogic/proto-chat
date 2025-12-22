@@ -2,6 +2,7 @@ export * from './abstractChunk';
 export * from './answerWithContext';
 export * from './langDetect';
 export * from './pickEmoji';
+export * from './pickIcon';
 export * from './rewriteQuery';
 export * from './summaryAgentName';
 export * from './summaryDescription';
