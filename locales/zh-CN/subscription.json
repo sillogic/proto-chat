@@ -1,4 +1,75 @@
 {
+  "billingCycle": {
+    "monthly": "月付",
+    "yearly": "年付",
+    "yearlyDiscount": "优惠 20%"
+  },
+  "cta": {
+    "contact": "联系我们",
+    "current": "当前方案",
+    "popular": "最多选择",
+    "upgrade": "升级"
+  },
+  "features": {
+    "advancedFeatures": "高级功能",
+    "advancedPlugins": "专享高级插件",
+    "assistantMarket": "精选助手市场",
+    "cloudService": "云服务",
+    "communitySupport": "邮件和社区论坛",
+    "credits": "计算积分",
+    "creditsPerMonth": "/每月",
+    "fileStorage": "文件存储",
+    "files": "文件与知识库",
+    "filesDesc": "在对话中使用文件和知识库功能",
+    "filesSupport": "支持 PDF/MD/DOC/XLS/PPT 等多格式文件",
+    "globalSync": "全局云同步",
+    "mainModelApi": "全球主流模型自定义 API 服务",
+    "modelService": "模型服务",
+    "moreModels": "更多模型见方案对比",
+    "priorityChat": "优先聊天和邮件支持",
+    "priorityEmail": "优先邮件支持",
+    "support": "服务支持",
+    "unlimitedHistory": "无限对话历史记录",
+    "unlimitedMessages": "无限消息请求",
+    "vectorStorage": "向量存储",
+    "webSearch": "智能联网查询"
+  },
+  "personal": {
+    "lite": {
+      "credits": "5,000,000",
+      "deepseek": "约 1,900 条",
+      "desc": "适合轻度使用 AI 的用户",
+      "fileStorage": "1.0 GB",
+      "gpt5Mini": "约 7,000 条",
+      "price": "149",
+      "title": "Lite",
+      "vectorStorage": "5,000 条",
+      "vectorStorageSize": "≈ 50MB"
+    },
+    "pro": {
+      "credits": "15,000,000",
+      "deepseek": "约 5,800 条",
+      "desc": "为频繁使用 AI 的专业用户设计",
+      "fileStorage": "2.0 GB",
+      "gpt5Mini": "约 21,100 条",
+      "price": "299",
+      "title": "Pro",
+      "vectorStorage": "10,000 条",
+      "vectorStorageSize": "≈ 100MB"
+    },
+    "title": "个人版",
+    "ultra": {
+      "credits": "35,000,000",
+      "deepseek": "约 13,400 条",
+      "desc": "针对需要大量 AI 复杂对话的重度用户",
+      "fileStorage": "4.0 GB",
+      "gpt5Mini": "约 49,100 条",
+      "price": "599",
+      "title": "Ultra",
+      "vectorStorage": "20,000 条",
+      "vectorStorageSize": "≈ 200MB"
+    }
+  },
   "plans": {
     "plan": {
       "enterprise": {
@@ -20,5 +91,12 @@
         "title": "专业版"
       }
     }
-  }
+  },
+  "subtitle": "选择适合您的方案",
+  "team": {
+    "contact": "联系我们",
+    "desc": "为企业和团队提供定制化解决方案",
+    "title": "团队版"
+  },
+  "title": "订阅方案"
 }

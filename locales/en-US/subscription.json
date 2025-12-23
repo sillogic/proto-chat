@@ -1,4 +1,75 @@
 {
+  "billingCycle": {
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "yearlyDiscount": "20% Off"
+  },
+  "cta": {
+    "contact": "Contact Us",
+    "current": "Current Plan",
+    "popular": "Most Popular",
+    "upgrade": "Upgrade"
+  },
+  "features": {
+    "advancedFeatures": "Advanced Features",
+    "advancedPlugins": "Exclusive Advanced Plugins",
+    "assistantMarket": "Curated Assistant Market",
+    "cloudService": "Cloud Service",
+    "communitySupport": "Email and Community Forum",
+    "credits": "Compute Credits",
+    "creditsPerMonth": "/month",
+    "fileStorage": "File Storage",
+    "files": "Files & Knowledge Base",
+    "filesDesc": "Use files and knowledge base in conversations",
+    "filesSupport": "Supports PDF/MD/DOC/XLS/PPT and more",
+    "globalSync": "Global Cloud Sync",
+    "mainModelApi": "Custom API for Global Mainstream Models",
+    "modelService": "Model Service",
+    "moreModels": "See plan comparison for more models",
+    "priorityChat": "Priority Chat and Email Support",
+    "priorityEmail": "Priority Email Support",
+    "support": "Support",
+    "unlimitedHistory": "Unlimited Chat History",
+    "unlimitedMessages": "Unlimited Message Requests",
+    "vectorStorage": "Vector Storage",
+    "webSearch": "Smart Web Search"
+  },
+  "personal": {
+    "lite": {
+      "credits": "5,000,000",
+      "deepseek": "~1,900 messages",
+      "desc": "For casual AI users",
+      "fileStorage": "1.0 GB",
+      "gpt5Mini": "~7,000 messages",
+      "price": "149",
+      "title": "Lite",
+      "vectorStorage": "5,000 entries",
+      "vectorStorageSize": "≈ 50MB"
+    },
+    "pro": {
+      "credits": "15,000,000",
+      "deepseek": "~5,800 messages",
+      "desc": "For professional users who use AI frequently",
+      "fileStorage": "2.0 GB",
+      "gpt5Mini": "~21,100 messages",
+      "price": "299",
+      "title": "Pro",
+      "vectorStorage": "10,000 entries",
+      "vectorStorageSize": "≈ 100MB"
+    },
+    "title": "Personal",
+    "ultra": {
+      "credits": "35,000,000",
+      "deepseek": "~13,400 messages",
+      "desc": "For power users with heavy AI conversation needs",
+      "fileStorage": "4.0 GB",
+      "gpt5Mini": "~49,100 messages",
+      "price": "599",
+      "title": "Ultra",
+      "vectorStorage": "20,000 entries",
+      "vectorStorageSize": "≈ 200MB"
+    }
+  },
   "plans": {
     "plan": {
       "enterprise": {
@@ -20,5 +91,12 @@
         "title": "Ultimate"
       }
     }
-  }
+  },
+  "subtitle": "Choose the plan that suits you",
+  "team": {
+    "contact": "Contact Us",
+    "desc": "Customized solutions for enterprises and teams",
+    "title": "Team"
+  },
+  "title": "Subscription Plans"
 }
