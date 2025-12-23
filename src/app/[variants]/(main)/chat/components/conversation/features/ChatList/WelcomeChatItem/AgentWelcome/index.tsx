@@ -1,9 +1,10 @@
 'use client';
 
 import { BRANDING_NAME } from '@lobechat/const';
-import { FluentEmoji, Markdown } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
+import { Markdown } from '@lobehub/ui';
+import { createStyles, keyframes } from 'antd-style';
 import isEqual from 'fast-deep-equal';
+import { Sparkles } from 'lucide-react';
 import React, { memo, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
@@ -21,7 +22,20 @@ import { sessionMetaSelectors } from '@/store/session/selectors';
 import AddButton from './AddButton';
 import OpeningQuestions from './OpeningQuestions';
 
-const useStyles = createStyles(({ css, responsive }) => ({
+const pulseGlow = keyframes`
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px currentColor);
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 16px currentColor);
+    transform: scale(1.05);
+  }
+`;
+
+const useStyles = createStyles(({ css, responsive, token }) => ({
   container: css`
     align-items: center;
     ${responsive.mobile} {
@@ -34,6 +48,10 @@ const useStyles = createStyles(({ css, responsive }) => ({
     ${responsive.mobile} {
       text-align: start;
     }
+  `,
+  sparklesIcon: css`
+    color: ${token.colorPrimary};
+    animation: ${pulseGlow} 2s ease-in-out infinite;
   `,
   title: css`
     margin-block: 0.2em 0;
@@ -73,7 +91,7 @@ const InboxWelcome = memo(() => {
     <Center gap={12} padding={16} width={'100%'}>
       <Flexbox className={styles.container} gap={16} style={{ maxWidth: 800 }} width={'100%'}>
         <Flexbox align={'center'} gap={8} horizontal>
-          <FluentEmoji emoji={'👋'} size={40} type={'anim'} />
+          <Sparkles className={styles.sparklesIcon} size={36} strokeWidth={1.5} />
           <h1 className={styles.title}>{greeting}</h1>
         </Flexbox>
         <Markdown
