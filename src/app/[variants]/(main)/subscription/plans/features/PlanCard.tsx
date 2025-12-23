@@ -18,79 +18,91 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     flex: 1;
 
     min-width: 280px;
-    max-width: 360px;
-    padding: 24px;
-    border: 1px solid ${token.colorBorderSecondary};
-    border-radius: 16px;
+    max-width: 340px;
+    padding: 0;
+    border: 1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'};
+    border-radius: 12px;
 
     background: ${isDarkMode ? token.colorBgElevated : token.colorBgContainer};
 
     transition: all 0.3s ease;
 
     &:hover {
-      transform: translateY(-4px);
       border-color: ${token.colorPrimary};
-      box-shadow: 0 8px 24px ${isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)'};
+      box-shadow: 0 4px 20px ${isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'};
     }
   `,
+  cardBody: css`
+    padding-block: 20px 24px;
+padding-inline: 24px;
+  `,
+  cardHeader: css`
+    padding-block: 24px 20px;
+    padding-inline: 24px;
+    border-block-end: 1px solid
+      ${isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'};
+  `,
   checkIcon: css`
+    flex-shrink: 0;
     color: ${token.colorSuccess};
   `,
   desc: css`
     font-size: 13px;
+    line-height: 1.5;
     color: ${token.colorTextSecondary};
   `,
   featureItem: css`
     font-size: 13px;
     color: ${token.colorTextSecondary};
   `,
-  featureTitle: css`
-    font-size: 13px;
-    font-weight: 500;
-    color: ${token.colorTextSecondary};
-  `,
   featureValue: css`
     font-size: 13px;
+    font-weight: 500;
     color: ${token.colorText};
   `,
   iconContainer: css`
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
   `,
   popularBadge: css`
     position: absolute;
-    inset-block-start: 12px;
-    inset-inline-end: 12px;
+    inset-block-start: 0;
+    inset-inline-end: 24px;
 
     padding-block: 4px;
     padding-inline: 12px;
-    border-radius: 12px;
+    border-radius: 0 0 8px 8px;
 
-    font-size: 12px;
+    font-size: 11px;
+    font-weight: 500;
     color: #fff;
 
-    background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   `,
   price: css`
-    font-size: 36px;
+    font-size: 32px;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
     line-height: 1;
     color: ${token.colorText};
   `,
   priceLabel: css`
-    font-size: 14px;
+    font-size: 13px;
     color: ${token.colorTextSecondary};
   `,
   priceOriginal: css`
-    font-size: 14px;
+    font-size: 13px;
     color: ${token.colorTextQuaternary};
     text-decoration: line-through;
   `,
   sectionTitle: css`
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     color: ${token.colorTextTertiary};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   `,
   title: css`
     font-size: 18px;
@@ -101,16 +113,20 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
 
 const planIcons = {
   lite: {
-    background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
-    color: '#DBEAFE',
+    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+    color: '#fff',
     icon: FlaskConical,
   },
   pro: {
-    background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
-    color: '#EDE9FE',
+    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+    color: '#fff',
     icon: BrainCircuit,
   },
-  ultra: { background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#FEF3C7', icon: Atom },
+  ultra: {
+    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    color: '#fff',
+    icon: Atom,
+  },
 };
 
 interface PlanCardProps {
@@ -158,195 +174,130 @@ const PlanCard = memo<PlanCardProps>(
     const monthlyTotal = price.monthly * 12;
 
     return (
-      <Flexbox className={styles.card} gap={20}>
-        {popular && <div className={styles.popularBadge}>{t('cta.popular', '最多选择')}</div>}
+      <Flexbox className={styles.card}>
+        {popular && <div className={styles.popularBadge}>{t('cta.popular', '推荐')}</div>}
 
-        {/* Icon and Title */}
-        <Flexbox gap={12}>
-          <Center
-            className={styles.iconContainer}
-            style={{
-              background: iconConfig.background,
-              border: `2px solid ${iconConfig.color}`,
-            }}
+        {/* Header */}
+        <Flexbox className={styles.cardHeader} gap={16}>
+          <Flexbox align={'center'} gap={12} horizontal>
+            <Center className={styles.iconContainer} style={{ background: iconConfig.background }}>
+              <Icon color={iconConfig.color} icon={iconConfig.icon} size={22} />
+            </Center>
+            <Flexbox gap={2}>
+              <span className={styles.title}>{t(name as any)}</span>
+              <span className={styles.desc}>{t(desc as any)}</span>
+            </Flexbox>
+          </Flexbox>
+
+          {/* Price */}
+          <Flexbox gap={4}>
+            <Flexbox align={'baseline'} gap={4} horizontal>
+              <span className={styles.price}>¥{currentPrice}</span>
+              <span className={styles.priceLabel}>/月</span>
+            </Flexbox>
+            {isYearly && (
+              <Flexbox align={'center'} gap={8} horizontal>
+                <span className={styles.priceOriginal}>¥{monthlyTotal}/年</span>
+                <Tag color="blue" size={'small'}>
+                  {t('billingCycle.yearlyDiscount')}
+                </Tag>
+              </Flexbox>
+            )}
+            {isYearly && (
+              <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
+                实付 ¥{yearlyTotal}/年
+              </span>
+            )}
+          </Flexbox>
+
+          {/* Upgrade Button */}
+          <Button
+            block
+            onClick={() => onUpgrade(id)}
+            style={
+              popular
+                ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
+                : undefined
+            }
+            type={popular ? 'primary' : 'default'}
           >
-            <Icon color={iconConfig.color} icon={iconConfig.icon} size={24} />
-          </Center>
-          <Flexbox gap={4}>
-            <span className={styles.title}>{t(name as any)}</span>
-            <span className={styles.desc}>{t(desc as any)}</span>
-          </Flexbox>
+            {t('cta.upgrade')}
+          </Button>
         </Flexbox>
 
-        {/* Price */}
-        <Flexbox gap={4}>
-          <Flexbox align={'baseline'} gap={4} horizontal>
-            <span className={styles.price}>¥{currentPrice}</span>
-            <span className={styles.priceLabel}>
-              /{t('billingCycle.monthly', '每月')} (
-              {isYearly ? t('billingCycle.yearly') : t('billingCycle.monthly')})
+        {/* Body */}
+        <Flexbox className={styles.cardBody} gap={20}>
+          {/* Credits Section */}
+          <Flexbox gap={8}>
+            <Flexbox align={'center'} gap={4} horizontal>
+              <span className={styles.sectionTitle}>{t('features.credits')}</span>
+              <Tooltip title="计算积分用于调用 AI 模型">
+                <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
+              </Tooltip>
+            </Flexbox>
+            <span style={{ color: theme.colorText, fontSize: 15, fontWeight: 600 }}>
+              {credits} {t('features.creditsPerMonth')}
             </span>
-          </Flexbox>
-          {isYearly && (
-            <Flexbox align={'center'} gap={8} horizontal>
-              <span className={styles.priceOriginal}>¥{monthlyTotal} /每年</span>
-              <Tag color="green" size={'small'}>
-                {t('billingCycle.yearlyDiscount')}
-              </Tag>
-            </Flexbox>
-          )}
-          {isYearly && (
-            <span style={{ color: theme.colorTextSecondary, fontSize: 13 }}>
-              ¥{yearlyTotal} /每年
-            </span>
-          )}
-        </Flexbox>
-
-        {/* Upgrade Button */}
-        <Button
-          block
-          onClick={() => onUpgrade(id)}
-          size="large"
-          type={popular ? 'primary' : 'default'}
-        >
-          {t('cta.upgrade')}
-        </Button>
-
-        {/* Credits Section */}
-        <Flexbox gap={8}>
-          <Flexbox align={'center'} gap={4} horizontal>
-            <span className={styles.sectionTitle}>{t('features.credits')}</span>
-            <Tooltip title="计算积分用于调用 AI 模型">
-              <Icon icon={CircleHelp} size={14} style={{ color: theme.colorTextQuaternary }} />
-            </Tooltip>
-          </Flexbox>
-          <span style={{ color: theme.colorText, fontSize: 16, fontWeight: 600 }}>
-            {credits} {t('features.creditsPerMonth')}
-          </span>
-          <Flexbox gap={4}>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>
-                GPT-5 mini{' '}
-                <Tooltip title="基于 GPT-5 mini 模型计算">
-                  <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
-                </Tooltip>
-              </span>
-              <span className={styles.featureValue}>{gpt5Mini}</span>
-            </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>
-                DeepSeek V3.2 Thinking{' '}
-                <Tooltip title="基于 DeepSeek V3.2 Thinking 模型计算">
-                  <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
-                </Tooltip>
-              </span>
-              <span className={styles.featureValue}>{deepseek}</span>
-            </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>{t('features.moreModels')}</span>
+            <Flexbox gap={6}>
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>GPT-5 mini</span>
+                <span className={styles.featureValue}>{gpt5Mini}</span>
+              </Flexbox>
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>DeepSeek V3.2</span>
+                <span className={styles.featureValue}>{deepseek}</span>
+              </Flexbox>
             </Flexbox>
           </Flexbox>
-        </Flexbox>
 
-        {/* Files Section */}
-        <Flexbox gap={8}>
-          <Flexbox align={'center'} gap={4} horizontal>
+          {/* Files Section */}
+          <Flexbox gap={8}>
             <span className={styles.sectionTitle}>{t('features.files')}</span>
-            <Tooltip title={t('features.filesDesc')}>
-              <Icon icon={CircleHelp} size={14} style={{ color: theme.colorTextQuaternary }} />
-            </Tooltip>
-          </Flexbox>
-          <span className={styles.featureItem}>{t('features.filesSupport')}</span>
-          <Flexbox gap={4}>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>
-                {t('features.fileStorage')}{' '}
-                <Tooltip title="文件存储空间">
-                  <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
-                </Tooltip>
-              </span>
-              <span className={styles.featureValue}>{fileStorage}</span>
-            </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>
-                {t('features.vectorStorage')}{' '}
-                <Tooltip title="向量存储用于知识库检索">
-                  <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
-                </Tooltip>
-              </span>
-              <span className={styles.featureValue}>
-                {vectorStorage}{' '}
-                <span style={{ color: theme.colorTextQuaternary }}>{vectorStorageSize}</span>
-              </span>
+            <Flexbox gap={6}>
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>{t('features.fileStorage')}</span>
+                <span className={styles.featureValue}>{fileStorage}</span>
+              </Flexbox>
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>{t('features.vectorStorage')}</span>
+                <span className={styles.featureValue}>
+                  {vectorStorage}{' '}
+                  <span style={{ color: theme.colorTextQuaternary, fontSize: 12 }}>
+                    {vectorStorageSize}
+                  </span>
+                </span>
+              </Flexbox>
             </Flexbox>
           </Flexbox>
-        </Flexbox>
 
-        {/* Model Service */}
-        <Flexbox gap={8}>
-          <Flexbox align={'center'} gap={4} horizontal>
-            <span className={styles.sectionTitle}>{t('features.modelService')}</span>
-            <Tooltip title="支持的 AI 模型服务">
-              <Icon icon={CircleHelp} size={14} style={{ color: theme.colorTextQuaternary }} />
-            </Tooltip>
-          </Flexbox>
-          <Flexbox gap={4}>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>{t('features.mainModelApi')}</span>
+          {/* Services */}
+          <Flexbox gap={8}>
+            <span className={styles.sectionTitle}>{t('features.cloudService')}</span>
+            <Flexbox gap={6}>
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>{t('features.unlimitedHistory')}</span>
+              </Flexbox>
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>{t('features.globalSync')}</span>
+              </Flexbox>
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>{t('features.webSearch')}</span>
+              </Flexbox>
             </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>{t('features.unlimitedMessages')}</span>
-            </Flexbox>
           </Flexbox>
-        </Flexbox>
 
-        {/* Cloud Service */}
-        <Flexbox gap={8}>
-          <span className={styles.sectionTitle}>{t('features.cloudService')}</span>
-          <Flexbox gap={4}>
+          {/* Support */}
+          <Flexbox gap={8}>
+            <span className={styles.sectionTitle}>{t('features.support')}</span>
             <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>{t('features.unlimitedHistory')}</span>
-            </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>{t('features.globalSync')}</span>
-            </Flexbox>
-          </Flexbox>
-        </Flexbox>
-
-        {/* Advanced Features */}
-        <Flexbox gap={8}>
-          <span className={styles.sectionTitle}>{t('features.advancedFeatures')}</span>
-          <Flexbox gap={4}>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>{t('features.assistantMarket')}</span>
-            </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>{t('features.advancedPlugins')}</span>
-            </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
-              <span className={styles.featureItem}>{t('features.webSearch')}</span>
-            </Flexbox>
-          </Flexbox>
-        </Flexbox>
-
-        {/* Support */}
-        <Flexbox gap={8}>
-          <span className={styles.sectionTitle}>{t('features.support')}</span>
-          <Flexbox gap={4}>
-            <Flexbox align={'center'} gap={8} horizontal>
-              <Icon className={styles.checkIcon} icon={Check} size={16} />
+              <Icon className={styles.checkIcon} icon={Check} size={14} />
               <span className={styles.featureItem}>
                 {id === 'lite'
                   ? t('features.communitySupport')

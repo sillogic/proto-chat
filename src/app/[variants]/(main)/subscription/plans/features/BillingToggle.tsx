@@ -15,8 +15,8 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
   discountTag: css`
     border: none;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   `,
 }));
 
