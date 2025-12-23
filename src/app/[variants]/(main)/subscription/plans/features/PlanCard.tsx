@@ -34,7 +34,7 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   `,
   cardBody: css`
     padding-block: 20px 24px;
-padding-inline: 24px;
+    padding-inline: 24px;
   `,
   cardHeader: css`
     padding-block: 24px 20px;
@@ -62,9 +62,12 @@ padding-inline: 24px;
   `,
   iconContainer: css`
     flex-shrink: 0;
+
     width: 44px;
     height: 44px;
     border-radius: 10px;
+
+    background: ${isDarkMode ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.12)'};
   `,
   popularBadge: css`
     position: absolute;
@@ -113,18 +116,12 @@ padding-inline: 24px;
 
 const planIcons = {
   lite: {
-    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-    color: '#fff',
     icon: FlaskConical,
   },
   pro: {
-    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    color: '#fff',
     icon: BrainCircuit,
   },
   ultra: {
-    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-    color: '#fff',
     icon: Atom,
   },
 };
@@ -180,8 +177,8 @@ const PlanCard = memo<PlanCardProps>(
         {/* Header */}
         <Flexbox className={styles.cardHeader} gap={16}>
           <Flexbox align={'center'} gap={12} horizontal>
-            <Center className={styles.iconContainer} style={{ background: iconConfig.background }}>
-              <Icon color={iconConfig.color} icon={iconConfig.icon} size={22} />
+            <Center className={styles.iconContainer}>
+              <Icon color={theme.colorText} icon={iconConfig.icon} size={22} />
             </Center>
             <Flexbox gap={2}>
               <span className={styles.title}>{t(name as any)}</span>

@@ -34,7 +34,7 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     width: 56px;
     height: 56px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    background: ${isDarkMode ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.12)'};
   `,
   pageContainer: css`
     max-width: 1200px;
@@ -72,7 +72,7 @@ interface ClientProps {
 
 const Client = memo<ClientProps>(() => {
   const { t } = useTranslation('subscription');
-  const { styles } = useStyles();
+  const { styles, theme } = useStyles();
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
   const { plans, handleUpgrade } = useSubscriptionPlans();
 
@@ -81,7 +81,7 @@ const Client = memo<ClientProps>(() => {
       {/* Header */}
       <Flexbox align={'center'} gap={20}>
         <Center className={styles.headerIcon}>
-          <Icon color="#fff" icon={GraduationCap} size={28} />
+          <Icon color={theme.colorText} icon={GraduationCap} size={28} />
         </Center>
         <Flexbox align={'center'} gap={8}>
           <span className={styles.title}>{t('title')}</span>

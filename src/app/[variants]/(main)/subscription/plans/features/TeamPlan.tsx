@@ -16,18 +16,16 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     overflow: hidden;
 
     padding: 32px;
-    border: 1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)'};
+    border: 1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'};
     border-radius: 12px;
 
-    background: ${isDarkMode
-      ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(29, 78, 216, 0.08) 100%)'
-      : 'linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, rgba(29, 78, 216, 0.04) 100%)'};
+    background: ${isDarkMode ? token.colorBgElevated : token.colorBgContainer};
 
     transition: all 0.3s ease;
 
     &:hover {
-      border-color: ${isDarkMode ? 'rgba(59, 130, 246, 0.4)' : 'rgba(59, 130, 246, 0.3)'};
-      box-shadow: 0 4px 20px ${isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)'};
+      border-color: ${token.colorPrimary};
+      box-shadow: 0 4px 20px ${isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'};
     }
   `,
   desc: css`
@@ -40,13 +38,13 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     color: ${token.colorTextSecondary};
   `,
   featureIcon: css`
-    color: ${token.colorPrimary};
+    color: ${token.colorTextSecondary};
   `,
   iconContainer: css`
     width: 52px;
     height: 52px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    background: ${isDarkMode ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.12)'};
   `,
   title: css`
     font-size: 20px;
@@ -57,7 +55,7 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
 
 const TeamPlan = memo(() => {
   const { t } = useTranslation('subscription');
-  const { styles } = useStyles();
+  const { styles, theme } = useStyles();
 
   const features = [
     { icon: Users, text: '支持多人协作与权限管理' },
@@ -70,7 +68,7 @@ const TeamPlan = memo(() => {
       <Flexbox gap={20} style={{ flex: 1, minWidth: 280 }}>
         <Flexbox align={'center'} gap={16} horizontal>
           <Center className={styles.iconContainer}>
-            <Icon color="#fff" icon={Building2} size={26} />
+            <Icon color={theme.colorText} icon={Building2} size={26} />
           </Center>
           <Flexbox gap={4}>
             <span className={styles.title}>{t('team.title')}</span>
@@ -90,15 +88,7 @@ const TeamPlan = memo(() => {
 
       <Flexbox align={'center'} justify={'center'}>
         <Link to="/contact">
-          <Button
-            size="large"
-            style={{
-              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-              border: 'none',
-              minWidth: 140,
-            }}
-            type="primary"
-          >
+          <Button size="large" style={{ minWidth: 140 }} type="primary">
             {t('team.contact')}
           </Button>
         </Link>
