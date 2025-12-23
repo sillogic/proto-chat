@@ -441,6 +441,20 @@
       "when": 1765728439737,
       "tag": "0062_add_more_index",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1766391752032,
+      "tag": "0063_tiresome_saracen",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1766392489789,
+      "tag": "0064_square_shatterstar",
+      "breakpoints": true
     }
   ],
   "version": "6"

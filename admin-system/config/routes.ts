@@ -55,13 +55,31 @@ export default [
     path: '/plans',
     name: 'plans',
     icon: 'CrownOutlined',
-    component: './Plans',
+    component: './Subscription/Plans',
+  },
+  {
+    path: '/subscription-records',
+    name: 'subscriptionRecords',
+    icon: 'HistoryOutlined',
+    component: './Subscription/Records',
+  },
+  {
+    path: '/model-pricing',
+    name: 'modelPricing',
+    icon: 'DollarOutlined',
+    component: './Subscription/ModelPricing',
   },
   {
     path: '/api-keys',
     name: 'apiKeys',
     icon: 'KeyOutlined',
     component: './ApiKeys',
+  },
+  {
+    path: '/usage-statistics',
+    name: 'usageStatistics',
+    icon: 'BarChartOutlined',
+    component: './UsageStatistics',
   },
   {
     path: '/',

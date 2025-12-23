@@ -20,6 +20,9 @@ const UsersPage: React.FC = () => {
     basic: { text: '基础版', color: 'blue' },
     pro: { text: '专业版', color: 'green' },
     enterprise: { text: '企业版', color: 'gold' },
+    'lite-monthly': { text: 'Lite (月付)', color: 'blue' },
+    'pro-monthly': { text: 'Pro (月付)', color: 'green' },
+    'ultra-monthly': { text: 'Ultra (月付)', color: 'purple' },
   };
 
   // 用户状态配置
@@ -58,8 +61,9 @@ const UsersPage: React.FC = () => {
       valueType: 'select',
       valueEnum: {
         free: { text: '免费版', status: 'Default' },
-        basic: { text: '基础版', status: 'Processing' },
-        pro: { text: '专业版', status: 'Success' },
+        'lite-monthly': { text: 'Lite (月付)', status: 'Processing' },
+        'pro-monthly': { text: 'Pro (月付)', status: 'Success' },
+        'ultra-monthly': { text: 'Ultra (月付)', status: 'Error' },
         enterprise: { text: '企业版', status: 'Warning' },
       },
     },
@@ -289,8 +293,9 @@ const UsersPage: React.FC = () => {
           >
             <Select placeholder="请选择套餐类型">
               <Option value="free">免费版</Option>
-              <Option value="basic">基础版</Option>
-              <Option value="pro">专业版</Option>
+              <Option value="lite-monthly">Lite (月付)</Option>
+              <Option value="pro-monthly">Pro (月付)</Option>
+              <Option value="ultra-monthly">Ultra (月付)</Option>
               <Option value="enterprise">企业版</Option>
             </Select>
           </Form.Item>

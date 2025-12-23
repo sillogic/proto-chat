@@ -8,8 +8,12 @@ import { createServer } from 'node:http';
 import authRoutes from './routes/auth';
 import authCasdoorRoutes from './routes/auth-casdoor';
 import adminRoutes from './routes/admin';
+import adminStatsRoutes from './routes/stats';
+import adminPlansRoutes from './routes/plans';
+import adminPricingRoutes from './routes/pricing';
 import userRoutes from './routes/users-simplified';
 import dashboardRoutes from './routes/dashboard';
+import subscriptionRoutes from './routes/subscriptions';
 
 // 加载环境变量
 dotenv.config();
@@ -58,8 +62,12 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/casdoor', authCasdoorRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminStatsRoutes);
+app.use('/api/admin/plans', adminPlansRoutes);
+app.use('/api/admin/models/pricing', adminPricingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/admin/subscriptions', subscriptionRoutes);
 
 // 404处理
 app.use((req, res) => {
@@ -71,7 +79,7 @@ app.use((req, res) => {
 });
 
 // 全局错误处理
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Global error handler:', err);
 
   res.status(err.status || 500).json({

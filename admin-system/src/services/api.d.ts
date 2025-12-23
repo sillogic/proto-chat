@@ -68,9 +68,16 @@ export interface UserListParams {
 
 // 用户列表响应
 export interface UserListResponse {
-  data: User[];
+  data: {
+    users: User[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  };
   success: boolean;
-  total: number;
 }
 
 // 更新用户套餐参数
