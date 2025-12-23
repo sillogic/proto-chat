@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@lobehub/ui';
-import { LobeHub } from '@lobehub/ui/brand';
 import { createStyles, useTheme } from 'antd-style';
 import { ArrowLeft, Mail, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
@@ -11,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 
 import { message } from '@/components/AntdStaticMethods';
+import { ProductLogo } from '@/components/Branding';
 import { sendVerificationEmail } from '@/libs/better-auth/auth-client';
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -124,7 +124,7 @@ export default function VerifyEmailPage() {
   return (
     <Center style={{ minHeight: '100vh' }}>
       <Flexbox align="center" className={styles.container} gap={24}>
-        <LobeHub size={56} />
+        <ProductLogo size={56} type="combine" />
 
         <h1 className={styles.title}>{t('betterAuth.verifyEmail.title')}</h1>
 

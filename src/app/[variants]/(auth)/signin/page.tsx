@@ -1,7 +1,6 @@
 'use client';
 
 import { ActionIcon, Button } from '@lobehub/ui';
-import { LobeHub } from '@lobehub/ui/brand';
 import { Form, Input, type InputRef, Skeleton } from 'antd';
 import { createStyles, useTheme } from 'antd-style';
 import { ChevronLeft, ChevronRight, Lock, Mail } from 'lucide-react';
@@ -13,6 +12,7 @@ import { Flexbox } from 'react-layout-kit';
 import type { CheckUserResponseData } from '@/app/(backend)/api/auth/check-user/route';
 import type { ResolveUsernameResponseData } from '@/app/(backend)/api/auth/resolve-username/route';
 import { message } from '@/components/AntdStaticMethods';
+import { ProductLogo } from '@/components/Branding';
 import AuthIcons from '@/components/NextAuth/AuthIcons';
 import { getAuthConfig } from '@/envs/auth';
 import { requestPasswordReset, signIn } from '@/libs/better-auth/auth-client';
@@ -374,7 +374,7 @@ export default function SignInPage() {
       <div className={styles.container}>
         <div className={styles.card}>
           <Flexbox align="center" gap={8} justify="center">
-            <LobeHub size={48} />
+            <ProductLogo size={48} type="combine" />
           </Flexbox>
 
           <h1 className={styles.title}>{t('betterAuth.signin.emailStep.title')}</h1>

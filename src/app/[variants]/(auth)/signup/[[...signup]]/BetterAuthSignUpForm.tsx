@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@lobehub/ui';
-import { LobeHub } from '@lobehub/ui/brand';
 import { Form, Input } from 'antd';
 import { createStyles } from 'antd-style';
 import { ChevronRight, Lock, Mail } from 'lucide-react';
@@ -12,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
 import { message } from '@/components/AntdStaticMethods';
+import { ProductLogo } from '@/components/Branding';
 import { authEnv } from '@/envs/auth';
 import { signUp } from '@/libs/better-auth/auth-client';
 
@@ -131,7 +131,7 @@ export default function BetterAuthSignUpForm() {
       <div className={styles.container}>
         <div className={styles.card}>
           <Flexbox align="center" gap={8} justify="center">
-            <LobeHub size={48} />
+            <ProductLogo size={48} type="combine" />
           </Flexbox>
 
           <h1 className={styles.title}>{t('betterAuth.signup.title')}</h1>
