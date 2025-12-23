@@ -3,7 +3,7 @@
 import { Button } from '@lobehub/ui';
 import { Form, Input } from 'antd';
 import { createStyles } from 'antd-style';
-import { ChevronRight, Lock, Mail } from 'lucide-react';
+import { ChevronRight, Lock, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -14,6 +14,8 @@ import { message } from '@/components/AntdStaticMethods';
 import { ProductLogo } from '@/components/Branding';
 import { authEnv } from '@/envs/auth';
 import { signUp } from '@/libs/better-auth/auth-client';
+import type { CasdoorSignupResponse } from '@/server/modules/Casdoor/types';
+import { useServerConfigStore } from '@/store/serverConfig';
 
 const useStyles = createStyles(({ css, token }) => ({
   card: css`
@@ -54,6 +56,7 @@ const useStyles = createStyles(({ css, token }) => ({
 interface SignUpFormValues {
   email: string;
   password: string;
+  username?: string;
 }
 
 export default function BetterAuthSignUpForm() {
@@ -63,6 +66,7 @@ export default function BetterAuthSignUpForm() {
   const searchParams = useSearchParams();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const casdoorRopcEnabled = useServerConfigStore((s) => s.serverConfig.casdoorRopcEnabled);
 
   // Pre-fill email from query params (from signin page redirect)
   useEffect(() => {
@@ -77,6 +81,38 @@ export default function BetterAuthSignUpForm() {
     try {
       const callbackUrl = searchParams.get('callbackUrl') || '/';
 
+      // Use Casdoor ROPC flow when enabled
+      if (casdoorRopcEnabled) {
+        if (!values.username) {
+          message.error(t('betterAuth.errors.usernameRequired'));
+          return;
+        }
+
+        const response = await fetch(
+          `/api/auth/casdoor/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`,
+          {
+            body: JSON.stringify({
+              email: values.email,
+              password: values.password,
+              username: values.username,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+          },
+        );
+
+        const data: CasdoorSignupResponse = await response.json();
+
+        if (!response.ok || !data.success) {
+          message.error(data.error || t('betterAuth.signup.error'));
+          return;
+        }
+
+        router.push(data.callbackUrl || callbackUrl);
+        return;
+      }
+
+      // Use Better-Auth email/password flow
       // Generate username from email (use the part before @)
       const username = values.email.split('@')[0];
 
@@ -138,6 +174,28 @@ export default function BetterAuthSignUpForm() {
           <p className={styles.subtitle}>{t('betterAuth.signup.subtitle')}</p>
 
           <Form form={form} layout="vertical" onFinish={handleSignUp} style={{ marginTop: '2rem' }}>
+            {/* Username field - only shown in ROPC mode */}
+            {casdoorRopcEnabled && (
+              <Form.Item
+                name="username"
+                rules={[
+                  { message: t('betterAuth.errors.usernameRequired'), required: true },
+                  { max: 32, message: t('betterAuth.errors.usernameMaxLength') },
+                  { message: t('betterAuth.errors.usernameMinLength'), min: 2 },
+                  {
+                    message: t('betterAuth.errors.usernameFormat'),
+                    pattern: /^\w+$/,
+                  },
+                ]}
+              >
+                <Input
+                  placeholder={t('betterAuth.signup.usernamePlaceholder')}
+                  prefix={<User size={16} />}
+                  size="large"
+                />
+              </Form.Item>
+            )}
+
             <Form.Item
               name="email"
               rules={[

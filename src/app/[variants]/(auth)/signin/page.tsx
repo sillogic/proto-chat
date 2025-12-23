@@ -17,6 +17,7 @@ import AuthIcons from '@/components/NextAuth/AuthIcons';
 import { getAuthConfig } from '@/envs/auth';
 import { requestPasswordReset, signIn } from '@/libs/better-auth/auth-client';
 import { isBuiltinProvider, normalizeProviderId } from '@/libs/better-auth/utils/client';
+import type { CasdoorLoginResponse } from '@/server/modules/Casdoor/types';
 import { useServerConfigStore } from '@/store/serverConfig';
 
 const useStyles = createStyles(({ css, token, responsive }) => ({
@@ -131,6 +132,7 @@ export default function SignInPage() {
   const passwordInputRef = useRef<InputRef>(null);
   const serverConfigInit = useServerConfigStore((s) => s.serverConfigInit);
   const oAuthSSOProviders = useServerConfigStore((s) => s.serverConfig.oAuthSSOProviders) || [];
+  const casdoorRopcEnabled = useServerConfigStore((s) => s.serverConfig.casdoorRopcEnabled);
 
   // Auto-focus input when step changes
   useEffect(() => {
@@ -229,6 +231,17 @@ export default function SignInPage() {
   const handleCheckUser = async (values: Pick<SignInFormValues, 'email'>) => {
     setLoading(true);
     try {
+      const trimmedIdentifier = values.email.trim();
+      if (!trimmedIdentifier) return;
+
+      // In ROPC mode, skip local user check and go directly to password step
+      // Casdoor will validate if the user exists
+      if (casdoorRopcEnabled) {
+        setEmail(trimmedIdentifier);
+        setStep('password');
+        return;
+      }
+
       const resolvedEmail = await resolveEmailFromIdentifier(values.email);
       if (!resolvedEmail) return;
       const { email: targetEmail, identifierType } = resolvedEmail;
@@ -280,6 +293,32 @@ export default function SignInPage() {
     try {
       const callbackUrl = searchParams.get('callbackUrl') || '/';
 
+      // Use Casdoor ROPC flow when enabled
+      if (casdoorRopcEnabled) {
+        const response = await fetch(
+          `/api/auth/casdoor/login?callbackUrl=${encodeURIComponent(callbackUrl)}`,
+          {
+            body: JSON.stringify({
+              identifier: email,
+              password: values.password,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+          },
+        );
+
+        const data: CasdoorLoginResponse = await response.json();
+
+        if (!response.ok || !data.success) {
+          message.error(data.error || t('betterAuth.signin.error'));
+          return;
+        }
+
+        router.push(data.callbackUrl || callbackUrl);
+        return;
+      }
+
+      // Use Better-Auth email/password flow
       const result = await signIn.email(
         {
           callbackURL: callbackUrl,
@@ -381,8 +420,8 @@ export default function SignInPage() {
 
           {step === 'email' && (
             <>
-              {/* Social Login Section Skeleton */}
-              {!serverConfigInit && (
+              {/* Social Login Section Skeleton - hidden in ROPC mode */}
+              {!casdoorRopcEnabled && !serverConfigInit && (
                 <Flexbox className={styles.socialSection} gap={12}>
                   <Skeleton.Button active block size="large" />
                   <Flexbox align="center" className={styles.dividerRow} gap={12} horizontal>
@@ -393,8 +432,8 @@ export default function SignInPage() {
                 </Flexbox>
               )}
 
-              {/* Social Login Section */}
-              {serverConfigInit && oAuthSSOProviders.length > 0 && (
+              {/* Social Login Section - hidden in ROPC mode */}
+              {!casdoorRopcEnabled && serverConfigInit && oAuthSSOProviders.length > 0 && (
                 <Flexbox className={styles.socialSection} gap={12}>
                   {oAuthSSOProviders.map((provider) => (
                     <Button

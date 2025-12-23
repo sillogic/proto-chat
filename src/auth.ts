@@ -5,6 +5,8 @@ import { emailHarmony } from 'better-auth-harmony';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { admin, genericOAuth, magicLink } from 'better-auth/plugins';
 
+import { account, session, verification } from '@/database/schemas/betterAuth';
+import { users } from '@/database/schemas/user';
 import { authEnv } from '@/envs/auth';
 import {
   getMagicLinkEmailTemplate,
@@ -121,6 +123,12 @@ export const auth = betterAuth({
 
   database: drizzleAdapter(serverDB, {
     provider: 'pg',
+    schema: {
+      account,
+      session,
+      user: users,
+      verification,
+    },
   }),
   /**
    * Run user bootstrap for every newly created account (email, magic link, OAuth/social, etc.).
@@ -175,6 +183,13 @@ export const auth = betterAuth({
         return createNanoId(12)();
       },
     },
+  },
+  experimental: {
+    /**
+     * Enable joins for session lookups.
+     * Required for findSession to properly join session with user data.
+     */
+    joins: true,
   },
   plugins: [
     emailHarmony({ allowNormalizedSignin: false }),
