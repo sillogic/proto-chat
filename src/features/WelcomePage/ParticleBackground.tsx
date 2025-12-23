@@ -5,9 +5,24 @@ import * as THREE from 'three';
 
 interface ParticleBackgroundProps {
   isDarkMode: boolean;
+  primaryColor?: string;
 }
 
-const ParticleBackground = memo<ParticleBackgroundProps>(({ isDarkMode }) => {
+/**
+ * Convert hex color to RGB values (0-1 range)
+ */
+const hexToRgb = (hex: string): { b: number; g: number; r: number } => {
+  const result = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
+  return result
+    ? {
+        b: Number.parseInt(result[3], 16) / 255,
+        g: Number.parseInt(result[2], 16) / 255,
+        r: Number.parseInt(result[1], 16) / 255,
+      }
+    : { b: 1, g: 0.4, r: 0.2 }; // fallback to blue
+};
+
+const ParticleBackground = memo<ParticleBackgroundProps>(({ isDarkMode, primaryColor }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const materialRef = useRef<THREE.PointsMaterial | null>(null);
@@ -89,10 +104,11 @@ const ParticleBackground = memo<ParticleBackgroundProps>(({ isDarkMode }) => {
       initialColorParams[i * 3 + 1] = shape0[i * 3 + 1] / r + 0.5;
       initialColorParams[i * 3 + 2] = shape0[i * 3 + 2] / r + 0.5;
 
-      // Initial Blue color (Proto Chat brand color)
-      colors[i * 3] = 0.1;
-      colors[i * 3 + 1] = 0.5;
-      colors[i * 3 + 2] = 0.9;
+      // Use theme primary color
+      const themeColor = primaryColor ? hexToRgb(primaryColor) : { b: 0.9, g: 0.5, r: 0.1 };
+      colors[i * 3] = themeColor.r;
+      colors[i * 3 + 1] = themeColor.g;
+      colors[i * 3 + 2] = themeColor.b;
     }
     shapes.push(shape0);
 
@@ -259,11 +275,11 @@ const ParticleBackground = memo<ParticleBackgroundProps>(({ isDarkMode }) => {
     const stayDuration = 250;
     let timer = 0;
 
-    // Color - Proto Chat Blue Theme
-    const targetColor = { b: 1, g: 0.4, r: 0.2 };
-    let currentR = 0.2,
-      currentG = 0.4,
-      currentB = 1;
+    // Color - Use theme primary color
+    const targetColor = primaryColor ? hexToRgb(primaryColor) : { b: 1, g: 0.4, r: 0.2 };
+    let currentR = targetColor.r,
+      currentG = targetColor.g,
+      currentB = targetColor.b;
 
     let animationId: number;
 
@@ -356,7 +372,7 @@ const ParticleBackground = memo<ParticleBackgroundProps>(({ isDarkMode }) => {
       material.dispose();
       renderer.dispose();
     };
-  }, [isDarkMode]);
+  }, [isDarkMode, primaryColor]);
 
   return (
     <div

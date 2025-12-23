@@ -253,11 +253,12 @@ const nextConfig: NextConfig = {
     //   permanent: false,
     //   source: '/',
     // },
-    {
-      destination: '/chat',
-      permanent: true,
-      source: '/welcome',
-    },
+    // Welcome page is now a proper route, no redirect needed
+    // {
+    //   destination: '/chat',
+    //   permanent: true,
+    //   source: '/welcome',
+    // },
     // we need back /repos url in the further
     {
       destination: '/files',
