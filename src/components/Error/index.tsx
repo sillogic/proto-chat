@@ -1,12 +1,27 @@
 'use client';
 
-import { Button, FluentEmoji } from '@lobehub/ui';
+import { Button } from '@lobehub/ui';
+import { createStyles, keyframes } from 'antd-style';
+import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
 import { MAX_WIDTH } from '@/const/layoutTokens';
+
+const shake = keyframes`
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+`;
+
+const useStyles = createStyles(({ css, token }) => ({
+  errorIcon: css`
+    color: ${token.colorError};
+    animation: ${shake} 0.8s ease-in-out;
+  `,
+}));
 
 export type ErrorType = Error & { digest?: string };
 
@@ -17,6 +32,7 @@ interface ErrorCaptureProps {
 
 const ErrorCapture = memo<ErrorCaptureProps>(({ reset }) => {
   const { t } = useTranslation('error');
+  const { styles } = useStyles();
 
   return (
     <Flexbox align={'center'} justify={'center'} style={{ minHeight: '100%', width: '100%' }}>
@@ -33,7 +49,7 @@ const ErrorCapture = memo<ErrorCaptureProps>(({ reset }) => {
       >
         ERROR
       </h1>
-      <FluentEmoji emoji={'🤧'} size={64} />
+      <AlertTriangle className={styles.errorIcon} size={64} strokeWidth={1.5} />
       <h2 style={{ fontWeight: 'bold', marginTop: '1em', textAlign: 'center' }}>
         {t('error.title')}
       </h2>

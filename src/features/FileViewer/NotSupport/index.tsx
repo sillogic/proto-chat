@@ -1,6 +1,7 @@
 import { IDocument } from '@cyntler/react-doc-viewer';
-import { Button, FluentEmoji } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
+import { Button } from '@lobehub/ui';
+import { createStyles, keyframes } from 'antd-style';
+import { FileQuestion } from 'lucide-react';
 import Link from 'next/link';
 import React, { ComponentType, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -9,7 +10,20 @@ import { Center, Flexbox } from 'react-layout-kit';
 import { MORE_FILE_PREVIEW_REQUEST_URL } from '@/const/url';
 import { downloadFile } from '@/utils/client/downloadFile';
 
+const float = keyframes`
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+`;
+
 const useStyles = createStyles(({ css, token }) => ({
+  fileIcon: css`
+    color: ${token.colorTextSecondary};
+    animation: ${float} 2s ease-in-out infinite;
+  `,
   page: css`
     width: 100%;
     margin: 12px;
@@ -35,7 +49,7 @@ const NotSupport: ComponentType<{
     <Flexbox className={styles.page} id="txt-renderer">
       <Center height={'100%'}>
         <Flexbox align={'center'} gap={12}>
-          <FluentEmoji emoji={'👀'} size={64} />
+          <FileQuestion className={styles.fileIcon} size={64} strokeWidth={1.5} />
           <Flexbox style={{ textAlign: 'center' }}>
             <Trans i18nKey="preview.unsupportedFileAndContact" ns={'file'}>
               此文件格式暂不支持在线预览，如有预览诉求，欢迎
