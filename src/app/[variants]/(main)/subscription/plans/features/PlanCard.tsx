@@ -3,7 +3,7 @@
 import { Icon, Tag } from '@lobehub/ui';
 import { Button, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
-import { Box, Check, CircleHelp, Sparkle, Zap } from 'lucide-react';
+import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
@@ -100,9 +100,17 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
 }));
 
 const planIcons = {
-  lite: { background: 'linear-gradient(45deg, #21B2EE, #2271ED)', color: '#E5F8FF', icon: Box },
-  pro: { background: 'linear-gradient(45deg, #C57948, #803718)', color: '#FFC385', icon: Sparkle },
-  ultra: { background: 'linear-gradient(45deg, #F7A82F, #BB7227)', color: '#FCFA6E', icon: Zap },
+  lite: {
+    background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
+    color: '#DBEAFE',
+    icon: FlaskConical,
+  },
+  pro: {
+    background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
+    color: '#EDE9FE',
+    icon: BrainCircuit,
+  },
+  ultra: { background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#FEF3C7', icon: Atom },
 };
 
 interface PlanCardProps {
