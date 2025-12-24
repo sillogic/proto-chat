@@ -225,7 +225,7 @@
   {
     "sql": [
       "DROP TABLE \"user_budgets\";",
-      "\r\nDROP TABLE \"user_subscriptions\";"
+      "\nDROP TABLE \"user_subscriptions\";"
     ],
     "bps": true,
     "folderMillis": 1729699958471,
@@ -778,7 +778,7 @@
   },
   {
     "sql": [
-      "ALTER TABLE \"agents\" ADD COLUMN IF NOT EXISTS \"market_identifier\" text;\r\n"
+      "ALTER TABLE \"agents\" ADD COLUMN IF NOT EXISTS \"market_identifier\" text;\n"
     ],
     "bps": true,
     "folderMillis": 1762870034882,
@@ -786,7 +786,7 @@
   },
   {
     "sql": [
-      "ALTER TABLE \"message_plugins\" ADD COLUMN IF NOT EXISTS \"intervention\" jsonb;\r\n"
+      "ALTER TABLE \"message_plugins\" ADD COLUMN IF NOT EXISTS \"intervention\" jsonb;\n"
     ],
     "bps": true,
     "folderMillis": 1762911968658,

@@ -4,8 +4,8 @@
     "title": "Changelog"
   },
   "chat": {
-    "description": "{{appName}} brings you the best UI experience for ChatGPT, Claude, Gemini, and OLLaMA.",
-    "title": "{{appName}}: Your personal AI productivity tool for a smarter brain."
+    "description": "{{appName}} - Next-generation AI interaction platform for scientific researchers, deeply integrating world-leading AI models.",
+    "title": "{{appName}}: Empowering Research, Inspiring Discovery"
   },
   "discover": {
     "assistants": {
@@ -33,7 +33,7 @@
     "title": "Discover"
   },
   "image": {
-    "description": "{{appName}} brings you the best experience with GPT Image, Flux, Midjourney, and Stable Diffusion",
+    "description": "{{appName}} - Powerful scientific illustration capabilities for high-quality academic charts and data visualization.",
     "title": "AI Painting"
   },
   "plugins": {
@@ -41,7 +41,7 @@
     "title": "Plugin Marketplace"
   },
   "welcome": {
-    "description": "{{appName}} brings you the best UI experience for ChatGPT, Claude, Gemini, and OLLaMA.",
-    "title": "Welcome to {{appName}}: Your personal AI productivity tool for a smarter brain."
+    "description": "{{appName}} - Next-generation AI interaction platform for scientific researchers, deeply integrating world-leading AI models.",
+    "title": "Welcome to {{appName}}: Empowering Research, Inspiring Discovery"
   }
 }

@@ -1,0 +1,16 @@
+{
+  "email": {
+    "title": "Email",
+    "value": "pl.huang@sillogic.ai"
+  },
+  "phone": {
+    "placeholder": "Coming Soon",
+    "title": "Phone"
+  },
+  "subtitle": "Our team is ready to help you",
+  "title": "Contact Us",
+  "wechat": {
+    "placeholder": "Coming Soon",
+    "title": "WeChat"
+  }
+}

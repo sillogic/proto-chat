@@ -25,34 +25,12 @@ LobeChat is an open-source, modern-design AI Agent Workspace (previously LobeCha
 - **Testing:** Vitest
 - **Package Manager:** pnpm (monorepo), bun (script execution), bunx (executables)
 
-## Architecture
-
-### High-Level Structure
-
-This is a monorepo with workspace packages using `@lobechat/` namespace.
-
-**Data Flow Architecture:**
-- **Web with ClientDB:** React UI → Client Service → Direct Model Access → PGLite (Web WASM)
-- **Web with ServerDB:** React UI → Client Service → tRPC Lambda → Server Services → PostgreSQL (Remote)
-- **Desktop (Cloud sync disabled):** Electron UI → Client Service → tRPC Lambda → Local Server Services → PGLite (Node WASM)
-- **Desktop (Cloud sync enabled):** Electron UI → Client Service → tRPC Lambda → Cloud Server Services → PostgreSQL (Remote)
-
-### Key Directories
-
-- `src/components`, `src/features` - UI Components
-- `src/layout` - Global providers
-- `src/store` - Zustand stores
-- `src/services/` - Cross-platform services (clientDB: `client.ts`, serverDB: `server.ts`)
-- `src/app/(backend)/webapi` - REST API routers
-- `src/server/routers/{edge|lambda|async|desktop|tools}` - tRPC routers
-- `src/server/services` - Server-only services (can access serverDB)
-- `src/server/modules` - Server-only third-party modules (no DB access)
-- `packages/database/src/schemas` - Drizzle schemas
-- `packages/database/src/models` - CRUD models
-- `packages/database/src/repositories` - BFF queries
-- `src/libs` - Third-party integrations (analytics, oidc, etc.)
-
-## Development Commands
+- The current release branch is `next` instead of `main` until v2.0.0 is officially released
+- use rebase for git pull
+- git commit message should prefix with gitmoji
+- git branch name format example: tj/feat/feature-name
+- use .github/PULL_REQUEST_TEMPLATE.md to generate pull request description
+- PR titles starting with `✨ feat/` or `🐛 fix` will trigger the release workflow upon merge. Only use these prefixes for significant user-facing feature changes or bug fixes
 
 ### Package Management
 ```bash
@@ -86,17 +64,17 @@ bun run build
 # Build with bundle analysis
 bun run build:analyze
 
-# Build for Docker
-bun run build:docker
+- wrap the file path in single quotes to avoid shell expansion
+- Never run `bun run test` etc to run tests, this will run all tests and cost about 10mins
+- If trying to fix the same test twice, but still failed, stop and ask for help.
+- **Prefer `vi.spyOn` over `vi.mock`**: When mocking modules or functions, prefer using `vi.spyOn` to mock specific functions rather than `vi.mock` to mock entire modules. This approach is more targeted, easier to maintain, and allows for better control over mock behavior in individual tests.
+- **Tests must pass type check**: After writing or modifying tests, run `bun run type-check` to ensure there are no type errors. Tests should pass both runtime execution and TypeScript type checking.
 
 # Build desktop app
 bun run desktop:build
 ```
 
-### Type Checking and Linting
-```bash
-# Type checking
-bun run typecheck
+- use `bun run type-check` to check type errors.
 
 # Linting (includes type checking)
 bun run lint
@@ -107,10 +85,7 @@ bun run lint:style       # Style linting
 bun run lint:circular    # Circular dependency check
 ```
 
-### Database Operations
-```bash
-# Generate database schema and client
-bun run db:generate
+## Linear Issue Management (ignore if not installed linear mcp)
 
 # Run database migrations
 bun run db:migrate
@@ -118,9 +93,11 @@ bun run db:migrate
 # Open database studio
 bun run db:studio
 
-# Visualize database schema
-bun run db:visualize
-```
+### Creating Issues
+
+When creating new Linear issues using `mcp__linear-server__create_issue`, **MUST add the `claude code` label** to indicate the issue was created by Claude Code.
+
+### Completion Comment (REQUIRED)
 
 ### Testing (CRITICAL: Read testing guide before running tests)
 
@@ -138,19 +115,13 @@ bunx vitest run --silent='passed-only' 'src/components/**/*.test.tsx'
 # Run tests with coverage
 bunx vitest run --silent='passed-only' --coverage 'filename.test.ts'
 
-# Run tests for packages (e.g., database)
-cd packages/database && bunx vitest run --silent='passed-only' '[file-pattern]'
-
-# Run server database tests (requires TEST_SERVER_DB=1)
-cd packages/database && TEST_SERVER_DB=1 bunx vitest run --silent='passed-only' '[file-pattern]'
-```
-
-**Testing Rules:**
-- Always read `.cursor/rules/testing-guide/testing-guide.mdc` before writing tests
-- If you fail to fix the same test twice, stop and ask for help
-- Test files should be in the same directory as source files with `.test.ts` or `.test.tsx` suffix
-
-## Git Workflow
+1. Complete the implementation for this specific issue
+2. Run type check: `bun run type-check`
+3. Run related tests if applicable
+4. Create PR if needed
+5. **IMMEDIATELY** update issue status to **"In Review"** (NOT "Done"): `mcp__linear-server__update_issue`
+6. **IMMEDIATELY** add completion comment: `mcp__linear-server__create_comment`
+7. Only then move on to the next issue
 
 - Current release branch: `next` (not `main`) until v2.0.0 release
 - Use rebase for git pull (`git pull --rebase`)

@@ -4,8 +4,8 @@
     "title": "更新日志"
   },
   "chat": {
-    "description": "{{appName}} 带给你最好的 ChatGPT, Claude , Gemini, OLLaMA WebUI 使用体验",
-    "title": "{{appName}}：个人 AI 效能工具，给自己一个更聪明的大脑"
+    "description": "{{appName}} - 为科研工作者打造的下一代 AI 交互平台，深度集成全球顶级 AI 大模型",
+    "title": "{{appName}}：智启科研，创见未来"
   },
   "discover": {
     "assistants": {
@@ -33,7 +33,7 @@
     "title": "发现"
   },
   "image": {
-    "description": "{{appName}} 带给你最好的 GPT Image, Flux, Midjourney, Stable Diffusion 使用体验",
+    "description": "{{appName}} - 集成强大的科研绘图功能，支持生成高质量的学术图表、数据可视化",
     "title": "AI 绘画"
   },
   "plugins": {
@@ -41,7 +41,7 @@
     "title": "插件市场"
   },
   "welcome": {
-    "description": "{{appName}} 带给你最好的 ChatGPT, Claude , Gemini, OLLaMA WebUI 使用体验",
-    "title": "欢迎使用 {{appName}}：个人 AI 效能工具，给自己一个更聪明的大脑"
+    "description": "{{appName}} - 为科研工作者打造的下一代 AI 交互平台，深度集成全球顶级 AI 大模型",
+    "title": "欢迎使用 {{appName}}：智启科研，创见未来"
   }
 }

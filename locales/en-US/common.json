@@ -31,7 +31,7 @@
   "batchDelete": "Batch Delete",
   "blog": "Product Blog",
   "branching": "Create Subtopic",
-  "branchingDisable": "The \"Sub-topic\" feature is unavailable in the current mode. To use this feature, please switch to Postgres/Pglite DB mode or use LobeHub Cloud.",
+  "branchingDisable": "The \"Sub-topic\" feature is unavailable in the current mode. To use this feature, please switch to Postgres/Pglite DB mode or use Proto Chat Cloud.",
   "branchingRequiresSavedTopic": "Current topic is not saved, please save it first to use subtopic feature",
   "cancel": "Cancel",
   "changelog": "Changelog",
@@ -147,8 +147,8 @@
     "painting": "AI Painting",
     "searchPlaceholder": "Enter a command or search...",
     "settings": "Settings",
-    "starOnGitHub": "Star us on GitHub",
-    "submitIssue": "Submit Issue",
+    "starOnGitHub": "",
+    "submitIssue": "",
     "theme": "Theme",
     "themeAuto": "Auto",
     "themeDark": "Dark",
@@ -188,19 +188,19 @@
   "footer": {
     "action": {
       "feedback": "Share Your Valuable Feedback",
-      "star": "Star on GitHub"
+      "star": ""
     },
     "and": "and",
     "feedback": {
       "action": "Share Feedback",
-      "desc": "Every idea and suggestion from you is precious to us. We can't wait to hear your thoughts! Feel free to contact us to provide feedback on product features and user experience, helping us make LobeChat even better.",
-      "title": "Share Your Valuable Feedback on GitHub"
+      "desc": "Every idea and suggestion from you is precious to us. We can't wait to hear your thoughts! Feel free to contact us to provide feedback on product features and user experience, helping us make Proto Chat even better.",
+      "title": "Share Your Valuable Feedback"
     },
     "later": "Later",
     "star": {
-      "action": "Star It",
-      "desc": "If you love our product and want to support us, could you go to GitHub and give us a star? This small gesture means a lot to us and motivates us to continue providing you with great experiences.",
-      "title": "Star Us on GitHub"
+      "action": "",
+      "desc": "",
+      "title": ""
     },
     "title": "Like Our Product?"
   },
@@ -369,9 +369,9 @@
   "telemetry": {
     "allow": "Allow",
     "deny": "Deny",
-    "desc": "We would like to anonymously collect usage information to help us improve LobeChat and provide you with a better product experience. You can disable this at any time in Settings - About.",
+    "desc": "We would like to anonymously collect usage information to help us improve Proto Chat and provide you with a better product experience. You can disable this at any time in Settings - About.",
     "learnMore": "Learn More",
-    "title": "Help LobeChat be better"
+    "title": "Help Proto Chat be better"
   },
   "temp": "Temporary",
   "terms": "Terms of Service",

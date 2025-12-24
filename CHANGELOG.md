@@ -2,6 +2,98 @@
 
 # Changelog
 
+## [Version 2.0.0-next.176](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.175...v2.0.0-next.176)
+
+<sup>Released on **2025-12-23**</sup>
+
+#### ✨ Features
+
+- **misc**: Mobile native better auth support.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### What's improved
+
+- **misc**: Mobile native better auth support, closes [#10871](https://github.com/lobehub/lobe-chat/issues/10871) ([8c42a93](https://github.com/lobehub/lobe-chat/commit/8c42a93))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.175](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.174...v2.0.0-next.175)
+
+<sup>Released on **2025-12-21**</sup>
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.174](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.173...v2.0.0-next.174)
+
+<sup>Released on **2025-12-20**</sup>
+
+#### ♻ Code Refactoring
+
+- **misc**: Refactor database schema.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### Code refactoring
+
+- **misc**: Refactor database schema, closes [#10860](https://github.com/lobehub/lobe-chat/issues/10860) ([5c489bc](https://github.com/lobehub/lobe-chat/commit/5c489bc))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.173](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.172...v2.0.0-next.173)
+
+<sup>Released on **2025-12-16**</sup>
+
+#### 🐛 Bug Fixes
+
+- **misc**: Request to gpt5 series should not with `top_p`, temperature when reasoning effort is not none.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### What's fixed
+
+- **misc**: Request to gpt5 series should not with `top_p`, temperature when reasoning effort is not none, closes [#10800](https://github.com/lobehub/lobe-chat/issues/10800) ([b4ad470](https://github.com/lobehub/lobe-chat/commit/b4ad470))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
 ## [Version 2.0.0-next.172](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.171...v2.0.0-next.172)
 
 <sup>Released on **2025-12-15**</sup>
