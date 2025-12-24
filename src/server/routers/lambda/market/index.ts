@@ -22,6 +22,23 @@ import {
   ProviderSorts,
 } from '@/types/discover';
 
+/**
+ * Convert external MCP content to internal ToolCallContent type
+ * Filters out content items with missing required data
+ */
+const toToolCallContent = (content: unknown[] | undefined): ToolCallContent[] => {
+  if (!content) return [];
+  return content.filter((item): item is ToolCallContent => {
+    if (!item || typeof item !== 'object') return false;
+    const typed = item as Record<string, unknown>;
+    // For image/audio types, ensure data is present
+    if (typed.type === 'image' || typed.type === 'audio') {
+      return typeof typed.data === 'string' && typed.data.length > 0;
+    }
+    return true;
+  }) as ToolCallContent[];
+};
+
 const log = debug('lambda-router:market');
 
 const marketSourceSchema = z.enum(['legacy', 'new']);
@@ -84,12 +101,14 @@ export const marketRouter = router({
         const cloudResultContent = (cloudResult?.content ?? []) as ToolCallContent[];
 
         // Format the cloud result to MCPToolCallResult format
+        // Convert external content type to internal ToolCallContent type
+        const contentBlocks = toToolCallContent(cloudResult?.content);
+
         // Process content blocks (upload images, etc.)
         const newContent =
           cloudResult?.isError || !ctx.fileService
-            ? cloudResultContent
-            : // FIXME: the type assertion here is a temporary solution, need to remove it after refactoring
-              await processContentBlocks(cloudResultContent, ctx.fileService);
+            ? contentBlocks
+            : await processContentBlocks(contentBlocks, ctx.fileService);
 
         // Convert content blocks to string
         const content = contentBlocksToString(newContent);

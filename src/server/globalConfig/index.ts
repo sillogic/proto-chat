@@ -64,6 +64,7 @@ export const getServerGlobalConfig = async () => {
         withDeploymentName: true,
       },
     }),
+    casdoorRopcEnabled: authEnv.AUTH_CASDOOR_ROPC_ENABLED,
     defaultAgent: {
       config: parseAgentConfig(DEFAULT_AGENT_CONFIG),
     },

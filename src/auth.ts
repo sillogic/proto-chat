@@ -8,6 +8,8 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { betterAuth } from 'better-auth/minimal';
 import { admin, emailOTP, genericOAuth, magicLink } from 'better-auth/plugins';
 
+import { account, session, verification } from '@/database/schemas/betterAuth';
+import { users } from '@/database/schemas/user';
 import { authEnv } from '@/envs/auth';
 import {
   getMagicLinkEmailTemplate,
@@ -116,8 +118,12 @@ export const auth = betterAuth({
   },
   database: drizzleAdapter(serverDB, {
     provider: 'pg',
-    // experimental joins feature needs schema to pass full relation
-    schema,
+    schema: {
+      account,
+      session,
+      user: users,
+      verification,
+    },
   }),
   secondaryStorage: createSecondaryStorage(),
   /**
@@ -180,6 +186,13 @@ export const auth = betterAuth({
         return createNanoId(12)();
       },
     },
+  },
+  experimental: {
+    /**
+     * Enable joins for session lookups.
+     * Required for findSession to properly join session with user data.
+     */
+    joins: true,
   },
   plugins: [
     expo(),

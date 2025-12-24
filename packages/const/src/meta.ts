@@ -2,7 +2,7 @@ import { MetaData } from '@lobechat/types';
 
 import { BRANDING_LOGO_URL } from './branding';
 
-export const DEFAULT_AVATAR = '🤖';
+export const DEFAULT_AVATAR = BRANDING_LOGO_URL || '/logo.png';
 export const DEFAULT_USER_AVATAR = '😀';
 export const DEFAULT_SUPERVISOR_AVATAR = '🎙️';
 export const DEFAULT_SUPERVISOR_ID = 'supervisor';

@@ -31,14 +31,14 @@ const menu = {
   },
   help: {
     about: '关于',
-    githubRepo: 'GitHub 仓库',
-    reportIssue: '报告问题',
+    githubRepo: '',
+    reportIssue: '',
     title: '帮助',
     visitWebsite: '访问官网',
   },
   macOS: {
     about: '关于 {{appName}}',
-    devTools: 'LobeHub 开发者工具',
+    devTools: 'Proto Chat 开发者工具',
     hide: '隐藏 {{appName}}',
     hideOthers: '隐藏其他',
     preferences: '偏好设置...',

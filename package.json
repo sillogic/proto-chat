@@ -1,7 +1,7 @@
 {
-  "name": "@lobehub/lobehub",
-  "version": "2.0.0-next.176",
-  "description": "LobeHub - an open-source,comprehensive AI Agent framework that supports speech synthesis, multimodal, and extensible Function Call plugin system. Supports one-click free deployment of your private ChatGPT/LLM web application.",
+  "name": "@protochat/proto-chat",
+  "version": "2.0.0-next.159",
+  "description": "Proto Chat - 为科研工作者打造的下一代 AI 交互平台，深度集成全球顶级 AI 大模型",
   "keywords": [
     "framework",
     "chatbot",
@@ -12,18 +12,20 @@
     "azure-openai",
     "visual-model",
     "tts",
-    "stt"
+    "stt",
+    "research",
+    "academic"
   ],
-  "homepage": "https://github.com/lobehub/lobe-chat",
+  "homepage": "https://protochat.ai",
   "bugs": {
-    "url": "https://github.com/lobehub/lobe-chat/issues/new/choose"
+    "url": ""
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lobehub/lobe-chat.git"
+    "url": ""
   },
   "license": "MIT",
-  "author": "LobeHub <i@lobehub.com>",
+  "author": "Proto Chat <hello@protochat.ai>",
   "sideEffects": false,
   "workspaces": [
     "packages/*",
@@ -304,6 +306,7 @@
     "svix": "^1.82.0",
     "swr": "^2.3.7",
     "systemjs": "^6.15.1",
+    "three": "^0.182.0",
     "tokenx": "^1.2.1",
     "ts-md5": "^2.0.1",
     "ua-parser-js": "^1.0.41",
@@ -357,6 +360,7 @@
     "@types/rtl-detect": "^1.0.3",
     "@types/semver": "^7.7.1",
     "@types/systemjs": "^6.15.4",
+    "@types/three": "^0.182.0",
     "@types/ua-parser-js": "^0.7.39",
     "@types/unist": "^3.0.3",
     "@types/ws": "^8.18.1",

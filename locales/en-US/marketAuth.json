@@ -23,7 +23,7 @@
     },
     "titles": {
       "error": "Authorization Failed",
-      "loading": "LobeHub Market Authorization",
+      "loading": "Proto Chat Market Authorization",
       "success": "Authorization Successful"
     }
   },
@@ -44,7 +44,7 @@
     "stateMissing": "Authorization state not found. Please try again."
   },
   "messages": {
-    "authorized": "LobeHub service authorized successfully",
+    "authorized": "Proto Chat service authorized successfully",
     "loading": "Starting authorization process...",
     "success": {
       "cloudMcpInstall": "Authorization successful! You can now install the Cloud MCP plugin.",

@@ -2,7 +2,6 @@
 
 import { BRANDING_NAME, DOCUMENTS_REFER_URL, PRIVACY_URL, TERMS_URL } from '@lobechat/const';
 import { Button, Text } from '@lobehub/ui';
-import { LobeHub } from '@lobehub/ui/brand';
 import { Col, Flex, Row, Skeleton } from 'antd';
 import { createStyles } from 'antd-style';
 import { AuthError } from 'next-auth';
@@ -12,6 +11,7 @@ import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import BrandWatermark from '@/components/BrandWatermark';
+import { ProductLogo } from '@/components/Branding';
 import AuthIcons from '@/components/NextAuth/AuthIcons';
 import { useUserStore } from '@/store/user';
 
@@ -114,7 +114,7 @@ export default memo(() => {
           <div className={styles.text}>
             <Text as={'h4'} className={styles.title}>
               <div>
-                <LobeHub size={48} />
+                <ProductLogo size={48} type="combine" />
               </div>
               {t('signIn.start.title', { applicationName: BRANDING_NAME })}
             </Text>

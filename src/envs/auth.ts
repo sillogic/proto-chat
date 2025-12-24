@@ -101,6 +101,7 @@ declare global {
       AUTH_CASDOOR_ID?: string;
       AUTH_CASDOOR_SECRET?: string;
       AUTH_CASDOOR_ISSUER?: string;
+      AUTH_CASDOOR_ROPC_ENABLED?: string;
 
       AUTH_CLOUDFLARE_ZERO_TRUST_ID?: string;
       AUTH_CLOUDFLARE_ZERO_TRUST_SECRET?: string;
@@ -220,6 +221,7 @@ export const getAuthConfig = () => {
       AUTH_CASDOOR_ID: z.string().optional(),
       AUTH_CASDOOR_SECRET: z.string().optional(),
       AUTH_CASDOOR_ISSUER: z.string().optional(),
+      AUTH_CASDOOR_ROPC_ENABLED: z.boolean().optional().default(false),
 
       AUTH_CLOUDFLARE_ZERO_TRUST_ID: z.string().optional(),
       AUTH_CLOUDFLARE_ZERO_TRUST_SECRET: z.string().optional(),
@@ -338,6 +340,7 @@ export const getAuthConfig = () => {
       AUTH_CASDOOR_ID: process.env.AUTH_CASDOOR_ID,
       AUTH_CASDOOR_SECRET: process.env.AUTH_CASDOOR_SECRET,
       AUTH_CASDOOR_ISSUER: process.env.AUTH_CASDOOR_ISSUER,
+      AUTH_CASDOOR_ROPC_ENABLED: process.env.AUTH_CASDOOR_ROPC_ENABLED === '1',
 
       AUTH_CLOUDFLARE_ZERO_TRUST_ID: process.env.AUTH_CLOUDFLARE_ZERO_TRUST_ID,
       AUTH_CLOUDFLARE_ZERO_TRUST_SECRET: process.env.AUTH_CLOUDFLARE_ZERO_TRUST_SECRET,

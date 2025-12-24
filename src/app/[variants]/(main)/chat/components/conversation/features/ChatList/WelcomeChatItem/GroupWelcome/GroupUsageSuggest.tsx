@@ -8,6 +8,8 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
+import ActivityIcon from '@/components/ActivityIcon';
+
 import { useSendGroupMessage } from '../../../ChatInput/useSend';
 import { useTemplateMatching } from './useTemplateMatching';
 
@@ -56,8 +58,6 @@ const useStyles = createStyles(({ css, token, responsive }) => ({
     height: 40px;
     border-radius: ${token.borderRadius}px;
 
-    font-size: 24px;
-
     background: ${token.colorFillTertiary};
   `,
   title: css`
@@ -69,7 +69,7 @@ const useStyles = createStyles(({ css, token, responsive }) => ({
 const getFallbackActivities = (t: any) => {
   const generalActivities = t('guide.groupActivities.general', { returnObjects: true }) as Record<
     string,
-    { description: string; emoji: string; prompt: string; title: string }
+    { description: string; icon: string; prompt: string; title: string }
   >;
   return generalActivities || {};
 };
@@ -129,7 +129,7 @@ const GroupUsageSuggest = memo<{ mobile?: boolean }>(({ mobile }) => {
           const activity = availableActivities[activityKey];
           if (!activity) return null;
 
-          const { title, emoji, description, prompt } = activity;
+          const { title, icon, description, prompt } = activity;
 
           return (
             <Block
@@ -144,7 +144,9 @@ const GroupUsageSuggest = memo<{ mobile?: boolean }>(({ mobile }) => {
               }}
               variant={'outlined'}
             >
-              <div className={styles.emoji}>{emoji}</div>
+              <div className={styles.emoji}>
+                <ActivityIcon icon={icon} size={24} />
+              </div>
               <Flexbox gap={2} style={{ overflow: 'hidden', width: '100%' }}>
                 <Text className={styles.cardTitle} ellipsis={{ rows: 1 }}>
                   {title}

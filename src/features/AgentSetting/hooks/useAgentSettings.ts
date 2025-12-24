@@ -14,12 +14,12 @@ export const useAgentSettings = (): AgentSettingsInstance => {
     autocompleteAgentTitle,
     autocompleteAgentDescription,
     autocompleteAgentTags,
-    autoPickEmoji,
+    autoPickIcon,
   } = storeApi.getState();
 
   return useMemo(
     () => ({
-      autoPickEmoji,
+      autoPickIcon,
       autocompleteAgentDescription,
       autocompleteAgentTags,
       autocompleteAgentTitle,

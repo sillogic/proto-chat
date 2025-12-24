@@ -10,7 +10,7 @@ import { formatDescLength, formatTitleLength } from '@/utils/genOG';
 
 export class Meta {
   public generate({
-    description = 'LobeChat offers you the best ChatGPT, OLLaMA, Gemini, Claude WebUI user experience',
+    description = 'Proto Chat - 为科研工作者打造的下一代 AI 交互平台，深度集成全球顶级 AI 大模型',
     title,
     image = OG_URL,
     url,
@@ -90,7 +90,7 @@ export class Meta {
       card: 'summary_large_image',
       description,
       images: [image],
-      site: '@lobehub',
+      site: '@protochat',
       title,
       url,
     };
@@ -122,7 +122,7 @@ export class Meta {
         },
       ],
       locale,
-      siteName: 'LobeChat',
+      siteName: 'Proto Chat',
       title,
       type,
       url,

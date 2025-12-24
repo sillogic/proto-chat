@@ -1,10 +1,11 @@
-import { Avatar, ScrollShadow, Tooltip } from '@lobehub/ui';
+import { ScrollShadow, Tooltip } from '@lobehub/ui';
 import { Divider } from 'antd';
 import { createStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { Flexbox } from 'react-layout-kit';
 import { Link } from 'react-router-dom';
 
+import AgentAvatar from '@/components/AgentAvatar';
 import { SESSION_CHAT_URL } from '@/const/url';
 import { usePinnedAgentState } from '@/hooks/usePinnedAgentState';
 import { useSwitchSession } from '@/hooks/useSwitchSession';
@@ -108,7 +109,7 @@ const PinList = () => {
                         isPinned && activeId === item.id ? styles.inkActive : undefined,
                       )}
                     >
-                      <Avatar
+                      <AgentAvatar
                         avatar={sessionHelpers.getAvatar(item.meta)}
                         background={item.meta.backgroundColor}
                         size={40}

@@ -24,6 +24,11 @@ export type ServerLanguageModel = Partial<Record<GlobalLLMProviderKey, ServerMod
 
 export interface GlobalServerConfig {
   aiProvider: ServerLanguageModel;
+  /**
+   * Whether Casdoor ROPC (Resource Owner Password Credentials) is enabled
+   * When enabled, the signin/signup pages will use direct API calls instead of OAuth redirect
+   */
+  casdoorRopcEnabled?: boolean;
   defaultAgent?: PartialDeep<UserDefaultAgent>;
   enableKlavis?: boolean;
   enableUploadFileToServer?: boolean;
