@@ -53,7 +53,7 @@ export const aiChatRouter = router({
     }
 
     log('initializing model runtime with provider: %s', input.provider);
-    const modelRuntime = initModelRuntimeWithUserPayload(input.provider, payload);
+    const modelRuntime = await initModelRuntimeWithUserPayload(input.provider, payload);
 
     log('calling generateObject');
     const result = await modelRuntime.generateObject({

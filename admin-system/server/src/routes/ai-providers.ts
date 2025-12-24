@@ -1,6 +1,7 @@
 import express from 'express';
 import { db } from '../config/database';
 import { aiProviders } from '../db/ai-providers-schema';
+import { users } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import { KeyVaultsGateKeeper } from '../utils/encryption';
@@ -84,10 +85,10 @@ router.post('/', authenticateToken, requirePermission('system.admin'), async (re
 
         const values = {
 
-            description,
-
-
             config: config || {},
+
+
+            description,
 
             // 全局配置使用固定的 userId
             enabled,
@@ -101,6 +102,21 @@ router.post('/', authenticateToken, requirePermission('system.admin'), async (re
             updatedAt: new Date(),
             userId: 'system_admin',
         };
+
+        // 确保 system_admin 用户存在
+        const systemAdminExists = await db.select().from(users).where(eq(users.id, 'system_admin')).limit(1);
+        if (systemAdminExists.length === 0) {
+            await db.insert(users).values({
+                id: 'system_admin',
+                username: 'system_admin',
+                email: 'admin@system.local',
+                fullName: 'System Admin',
+                emailVerified: true,
+                role: 'admin',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            });
+        }
 
         await db.insert(aiProviders)
             .values({

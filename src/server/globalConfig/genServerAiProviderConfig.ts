@@ -57,34 +57,44 @@ export const genServerAiProvidersConfig = async (
       const modelString =
         process.env[providerConfig.modelListKey ?? `${providerUpperCase}_MODEL_LIST`];
 
+      const dbProvider = globalDatabaseProviders[provider];
+      const isGlobalEnabled = dbProvider?.enabled === true;
+
+      // If it's a global provider, we should force fetchOnClient to false
+      // to ensure the server-side proxy (and the global key) is used.
+      const finalFetchOnClient = isGlobalEnabled
+        ? false
+        : providerConfig.fetchOnClient !== undefined
+          ? providerConfig.fetchOnClient
+          : undefined;
+
+      // If enabled in DB but no model string in env, we should at least enable all default models
+      const finalModelString = modelString || (isGlobalEnabled ? '+all' : '');
+
       // Process extractEnabledModels and transformToAiModelList concurrently
       const [enabledModels, serverModelLists] = await Promise.all([
-        extractEnabledModels(provider, modelString, providerConfig.withDeploymentName || false),
+        extractEnabledModels(provider, finalModelString, providerConfig.withDeploymentName || false),
         transformToAiModelList({
           defaultModels: aiModels || [],
-          modelString,
+          modelString: finalModelString,
           providerId: provider,
           withDeploymentName: providerConfig.withDeploymentName || false,
         }),
       ]);
 
-      const dbProvider = globalDatabaseProviders[provider];
-
       return {
         config: {
           enabled:
-            dbProvider?.enabled ??
+            isGlobalEnabled ||
             (typeof providerConfig.enabled !== 'undefined'
               ? providerConfig.enabled
               : llmConfig[providerConfig.enabledKey || `ENABLED_${providerUpperCase}`]),
           enabledModels,
           serverModelLists,
-          ...(providerConfig.fetchOnClient !== undefined && {
-            fetchOnClient: providerConfig.fetchOnClient,
+          ...(finalFetchOnClient !== undefined && {
+            fetchOnClient: finalFetchOnClient,
           }),
           // Merge database-backed keyVaults into settings for server usage
-          // Note: In runtimeConfig, these settings will be merged.
-          // We need to ensure that keys configured in DB take precedence.
           ...dbProvider?.keyVaults,
         },
         provider,
