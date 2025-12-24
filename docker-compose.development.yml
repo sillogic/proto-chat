@@ -6,7 +6,7 @@ services:
     restart: always
     ports:
       - '${MINIO_PORT}:${MINIO_PORT}' # MinIO API
-      - '9001:9001' # MinIO Console
+      - '8801:9001' # MinIO Console
       - '${CASDOOR_PORT}:${CASDOOR_PORT}' # Casdoor
       - '3000:3000' # Grafana
       - '4318:4318' # otel-collector HTTP

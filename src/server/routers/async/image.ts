@@ -213,7 +213,7 @@ export const imageRouter = router({
       const imageGenerationPromise = async (signal: AbortSignal) => {
         log('Initializing agent runtime for provider: %s', provider);
 
-        const agentRuntime = initModelRuntimeWithUserPayload(provider, ctx.jwtPayload);
+        const agentRuntime = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload);
 
         // Check if operation has been cancelled
         checkAbortSignal(signal);

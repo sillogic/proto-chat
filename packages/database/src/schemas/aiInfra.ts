@@ -31,6 +31,7 @@ export const aiProviders = pgTable(
     checkModel: text('check_model'),
     logo: text('logo'),
     description: text('description'),
+    isGlobal: boolean('is_global').default(false),
 
     // need to be encrypted
     keyVaults: text('key_vaults'),
