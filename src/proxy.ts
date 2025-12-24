@@ -53,6 +53,7 @@ export const config = {
     '/signin(.*)',
     '/verify-email(.*)',
     '/reset-password(.*)',
+    '/auth-error(.*)',
     '/next-auth/(.*)',
     '/oauth(.*)',
     '/oidc(.*)',

@@ -54,6 +54,7 @@ export default {
   },
   betterAuth: {
     errors: {
+      confirmPasswordRequired: '请确认密码',
       emailExists: '该邮箱已注册，请直接登录',
       emailInvalid: '请输入有效的邮箱地址或用户名',
       emailNotRegistered: '该邮箱或用户名尚未注册',
@@ -65,6 +66,7 @@ export default {
       passwordFormat: '密码必须同时包含字母和数字',
       passwordMaxLength: '密码最多不超过 64 个字符',
       passwordMinLength: '密码至少需要 8 个字符',
+      passwordMismatch: '两次输入的密码不一致',
       passwordRequired: '请输入密码',
       usernameFormat: '用户名只能包含字母、数字和下划线',
       usernameMaxLength: '用户名不能超过 32 个字符',
@@ -128,6 +130,7 @@ export default {
       submit: '登录',
     },
     signup: {
+      confirmPasswordPlaceholder: '请确认密码',
       emailPlaceholder: '请输入邮箱地址',
       error: '注册失败，请重试',
       firstNamePlaceholder: '名字',

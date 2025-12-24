@@ -23,18 +23,22 @@ import { accessedAt, createdAt, timestamps } from './_helpers';
 import { asyncTasks } from './asyncTask';
 import { users } from './user';
 
-export const globalFiles = pgTable('global_files', {
-  hashId: varchar('hash_id', { length: 64 }).primaryKey(),
-  fileType: varchar('file_type', { length: 255 }).notNull(),
-  size: integer('size').notNull(),
-  url: text('url').notNull(),
-  metadata: jsonb('metadata'),
-  creator: text('creator')
-    .references(() => users.id, { onDelete: 'set null' })
-    .notNull(),
-  createdAt: createdAt(),
-  accessedAt: accessedAt(),
-});
+export const globalFiles = pgTable(
+  'global_files',
+  {
+    hashId: varchar('hash_id', { length: 64 }).primaryKey(),
+    fileType: varchar('file_type', { length: 255 }).notNull(),
+    size: integer('size').notNull(),
+    url: text('url').notNull(),
+    metadata: jsonb('metadata'),
+    creator: text('creator')
+      .references(() => users.id, { onDelete: 'set null' })
+      .notNull(),
+    createdAt: createdAt(),
+    accessedAt: accessedAt(),
+  },
+  (t) => [index('global_files_creator_idx').on(t.creator)],
+);
 
 export type NewGlobalFile = typeof globalFiles.$inferInsert;
 export type GlobalFileItem = typeof globalFiles.$inferSelect;
@@ -97,6 +101,8 @@ export const documents = pgTable(
   (table) => [
     index('documents_source_idx').on(table.source),
     index('documents_file_type_idx').on(table.fileType),
+    index('documents_source_type_idx').on(table.sourceType),
+    index('documents_user_id_idx').on(table.userId),
     index('documents_file_id_idx').on(table.fileId),
     index('documents_parent_id_idx').on(table.parentId),
     uniqueIndex('documents_client_id_user_id_unique').on(table.clientId, table.userId),
@@ -152,6 +158,7 @@ export const files = pgTable(
   (table) => {
     return {
       fileHashIdx: index('file_hash_idx').on(table.fileHash),
+      userIdIdx: index('files_user_id_idx').on(table.userId),
       parentIdIdx: index('files_parent_id_idx').on(table.parentId),
       clientIdUnique: uniqueIndex('files_client_id_user_id_unique').on(
         table.clientId,
@@ -187,12 +194,10 @@ export const knowledgeBases = pgTable(
 
     ...timestamps,
   },
-  (t) => ({
-    clientIdUnique: uniqueIndex('knowledge_bases_client_id_user_id_unique').on(
-      t.clientId,
-      t.userId,
-    ),
-  }),
+  (t) => [
+    uniqueIndex('knowledge_bases_client_id_user_id_unique').on(t.clientId, t.userId),
+    index('knowledge_bases_user_id_idx').on(t.userId),
+  ],
 );
 
 export const insertKnowledgeBasesSchema = createInsertSchema(knowledgeBases);
@@ -217,9 +222,8 @@ export const knowledgeBaseFiles = pgTable(
 
     createdAt: createdAt(),
   },
-  (t) => ({
-    pk: primaryKey({
-      columns: [t.knowledgeBaseId, t.fileId],
-    }),
-  }),
+  (t) => [
+    primaryKey({ columns: [t.knowledgeBaseId, t.fileId] }),
+    index('knowledge_base_files_kb_id_idx').on(t.knowledgeBaseId),
+  ],
 );

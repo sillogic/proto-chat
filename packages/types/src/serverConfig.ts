@@ -30,6 +30,7 @@ export interface GlobalServerConfig {
    */
   casdoorRopcEnabled?: boolean;
   defaultAgent?: PartialDeep<UserDefaultAgent>;
+  enableKlavis?: boolean;
   enableUploadFileToServer?: boolean;
   enabledAccessCode?: boolean;
   /**
