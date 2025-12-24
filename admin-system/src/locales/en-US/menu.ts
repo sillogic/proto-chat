@@ -49,4 +49,10 @@ export default {
   'menu.editor.flow': 'Flow Editor',
   'menu.editor.mind': 'Mind Editor',
   'menu.editor.koni': 'Koni Editor',
+  'menu.users': 'User Management',
+  'menu.plans': 'Subscription Plans',
+  'menu.subscriptionRecords': 'Subscription Records',
+  'menu.modelPricing': 'Model Pricing',
+  'menu.apiKeys': 'Model Provider Config',
+  'menu.usageStatistics': 'Usage Statistics',
 };

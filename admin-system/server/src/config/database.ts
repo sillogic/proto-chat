@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../db/schema';
 import * as userExtensionsSchema from '../db/user-extensions-schema';
+import * as aiProvidersSchema from '../db/ai-providers-schema';
 
 // 创建数据库连接
 const connectionString = process.env.DATABASE_URL;
@@ -11,7 +12,7 @@ if (!connectionString) {
 
 const client = postgres(connectionString);
 export const db = drizzle(client, {
-  schema: { ...schema, ...userExtensionsSchema }
+  schema: { ...schema, ...userExtensionsSchema, ...aiProvidersSchema }
 });
 
 // 检查并创建表的函数

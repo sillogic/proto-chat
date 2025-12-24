@@ -29,17 +29,6 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// API Keys 表
-export const apiKeys = pgTable('api_keys', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  keyType: text('key_type').notNull(), // openai, anthropic, etc.
-  keyValue: text('key_value').notNull(),
-  isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
 
 // 系统统计表
 export const systemStats = pgTable('system_stats', {
@@ -55,5 +44,4 @@ export const systemStats = pgTable('system_stats', {
 });
 
 export type User = typeof users.$inferSelect;
-export type ApiKey = typeof apiKeys.$inferSelect;
 export type SystemStat = typeof systemStats.$inferSelect;

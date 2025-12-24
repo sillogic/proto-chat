@@ -8,7 +8,8 @@ import { createServer } from 'node:http';
 import authRoutes from './routes/auth';
 import authCasdoorRoutes from './routes/auth-casdoor';
 import adminRoutes from './routes/admin';
-import adminStatsRoutes from './routes/stats';
+import statsRouter from './routes/stats';
+import aiProvidersRouter from './routes/ai-providers';
 import adminPlansRoutes from './routes/plans';
 import adminPricingRoutes from './routes/pricing';
 import userRoutes from './routes/users-simplified';
@@ -62,7 +63,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/casdoor', authCasdoorRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/admin', adminStatsRoutes);
+app.use('/api/admin/stats', statsRouter);
+app.use('/api/admin/ai-providers', aiProvidersRouter);
 app.use('/api/admin/plans', adminPlansRoutes);
 app.use('/api/admin/models/pricing', adminPricingRoutes);
 app.use('/api/users', userRoutes);
@@ -79,6 +81,7 @@ app.use((req, res) => {
 });
 
 // 全局错误处理
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Global error handler:', err);
 
