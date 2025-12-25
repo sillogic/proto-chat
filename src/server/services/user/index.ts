@@ -70,7 +70,6 @@ export class UserService {
     // 2. create user in database
     await UserModel.createUser(this.db, {
       avatar: params.image_url,
-      clerkCreatedAt: new Date(params.created_at),
       email: email?.email_address,
       firstName: params.first_name,
       id,

@@ -208,6 +208,10 @@ export const userExtensions = pgTable('user_extensions', {
 
 
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  isOnboarded: boolean('is_onboarded').default(false),
+  clerkCreatedAt: timestamp('clerk_created_at'),
+  preference: jsonb('preference').default({}).notNull(),
+  accessedAt: timestamp('accessed_at'),
   userId: text('user_id').notNull().unique(),
 }, (table) => ({
   userIdIdx: index('user_extensions_user_id_idx').on(table.userId),

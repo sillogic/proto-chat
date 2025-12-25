@@ -506,9 +506,15 @@ export class SessionModel {
   // **************** Update *************** //
 
   update = async (id: string, data: Partial<SessionItem>) => {
+    const filteredData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined),
+    );
+
+    if (Object.keys(filteredData).length === 0) return [];
+
     return this.db
       .update(sessions)
-      .set(data)
+      .set(filteredData)
       .where(and(eq(sessions.id, id), eq(sessions.userId, this.userId)))
       .returning();
   };

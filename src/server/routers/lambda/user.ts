@@ -148,7 +148,7 @@ export const userRouter = router({
   }),
 
   makeUserOnboarded: userProcedure.mutation(async ({ ctx }) => {
-    return ctx.userModel.updateUser({ isOnboarded: true });
+    return ctx.userModel.updateExtension({ isOnboarded: true });
   }),
 
   resetSettings: userProcedure.mutation(async ({ ctx }) => {

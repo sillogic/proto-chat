@@ -1206,13 +1206,8 @@ table users {
   first_name text
   last_name text
   full_name text
-  interests "varchar(64)[]"
-  is_onboarded boolean [default: false]
-  onboarding jsonb
-  clerk_created_at "timestamp with time zone"
   email_verified boolean [not null, default: false]
   email_verified_at "timestamp with time zone"
-  preference jsonb
   role text
   banned boolean [default: false]
   ban_reason text
@@ -1233,23 +1228,29 @@ table users {
 }
 
 table user_extensions {
+  accessed_at timestamp [default: `now()`]
+  clerk_created_at timestamp
+  admin_notes text
   current_api_calls_used integer [default: 0]
+  created_at timestamp [not null, default: `now()`]
   current_plan text [default: 'free']
   current_tokens_used integer [default: 0]
   features jsonb [not null, default: `{}`]
   id text [pk, not null, default: `gen_random_uuid()`]
+  interests text[]
+  is_onboarded boolean [default: false]
   is_suspended boolean [default: false]
-  admin_notes text
-  monthly_api_calls_limit integer [default: 0]
-  created_at timestamp [not null, default: `now()`]
-  monthly_token_limit integer [default: 0]
   last_usage_reset timestamp [default: `now()`]
-  user_id text [not null, unique]
+  monthly_api_calls_limit integer [default: 0]
   monthly_storage_limit integer [default: 1024]
+  monthly_token_limit integer [default: 0]
+  onboarding jsonb
   plan_expires_at timestamp
+  preference jsonb
   suspend_reason text
   suspended_at timestamp
   updated_at timestamp [not null, default: `now()`]
+  user_id text [not null, unique]
 
   indexes {
     user_id [name: 'user_extension_user_id_idx', unique]
@@ -1258,19 +1259,19 @@ table user_extensions {
 
 table user_subscription_history {
   api_calls_limit integer [default: 0]
+  created_at timestamp [not null, default: `now()`]
   ended_at timestamp
   features jsonb [not null, default: `{}`]
   id text [pk, not null, default: `gen_random_uuid()`]
-  created_at timestamp [not null, default: `now()`]
   is_active boolean [not null, default: true]
   payment_method text
   plan_name text [not null]
   plan_type text [not null]
   price integer [default: 0]
   started_at timestamp [not null, default: `now()`]
-  user_id text [not null]
   token_limit integer [default: 0]
   transaction_id text
+  user_id text [not null]
 }
 
 table user_memories {
@@ -1492,3 +1493,5 @@ ref: topic_documents.document_id > documents.id
 ref: topic_documents.topic_id > topics.id
 
 ref: topics.session_id - sessions.id
+
+ref: users.id - user_extensions.user_id
