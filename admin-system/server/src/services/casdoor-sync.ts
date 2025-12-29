@@ -1,33 +1,45 @@
+import dotenv from 'dotenv';
+
 import fetch from 'node-fetch';
-import crypto from 'crypto';
-import { UserPermissions } from '../db/user-permissions';
+import crypto from 'node:crypto';
+
+dotenv.config({ override: true });
 
 // Casdoor配置
 interface CasdoorConfig {
-  issuer: string;
+  adminPassword: string;
+  adminUsername: string;
+  applicationName: string;
   clientId: string;
   clientSecret: string;
-  adminUsername: string;
-  adminPassword: string;
+  issuer: string;
+  organizationName: string;
 }
 
 export class CasdoorSyncService {
   private config: CasdoorConfig;
 
   constructor() {
+    const orgName = process.env.CASDOOR_ORG_NAME || 'protochat-admin';
+    const appName = process.env.CASDOOR_APP_NAME || 'protochat-admin';
+
     this.config = {
-      issuer: process.env.AUTH_CASDOOR_ISSUER || 'http://localhost:8000',
+      adminPassword: process.env.CASDOOR_ADMIN_PASSWORD || '123456',
+      adminUsername: process.env.CASDOOR_ADMIN_USERNAME || 'admin',
+      applicationName: appName,
       clientId: process.env.AUTH_CASDOOR_ID || 'admin-client-id',
       clientSecret: process.env.AUTH_CASDOOR_SECRET || 'ade8f7659114685d60f3147a185ebe307a92ee18',
-      adminUsername: process.env.CASDOOR_ADMIN_USERNAME || 'admin',
-      adminPassword: process.env.CASDOOR_ADMIN_PASSWORD || '123456'
+      issuer: process.env.AUTH_CASDOOR_ISSUER || 'http://localhost:8000',
+      organizationName: orgName
     };
 
     console.log('🔍 Casdoor config initialized:', {
-      issuer: this.config.issuer,
+      adminUsername: this.config.adminUsername,
+      applicationName: this.config.applicationName,
       clientId: this.config.clientId,
       clientSecret: this.config.clientSecret ? '[REDACTED]' : 'missing',
-      adminUsername: this.config.adminUsername
+      issuer: this.config.issuer,
+      organizationName: this.config.organizationName
     });
   }
 
@@ -35,16 +47,16 @@ export class CasdoorSyncService {
   private async getAccessToken(): Promise<string> {
     try {
       const response = await fetch(`${this.config.issuer}/api/login/oauth/access_token`, {
-        method: 'POST',
+        body: new URLSearchParams({
+          client_id: this.config.clientId,
+          client_secret: this.config.clientSecret,
+          grant_type: 'client_credentials',
+          scope: 'admin',
+        }),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          grant_type: 'client_credentials',
-          client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
-          scope: 'admin',
-        }),
+        method: 'POST',
       });
 
       if (!response.ok) {
@@ -61,13 +73,13 @@ export class CasdoorSyncService {
 
   // 创建用户到Casdoor
   async createCasdoorUser(userData: {
-    name: string;
     displayName: string;
     email: string;
+    name: string;
     password: string;
     phone?: string;
     userType: 'user' | 'admin' | 'super_admin';
-  }): Promise<{ success: boolean; data?: any; error?: string }> {
+  }): Promise<{ data?: any; error?: string, success: boolean; }> {
     try {
       const accessToken = await this.getAccessToken();
 
@@ -78,54 +90,72 @@ export class CasdoorSyncService {
       const roles = userData.userType === 'super_admin'
         ? ['super_admin', 'admin', 'user']
         : userData.userType === 'admin'
-        ? ['admin', 'user']
-        : ['user'];
+          ? ['admin', 'user']
+          : ['user'];
 
       // 准备用户数据
       const casdoorUser = {
-        owner: 'protochat-admin', // 使用后台管理组织
-        name: userId,
-        createdTime: new Date().toISOString(),
-        displayName: userData.displayName,
-        avatar: '',
-        email: userData.email,
-        phone: userData.phone || '',
+
         address: [],
+
         affiliation: userData.userType,
-        title: '',
-        homepage: '',
+
+        avatar: '',
+
         bio: '',
-        tag: userData.userType,
-        language: '',
-        gender: '',
+
         birthday: '',
+
+        createdTime: new Date().toISOString(),
+
+        displayName: userData.displayName,
+
         education: '',
-        score: 0,
-        karma: 0,
-        ranking: 0,
-        is_online: false,
+
+        email: userData.email,
+
+        gender: '',
+
+        homepage: '',
+
         is_admin: userData.userType !== 'user',
-        is_forbidden: false,
+
         is_deleted: false,
-        signupApplication: 'protochat-admin',
+
+        is_forbidden: false,
+
+        is_online: false,
+
+        karma: 0,
+
+        language: '',
+        // 使用后台管理组织
+        name: userId,
+        owner: this.config.organizationName,
+        phone: userData.phone || '',
         preferredMfaType: '',
-        webdavEndpoint: '',
-        webdavUsername: '',
-        webdavPassword: '',
         properties: {
-          userType: userData.userType,
           createdAt: new Date().toISOString(),
+          userType: userData.userType,
         },
+        ranking: 0,
+        score: 0,
+        signupApplication: this.config.organizationName,
+        tag: userData.userType,
+        title: '',
+        webdavEndpoint: '',
+        webdavPassword: '',
+        webdavUsername: '',
       };
 
       // 创建用户
       const userResponse = await fetch(`${this.config.issuer}/api/users`, {
-        method: 'POST',
+        body: JSON.stringify(casdoorUser),
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(casdoorUser),
+        method: 'POST',
       });
 
       if (!userResponse.ok) {
@@ -136,17 +166,17 @@ export class CasdoorSyncService {
 
       // 设置密码
       const passwordResponse = await fetch(`${this.config.issuer}/api/set-password`, {
-        method: 'POST',
+        body: JSON.stringify({
+          newPassword: userData.password,
+          oldPassword: '',
+          userName: userId,
+          userOwner: this.config.organizationName,
+        }),
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userOwner: 'protochat-admin',
-          userName: userId,
-          oldPassword: '',
-          newPassword: userData.password,
-        }),
+        method: 'POST',
       });
 
       if (!passwordResponse.ok) {
@@ -159,19 +189,19 @@ export class CasdoorSyncService {
       }
 
       return {
-        success: true,
         data: {
           casdoorId: userId,
           roles,
           userType: userData.userType,
           ...createdUser.data,
         },
+        success: true,
       };
     } catch (error) {
       console.error('Create Casdoor user error:', error);
       return {
-        success: false,
         error: error.message || 'Unknown error',
+        success: false,
       };
     }
   }
@@ -180,17 +210,17 @@ export class CasdoorSyncService {
   private async assignRoleToUser(userId: string, roleName: string, accessToken: string): Promise<void> {
     try {
       const response = await fetch(`${this.config.issuer}/api/add-role-user`, {
-        method: 'POST',
+        body: JSON.stringify({
+          name: roleName,
+          owner: this.config.organizationName,
+          userName: userId,
+          userOwner: this.config.organizationName,
+        }),
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userOwner: 'protochat-admin',
-          userName: userId,
-          owner: 'protochat-admin',
-          name: roleName,
-        }),
+        method: 'POST',
       });
 
       if (!response.ok) {
@@ -212,17 +242,17 @@ export class CasdoorSyncService {
 
       // 使用授权码获取访问令牌
       const tokenResponse = await fetch(`${this.config.issuer}/api/login/oauth/access_token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
         body: new URLSearchParams({
-          grant_type: 'authorization_code',
           client_id: this.config.clientId,
           client_secret: this.config.clientSecret,
           code: code,
+          grant_type: 'authorization_code',
           redirect_uri: process.env.CASDOOR_REDIRECT_URI || 'http://localhost:8002/api/auth/casdoor/callback',
         }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        method: 'POST',
       });
 
       console.log('🔍 Token response status:', tokenResponse.status, tokenResponse.statusText);
@@ -243,10 +273,10 @@ export class CasdoorSyncService {
 
       // 获取用户信息
       const userInfoResponse = await fetch(`${this.config.issuer}/api/userinfo`, {
-        method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
+        method: 'GET',
       });
 
       console.log('🔍 Userinfo response status:', userInfoResponse.status, userInfoResponse.statusText);
@@ -273,10 +303,10 @@ export class CasdoorSyncService {
       const accessToken = await this.getAccessToken();
 
       const response = await fetch(`${this.config.issuer}/api/get-user?id=${casdoorId}`, {
-        method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
+        method: 'GET',
       });
 
       if (!response.ok) {
@@ -302,7 +332,7 @@ export class CasdoorSyncService {
     email?: string;
     phone?: string;
     roles?: string[];
-  }): Promise<{ success: boolean; error?: string }> {
+  }): Promise<{ error?: string, success: boolean; }> {
     try {
       const accessToken = await this.getAccessToken();
 
@@ -314,15 +344,15 @@ export class CasdoorSyncService {
 
       if (Object.keys(userUpdates).length > 0) {
         const response = await fetch(`${this.config.issuer}/api/users`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({
             ...userUpdates,
             id: casdoorId,
           }),
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          method: 'PUT',
         });
 
         if (!response.ok) {
@@ -334,16 +364,16 @@ export class CasdoorSyncService {
       if (updates.roles && updates.roles.length > 0) {
         // 先移除所有角色
         await fetch(`${this.config.issuer}/api/delete-role-users`, {
-          method: 'DELETE',
+          body: JSON.stringify({
+            owner: this.config.organizationName,
+            userName: casdoorId,
+            userOwner: this.config.organizationName,
+          }),
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            userOwner: 'protochat-admin',
-            userName: casdoorId,
-            owner: 'protochat-admin',
-          }),
+          method: 'DELETE',
         });
 
         // 添加新角色
@@ -356,27 +386,27 @@ export class CasdoorSyncService {
     } catch (error) {
       console.error('Update Casdoor user error:', error);
       return {
-        success: false,
         error: error.message || 'Unknown error',
+        success: false,
       };
     }
   }
 
   // 删除Casdoor用户
-  async deleteCasdoorUser(casdoorId: string): Promise<{ success: boolean; error?: string }> {
+  async deleteCasdoorUser(casdoorId: string): Promise<{ error?: string, success: boolean; }> {
     try {
       const accessToken = await this.getAccessToken();
 
       const response = await fetch(`${this.config.issuer}/api/users`, {
-        method: 'DELETE',
+        body: JSON.stringify({
+          id: casdoorId,
+          owner: this.config.organizationName,
+        }),
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          owner: 'protochat-admin',
-          id: casdoorId,
-        }),
+        method: 'DELETE',
       });
 
       if (!response.ok) {
@@ -387,21 +417,21 @@ export class CasdoorSyncService {
     } catch (error) {
       console.error('Delete Casdoor user error:', error);
       return {
-        success: false,
         error: error.message || 'Unknown error',
+        success: false,
       };
     }
   }
 
   // 测试Casdoor连接
-  async testConnection(): Promise<{ success: boolean; error?: string }> {
+  async testConnection(): Promise<{ error?: string, success: boolean; }> {
     try {
       const accessToken = await this.getAccessToken();
       return { success: true };
     } catch (error) {
       return {
-        success: false,
         error: error.message || 'Connection failed',
+        success: false,
       };
     }
   }

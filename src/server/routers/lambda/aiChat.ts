@@ -14,6 +14,7 @@ import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { AiChatService } from '@/server/services/aiChat';
 import { FileService } from '@/server/services/file';
+import { UserUsageService } from '@/server/services/user/usageService';
 import { getXorPayload } from '@/utils/server';
 
 const log = debug('lobe-lambda-router:ai-chat');
@@ -27,6 +28,7 @@ const aiChatProcedure = authedProcedure.use(serverDatabase).use(async (opts) => 
       fileService: new FileService(ctx.serverDB, ctx.userId),
       messageModel: new MessageModel(ctx.serverDB, ctx.userId),
       topicModel: new TopicModel(ctx.serverDB, ctx.userId),
+      userUsageService: new UserUsageService(ctx.serverDB, ctx.userId),
     },
   });
 });
@@ -71,6 +73,10 @@ export const aiChatRouter = router({
     .input(AiSendMessageServerSchema)
     .mutation(async ({ input, ctx }) => {
       log('sendMessageInServer called for sessionId: %s', input.sessionId);
+
+      // Check token limit
+      await ctx.userUsageService.checkTokenLimit();
+
       log('topicId: %s, newTopic: %O', input.topicId, input.newTopic);
 
       let messageId: string;

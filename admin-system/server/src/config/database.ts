@@ -1,16 +1,27 @@
+import dotenv from 'dotenv';
+
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../db/schema';
 import * as userExtensionsSchema from '../db/user-extensions-schema';
 import * as aiProvidersSchema from '../db/ai-providers-schema';
 
+dotenv.config({ override: true });
+
 // 创建数据库连接
 const connectionString = process.env.DATABASE_URL;
+
 if (!connectionString) {
   throw new Error('DATABASE_URL is not defined in environment variables');
 }
 
-const client = postgres(connectionString);
+console.log('🔍 Database connection string:', connectionString.slice(0, 15) + '...' + (connectionString.split('@')[1] || 'parse_error'));
+
+const client = postgres(connectionString, {
+  connect_timeout: 10,
+  idle_timeout: 20,
+  max: 10,
+});
 export const db = drizzle(client, {
   schema: { ...schema, ...userExtensionsSchema, ...aiProvidersSchema }
 });

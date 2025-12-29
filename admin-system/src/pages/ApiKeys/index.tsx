@@ -134,6 +134,7 @@ const ModelProvidersPage: React.FC = () => {
 
       <ModalForm
         initialValues={currentRow || { enabled: true, fetchOnClient: false }}
+        modalProps={{ destroyOnClose: true }}
         onFinish={async (values) => {
           const res = await upsertGlobalAiProvider(values);
           if (res.success) {

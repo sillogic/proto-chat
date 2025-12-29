@@ -1,8 +1,9 @@
 import { PageContainer, ProTable, ActionType, ProColumns } from '@ant-design/pro-components';
 import { Button, Tag, Space, message, Modal, Form, Select, InputNumber } from 'antd';
-import { UserOutlined, EditOutlined, StopOutlined } from '@ant-design/icons';
+import { EditOutlined, StopOutlined } from '@ant-design/icons';
 import { useRef, useState } from 'react';
-import { useRequest } from '@umijs/max';
+import { Drawer } from 'antd';
+import { UsageStatsView } from '../UsageStatistics';
 import { getUserList, updateUserPlan, updateUserStatus } from '@/services/admin';
 import type { User, UserListParams } from '@/services/api.d';
 
@@ -11,25 +12,16 @@ const { Option } = Select;
 const UsersPage: React.FC = () => {
   const actionRef = useRef<ActionType>();
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [usageDrawerVisible, setUsageDrawerVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [form] = Form.useForm();
 
-  // 套餐类型配置
+  // 方案类型配置
   const planTypeConfig = {
-    free: { text: '免费版', color: 'default' },
+    free: { text: 'Free Trial', color: 'blue' },
     basic: { text: '基础版', color: 'blue' },
     pro: { text: '专业版', color: 'green' },
     enterprise: { text: '企业版', color: 'gold' },
-    'lite-monthly': { text: 'Lite (月付)', color: 'blue' },
-    'pro-monthly': { text: 'Pro (月付)', color: 'green' },
-    'ultra-monthly': { text: 'Ultra (月付)', color: 'purple' },
-  };
-
-  // 用户状态配置
-  const statusConfig = {
-    active: { text: '正常', color: 'green' },
-    suspended: { text: '已停用', color: 'red' },
-    expired: { text: '已过期', color: 'orange' },
   };
 
   // 表格列定义
@@ -51,7 +43,7 @@ const UsersPage: React.FC = () => {
       },
     },
     {
-      title: '套餐类型',
+      title: '方案类型',
       dataIndex: 'planType',
       width: 120,
       render: (planType) => {
@@ -60,29 +52,10 @@ const UsersPage: React.FC = () => {
       },
       valueType: 'select',
       valueEnum: {
-        free: { text: '免费版', status: 'Default' },
-        'lite-monthly': { text: 'Lite (月付)', status: 'Processing' },
-        'pro-monthly': { text: 'Pro (月付)', status: 'Success' },
-        'ultra-monthly': { text: 'Ultra (月付)', status: 'Error' },
+        free: { text: 'Free Trial', status: 'Processing' },
+        basic: { text: '基础版', status: 'Processing' },
+        pro: { text: '专业版', status: 'Success' },
         enterprise: { text: '企业版', status: 'Warning' },
-      },
-    },
-    {
-      title: 'Token限制',
-      dataIndex: 'monthlyTokenLimit',
-      width: 120,
-      render: (limit) => {
-        const numLimit = parseInt(limit) || 0;
-        return numLimit > 0 ? `${numLimit.toLocaleString()}` : '无限制';
-      },
-    },
-    {
-      title: 'API调用限制',
-      dataIndex: 'monthlyApiCallsLimit',
-      width: 120,
-      render: (limit) => {
-        const numLimit = parseInt(limit) || 0;
-        return numLimit > 0 ? `${numLimit.toLocaleString()}` : '无限制';
       },
     },
     {
@@ -90,7 +63,6 @@ const UsersPage: React.FC = () => {
       dataIndex: 'banned',
       width: 100,
       render: (banned) => {
-        // 处理数据库中的布尔值 f/t
         const isBanned = banned === true || banned === 't' || banned === 1;
         if (isBanned) {
           return <Tag color="red">已封禁</Tag>;
@@ -98,14 +70,8 @@ const UsersPage: React.FC = () => {
         return <Tag color="green">正常</Tag>;
       },
       filters: [
-        {
-          text: '正常',
-          value: false,
-        },
-        {
-          text: '已封禁',
-          value: true,
-        },
+        { text: '正常', value: false },
+        { text: '已封禁', value: true },
       ],
       onFilter: (value, record) => {
         const isBanned = record.banned === true || record.banned === 't' || record.banned === 1;
@@ -116,22 +82,12 @@ const UsersPage: React.FC = () => {
       title: '注册时间',
       dataIndex: 'created_at',
       width: 180,
-      render: (date) => {
+      render: (date: any) => {
         if (!date) return '-';
         try {
-          // 处理可能的时间格式
           const dateObj = new Date(date);
-          if (isNaN(dateObj.getTime())) {
-            // 如果Date解析失败，尝试其他格式
-            const dateStr = String(date);
-            // 移除时区部分再尝试
-            const dateWithoutTimezone = dateStr.replace(/[+-]\d{2}:\d{2}$/, '');
-            const fallbackDate = new Date(dateWithoutTimezone);
-            return isNaN(fallbackDate.getTime()) ? '-' : fallbackDate.toLocaleString();
-          }
-          return dateObj.toLocaleString();
+          return isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleString();
         } catch (error) {
-          console.error('时间解析错误:', error, '原始值:', date);
           return '-';
         }
       },
@@ -140,22 +96,12 @@ const UsersPage: React.FC = () => {
       title: '最后活跃',
       dataIndex: 'last_active_at',
       width: 180,
-      render: (date) => {
+      render: (date: any) => {
         if (!date) return '-';
         try {
-          // 处理可能的时间格式
           const dateObj = new Date(date);
-          if (isNaN(dateObj.getTime())) {
-            // 如果Date解析失败，尝试其他格式
-            const dateStr = String(date);
-            // 移除时区部分再尝试
-            const dateWithoutTimezone = dateStr.replace(/[+-]\d{2}:\d{2}$/, '');
-            const fallbackDate = new Date(dateWithoutTimezone);
-            return isNaN(fallbackDate.getTime()) ? '-' : fallbackDate.toLocaleString();
-          }
-          return dateObj.toLocaleString();
+          return isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleString();
         } catch (error) {
-          console.error('时间解析错误:', error, '原始值:', date);
           return '-';
         }
       },
@@ -163,16 +109,24 @@ const UsersPage: React.FC = () => {
     {
       title: '操作',
       width: 180,
-      fixed: 'right', // 固定在右侧
+      fixed: 'right',
       render: (_, record) => {
         return (
           <Space>
             <Button
               type="link"
-              icon={<EditOutlined />}
               onClick={() => handleEditUser(record)}
             >
-              编辑套餐
+              编辑方案
+            </Button>
+            <Button
+              type="link"
+              onClick={() => {
+                setCurrentUser(record);
+                setUsageDrawerVisible(true);
+              }}
+            >
+              用量统计
             </Button>
             {record.banned ? (
               <Button
@@ -185,7 +139,6 @@ const UsersPage: React.FC = () => {
               <Button
                 type="link"
                 danger
-                icon={<StopOutlined />}
                 onClick={() => handleUpdateUserStatus(record.id, true)}
               >
                 封禁
@@ -203,7 +156,6 @@ const UsersPage: React.FC = () => {
     form.setFieldsValue({
       planType: user.planType,
       monthlyTokenLimit: user.monthlyTokenLimit,
-      monthlyApiCallsLimit: user.monthlyApiCallsLimit,
     });
     setEditModalVisible(true);
   };
@@ -229,11 +181,11 @@ const UsersPage: React.FC = () => {
         userId: currentUser.id,
         ...values,
       });
-      message.success('用户套餐更新成功');
+      message.success('用户方案更新成功');
       setEditModalVisible(false);
       actionRef.current?.reload();
     } catch (error) {
-      message.error('用户套餐更新失败');
+      message.error('用户方案更新失败');
     }
   };
 
@@ -265,17 +217,16 @@ const UsersPage: React.FC = () => {
           };
         }}
         columns={columns}
-        scroll={{ x: 1200 }} // 启用横向滚动
-      sticky={{ offsetHeader: 0 }} // 启用粘性表头
+        scroll={{ x: 1200 }}
+        sticky={{ offsetHeader: 0 }}
         pagination={{
           defaultPageSize: 20,
           showSizeChanger: true,
         }}
       />
 
-      {/* 编辑用户模态框 */}
       <Modal
-        title="编辑用户套餐"
+        title="编辑用户方案"
         open={editModalVisible}
         onCancel={() => setEditModalVisible(false)}
         onOk={() => form.submit()}
@@ -287,21 +238,20 @@ const UsersPage: React.FC = () => {
           onFinish={handleEditSubmit}
         >
           <Form.Item
-            label="套餐类型"
+            label="方案类型"
             name="planType"
-            rules={[{ required: true, message: '请选择套餐类型' }]}
+            rules={[{ required: true, message: '请选择方案类型' }]}
           >
-            <Select placeholder="请选择套餐类型">
-              <Option value="free">免费版</Option>
-              <Option value="lite-monthly">Lite (月付)</Option>
-              <Option value="pro-monthly">Pro (月付)</Option>
-              <Option value="ultra-monthly">Ultra (月付)</Option>
+            <Select placeholder="请选择方案类型">
+              <Option value="free">Free Trial</Option>
+              <Option value="basic">基础版</Option>
+              <Option value="pro">专业版</Option>
               <Option value="enterprise">企业版</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
-            label="月度Token限制"
+            label="月度积分额度"
             name="monthlyTokenLimit"
             help="设置为0表示无限制"
           >
@@ -309,24 +259,23 @@ const UsersPage: React.FC = () => {
               style={{ width: '100%' }}
               min={0}
               max={999999999}
-              placeholder="请输入月度Token限制"
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="月度API调用限制"
-            name="monthlyApiCallsLimit"
-            help="设置为0表示无限制"
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              max={999999}
-              placeholder="请输入月度API调用限制"
+              placeholder="请输入月度积分额度"
             />
           </Form.Item>
         </Form>
       </Modal>
+      <Drawer
+        title={`用户用量统计 - ${currentUser?.email || currentUser?.username}`}
+        width={800}
+        open={usageDrawerVisible}
+        onClose={() => {
+          setUsageDrawerVisible(false);
+          setCurrentUser(null);
+        }}
+        destroyOnClose
+      >
+        {currentUser && <UsageStatsView userId={currentUser.id} />}
+      </Drawer>
     </PageContainer>
   );
 };

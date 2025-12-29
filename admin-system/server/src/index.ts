@@ -1,7 +1,8 @@
+import dotenv from 'dotenv';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { createServer } from 'node:http';
 
 // 导入路由
@@ -15,9 +16,9 @@ import adminPricingRoutes from './routes/pricing';
 import userRoutes from './routes/users-simplified';
 import dashboardRoutes from './routes/dashboard';
 import subscriptionRoutes from './routes/subscriptions';
-
-// 加载环境变量
-dotenv.config();
+import process from 'node:process';
+// 加载环境变量 - 必须在其他 import 之前
+dotenv.config({ override: true });
 
 const app = express();
 const server = createServer(app);

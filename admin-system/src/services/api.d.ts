@@ -45,16 +45,18 @@ export interface LoginResult {
 export interface User {
   id: string;
   email: string;
-  name?: string;
+  username?: string;
+  full_name?: string;
   avatar?: string;
-  planType: 'free' | 'basic' | 'pro' | 'enterprise';
-  monthlyTokenLimit: number;
-  monthlyApiCallsLimit: number;
+  planType: string;
+  monthlyTokenLimit: number | string;
+  monthlyApiCallsLimit: number | string;
+  monthlyStorageLimit: number | string;
   features: Record<string, any>;
-  status: 'active' | 'suspended' | 'expired';
-  createdAt: string;
-  updatedAt: string;
-  lastLoginAt?: string;
+  banned: boolean | 't' | 'f' | 0 | 1;
+  created_at: string;
+  updated_at: string;
+  last_active_at?: string;
 }
 
 // 用户列表查询参数
@@ -83,9 +85,10 @@ export interface UserListResponse {
 // 更新用户套餐参数
 export interface UpdateUserPlanParams {
   userId: string;
-  planType: 'free' | 'basic' | 'pro' | 'enterprise';
+  planType: string;
   monthlyTokenLimit?: number;
   monthlyApiCallsLimit?: number;
+  monthlyStorageLimit?: number;
   features?: Record<string, any>;
 }
 
