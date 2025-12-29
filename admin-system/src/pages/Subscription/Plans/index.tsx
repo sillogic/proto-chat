@@ -20,7 +20,7 @@ const PlanManagement: React.FC = () => {
 
   const columns: ProColumns<SubscriptionPlan>[] = [
     {
-      title: '计划名称',
+      title: '方案名称',
       dataIndex: 'name',
       copyable: true,
       ellipsis: true,
@@ -120,7 +120,7 @@ const PlanManagement: React.FC = () => {
         </a>,
         <Popconfirm
           key="delete"
-          title="确定删除此计划吗？"
+          title="确定删除此方案吗？"
           onConfirm={async () => {
             const res = await deletePlan(record.id);
             if (res.success) {
@@ -136,7 +136,7 @@ const PlanManagement: React.FC = () => {
   ];
 
   return (
-    <PageContainer header={{ title: '订阅计划管理' }}>
+    <PageContainer header={{ title: '订阅方案管理' }}>
       <ProTable<SubscriptionPlan>
         columns={columns}
         actionRef={actionRef}
@@ -189,7 +189,7 @@ const PlanManagement: React.FC = () => {
             pageSize: 10,
         }}
         dateFormatter="string"
-        headerTitle="计划列表"
+        headerTitle="方案列表"
         toolBarRender={() => [
           <Button
             key="button"
@@ -211,7 +211,7 @@ const PlanManagement: React.FC = () => {
                });
             }}
           >
-            新建计划
+            新建方案
           </Button>,
         ]}
       />

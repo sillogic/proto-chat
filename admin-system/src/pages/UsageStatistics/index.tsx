@@ -1,18 +1,28 @@
-import { PageContainer, ProCard, ProTable, ProFormSelect } from '@ant-design/pro-components';
-import { QuestionCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { ProCard, ProTable, ProFormSelect } from '@ant-design/pro-components';
+import { QuestionCircleOutlined } from '@ant-design/icons';
 import { useRequest } from '@umijs/max';
-import { Card, Col, Row, Statistic, Tag, Typography, Progress, Space, Tooltip } from 'antd';
-import { useState } from 'react';
+import { Card, Col, Row, Tag, Typography, Progress, Space, Tooltip } from 'antd';
+import { useState, useMemo } from 'react';
 import { getUsageStats } from '../../services/credit';
 import { getUserList } from '../../services/admin';
 
 const { Text } = Typography;
 
-const UsageStatistics: React.FC = () => {
-  const [selectedUserId, setSelectedUserId] = useState<string>();
+interface UsageStatsViewProps {
+  userId?: string;
+  showSelector?: boolean;
+}
 
+export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialUserId, showSelector = false }) => {
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(initialUserId);
 
-  // Fetch Stats when user is selected
+  // If initialUserId changes, update selectedUserId
+  useMemo(() => {
+    if (initialUserId !== undefined) {
+      setSelectedUserId(initialUserId);
+    }
+  }, [initialUserId]);
+
   const { data: stats, loading } = useRequest(
     async () => {
       if (!selectedUserId) return {};
@@ -37,7 +47,7 @@ const UsageStatistics: React.FC = () => {
       render: (_: any, record: any) => <Tag color="blue">{record.type}</Tag>,
     },
     {
-      title: 'Token 用量',
+      title: '积分用量',
       dataIndex: 'totalTokens',
       render: (_: any, record: any) => (
         <Space direction="vertical" size={0}>
@@ -79,33 +89,31 @@ const UsageStatistics: React.FC = () => {
     },
   ];
 
-
   return (
-    <PageContainer>
-      <Card style={{ marginBlockEnd: 24 }}>
-        <div style={{ maxWidth: 400 }}>
-          <ProFormSelect
-            name="userId"
-            label="选择用户"
-            request={async () => {
-              const res = await getUserList({ current: 1, pageSize: 100 });
-              const users = res.data?.users?.map((u: any) => ({
-                label: u.email || u.username || u.full_name || u.name || 'Unknown User',
-                value: u.id,
-              })) || [];
-              return [
-                { label: '所有用户 (全局统计)', value: 'all' },
-                ...users
-              ];
-            }}
-            fieldProps={{
-              onChange: (val) => setSelectedUserId(val),
-              value: selectedUserId,
-            }}
-            placeholder="请选择要查看的用户"
-          />
-        </div>
-      </Card>
+    <div>
+      {showSelector && (
+        <Card style={{ marginBlockEnd: 24 }}>
+          <div style={{ maxWidth: 400 }}>
+            <ProFormSelect
+              name="userId"
+              label="选择用户"
+              request={async () => {
+                const res = await getUserList({ current: 1, pageSize: 100 });
+                const users = res.data?.users?.map((u: any) => ({
+                  label: u.email || u.username || u.full_name || u.name || 'Unknown User',
+                  value: u.id,
+                })) || [];
+                return users;
+              }}
+              fieldProps={{
+                onChange: (val) => setSelectedUserId(val),
+                value: selectedUserId,
+              }}
+              placeholder="请选择要查看的用户"
+            />
+          </div>
+        </Card>
+      )}
 
       {selectedUserId && stats && (
         <>
@@ -113,7 +121,6 @@ const UsageStatistics: React.FC = () => {
             <Col span={24}>
               <ProCard title="当前周期用量统计" headerBordered style={{ marginBlockEnd: 24 }}>
                 <div style={{ paddingBlock: "0", paddingInline: "16px" }}>
-                  {/* 计算积分 */}
                   <div style={{ marginBlockEnd: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}>
                       <Space>
@@ -142,7 +149,6 @@ const UsageStatistics: React.FC = () => {
 
               <ProCard title="存储用量" headerBordered>
                 <div style={{ paddingBlock: "0", paddingInline: "16px" }}>
-                  {/* 文件用量 */}
                   <div style={{ marginBlockEnd: 24 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}>
                       <Space>
@@ -152,7 +158,7 @@ const UsageStatistics: React.FC = () => {
                         </Tooltip>
                       </Space>
                       <Text strong>
-                        {stats.stats?.files?.totalSizeMB || 0} MB / {stats.stats?.userExtension?.monthlyStorageLimit || 0} MB 已使用
+                        {stats.stats?.files?.totalSizeMB < 0.1 ? `${stats.stats?.files?.totalSizeKB} KB` : `${stats.stats?.files?.totalSizeMB} MB`} / {stats.stats?.userExtension?.monthlyStorageLimit || 0} MB 已使用
                       </Text>
                     </div>
                     <Progress 
@@ -162,7 +168,6 @@ const UsageStatistics: React.FC = () => {
                     />
                   </div>
 
-                  {/* 向量存储 */}
                   <div style={{ marginBlockEnd: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}>
                       <Space>
@@ -197,8 +202,35 @@ const UsageStatistics: React.FC = () => {
           />
         </>
       )}
+    </div>
+  );
+};
+
+// Main Page Component
+import { PageContainer } from '@ant-design/pro-components';
+import { Tabs } from 'antd';
+import { SystemUsageView } from './SystemUsageView';
+
+const UsageStatisticsPage: React.FC = () => {
+  return (
+    <PageContainer>
+      <Tabs
+        defaultActiveKey="system"
+        items={[
+          {
+            key: 'system',
+            label: '系统概览',
+            children: <SystemUsageView />,
+          },
+          {
+            key: 'user',
+            label: '用户查询',
+            children: <UsageStatsView showSelector={true} />,
+          },
+        ]}
+      />
     </PageContainer>
   );
 };
 
-export default UsageStatistics;
+export default UsageStatisticsPage;

@@ -1,8 +1,10 @@
+import dotenv from 'dotenv';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { createServer } from 'node:http';
+import path from 'node:path';
 
 // 导入路由
 import authRoutes from './routes/auth';
@@ -15,9 +17,9 @@ import adminPricingRoutes from './routes/pricing';
 import userRoutes from './routes/users-simplified';
 import dashboardRoutes from './routes/dashboard';
 import subscriptionRoutes from './routes/subscriptions';
-
-// 加载环境变量
-dotenv.config();
+import process from 'node:process';
+// 加载环境变量 - 必须在其他 import 之前
+dotenv.config({ override: true });
 
 const app = express();
 const server = createServer(app);
@@ -70,6 +72,20 @@ app.use('/api/admin/models/pricing', adminPricingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin/subscriptions', subscriptionRoutes);
+
+// 托管前端静态文件
+const distPath = path.join(__dirname, '../../dist');
+
+// 处理 API 以外的所有请求，返回前端页面
+app.use(express.static(distPath));
+
+app.get('*', (req, res, next) => {
+  // 如果是 API 请求但没匹配到，交给 404 处理
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 // 404处理
 app.use((req, res) => {

@@ -231,6 +231,18 @@ describe('S3', () => {
       });
       expect(result).toBe('https://presigned-url.example.com');
     });
+
+    it('should include ContentType in presigned URL request if provided', async () => {
+      const s3 = new S3();
+
+      await s3.createPreSignedUrl('upload-file.txt', 'application/pdf');
+
+      expect(PutObjectCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ContentType: 'application/pdf',
+        }),
+      );
+    });
   });
 
   describe('createPreSignedUrlForPreview', () => {

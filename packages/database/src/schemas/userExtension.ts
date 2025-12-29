@@ -7,60 +7,15 @@ export const userExtensions = pgTable(
     {
 
 
-        currentApiCallsUsed: integer('current_api_calls_used').default(0),
-
-
-
-
-        // 关联主项目用户表 users.id
-        // 套餐订阅信息
-        currentPlan: text('current_plan').default('free'),
+        accessedAt: timestamp('accessed_at').defaultNow(),
 
 
 
 
 
 
+        clerkCreatedAt: timestamp('clerk_created_at'),
 
-        // 1024MB default
-        // 当前使用量
-        currentTokensUsed: integer('current_tokens_used').default(0),
-
-
-
-
-
-
-
-
-        // 上次使用量重置时间
-        // 扩展功能开关
-        features: jsonb('features').default({}).notNull(),
-
-
-
-
-
-
-
-
-
-
-
-        id: text('id')
-            .primaryKey()
-            .default(sql`gen_random_uuid()`),
-
-
-
-
-
-
-
-
-        // 扩展功能配置
-        // 账户状态
-        isSuspended: boolean('is_suspended').default(false),
 
 
 
@@ -86,8 +41,20 @@ export const userExtensions = pgTable(
 
 
 
-        // 0表示无限制
-        monthlyApiCallsLimit: integer('monthly_api_calls_limit').default(0),
+
+
+
+
+        currentApiCallsUsed: integer('current_api_calls_used').default(0),
+
+
+
+
+
+
+
+
+
 
 
 
@@ -101,6 +68,119 @@ export const userExtensions = pgTable(
         // 管理员备注
         // 时间戳
         createdAt: timestamp('created_at').defaultNow().notNull(),
+
+
+
+
+
+
+
+
+
+        // 关联主项目用户表 users.id
+        // 套餐订阅信息
+        currentPlan: text('current_plan').default('free'),
+
+
+
+
+
+
+        // 1024MB default
+        // 当前使用量
+        currentTokensUsed: integer('current_tokens_used').default(0),
+
+
+
+
+        // 上次使用量重置时间
+        // 扩展功能开关
+        features: jsonb('features').default({}).notNull(),
+
+
+
+
+        id: text('id')
+            .primaryKey()
+            .default(sql`gen_random_uuid()`),
+
+
+
+
+        interests: text('interests').array(),
+
+
+
+
+        isOnboarded: boolean('is_onboarded').default(false),
+
+
+
+
+
+
+
+        // 扩展功能配置
+        // 账户状态
+        isSuspended: boolean('is_suspended').default(false),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        lastUsageReset: timestamp('last_usage_reset').defaultNow(),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // 0表示无限制
+        monthlyApiCallsLimit: integer('monthly_api_calls_limit').default(0),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // 0表示无限制
+        monthlyStorageLimit: integer('monthly_storage_limit').default(1024),
+
+
+
+
 
 
 
@@ -124,24 +204,17 @@ export const userExtensions = pgTable(
 
 
 
-        lastUsageReset: timestamp('last_usage_reset').defaultNow(),
 
 
 
 
 
-
-
-
-        userId: text('user_id').unique().notNull(),
-
+        onboarding: jsonb('onboarding'),
 
 
 
 
 
-        // 0表示无限制
-        monthlyStorageLimit: integer('monthly_storage_limit').default(1024),
 
 
 
@@ -155,13 +228,32 @@ export const userExtensions = pgTable(
 
 
 
+
+
+
+        preference: jsonb('preference'),
+
+
+
+
+
+
+
         // 是否被暂停
         suspendReason: text('suspend_reason'),
 
 
+
+
+
+
         // 暂停原因
         suspendedAt: timestamp('suspended_at'),
+
+
+
         updatedAt: timestamp('updated_at').defaultNow().notNull(),
+        userId: text('user_id').unique().notNull(),
     },
     (table) => ({
         // 唯一索引
@@ -174,9 +266,17 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
     apiCallsLimit: integer('api_calls_limit').default(0),
 
 
+
+    // 交易ID
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+
+
+
+
+
+
     // 开始时间
     endedAt: timestamp('ended_at'),
-
 
 
 
@@ -185,15 +285,11 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
 
 
 
+
+
     id: text('id')
         .primaryKey()
         .default(sql`gen_random_uuid()`),
-
-
-
-
-    // 交易ID
-    createdAt: timestamp('created_at').defaultNow().notNull(),
 
 
 
@@ -271,16 +367,19 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
 
 
 
-    userId: text('user_id').notNull(),
-
-
-
-
-
     // 价格（分）
     // 套餐配置
     tokenLimit: integer('token_limit').default(0),
 
+
+
+
+
+
+
     // 支付方式
     transactionId: text('transaction_id'),
+
+
+    userId: text('user_id').notNull(),
 });

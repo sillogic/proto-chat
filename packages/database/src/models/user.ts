@@ -18,6 +18,7 @@ import {
   UserItem,
   UserSettingsItem,
   nextauthAccounts,
+  userExtensions,
   userSettings,
   users,
 } from '../schemas';
@@ -70,9 +71,9 @@ export class UserModel {
         email: users.email,
         firstName: users.firstName,
         fullName: users.fullName,
-        isOnboarded: users.isOnboarded,
+        isOnboarded: userExtensions.isOnboarded,
         lastName: users.lastName,
-        preference: users.preference,
+        preference: userExtensions.preference,
         settingsDefaultAgent: userSettings.defaultAgent,
 
         settingsGeneral: userSettings.general,
@@ -89,6 +90,7 @@ export class UserModel {
       .from(users)
       .where(eq(users.id, this.userId))
       .leftJoin(userSettings, eq(users.id, userSettings.id))
+      .leftJoin(userExtensions, eq(users.id, userExtensions.userId))
       .limit(1);
 
     if (!result || !result[0]) {
@@ -157,6 +159,13 @@ export class UserModel {
       .where(eq(users.id, this.userId));
   };
 
+  updateExtension = async (value: Partial<typeof userExtensions.$inferSelect>) => {
+    return this.db
+      .update(userExtensions)
+      .set({ ...value, updatedAt: new Date() })
+      .where(eq(userExtensions.userId, this.userId));
+  };
+
   deleteSetting = async () => {
     return this.db.delete(userSettings).where(eq(userSettings.id, this.userId));
   };
@@ -175,24 +184,30 @@ export class UserModel {
   };
 
   updatePreference = async (value: Partial<UserPreference>) => {
-    const user = await this.db.query.users.findFirst({ where: eq(users.id, this.userId) });
-    if (!user) return;
+    const extension = await this.db.query.userExtensions.findFirst({
+      where: eq(userExtensions.userId, this.userId),
+    });
+    if (!extension) return;
 
     return this.db
-      .update(users)
-      .set({ preference: merge(user.preference, value) })
-      .where(eq(users.id, this.userId));
+      .update(userExtensions)
+      .set({ preference: merge(extension.preference, value) })
+      .where(eq(userExtensions.userId, this.userId));
   };
 
   updateGuide = async (value: Partial<UserGuide>) => {
-    const user = await this.db.query.users.findFirst({ where: eq(users.id, this.userId) });
-    if (!user) return;
+    const extension = await this.db.query.userExtensions.findFirst({
+      where: eq(userExtensions.userId, this.userId),
+    });
+    if (!extension) return;
 
-    const prevPreference = (user.preference || {}) as UserPreference;
+    const prevPreference = (extension.preference || {}) as UserPreference;
     return this.db
-      .update(users)
-      .set({ preference: { ...prevPreference, guide: merge(prevPreference.guide || {}, value) } })
-      .where(eq(users.id, this.userId));
+      .update(userExtensions)
+      .set({
+        preference: { ...prevPreference, guide: merge(prevPreference.guide || {}, value) },
+      })
+      .where(eq(userExtensions.userId, this.userId));
   };
 
   /**
@@ -223,6 +238,25 @@ export class UserModel {
   // Static method
   static makeSureUserExist = async (db: LobeChatDatabase, userId: string) => {
     await db.insert(users).values({ id: userId }).onConflictDoNothing();
+
+    // Check if extension exists, if not, create with Free Trial values
+    const extension = await db.query.userExtensions.findFirst({
+      where: (ext, { eq }) => eq(ext.userId, userId),
+    });
+
+    if (!extension) {
+      const freePlan = await db.query.subscriptionPlans.findFirst({
+        where: (plans, { eq }) => eq(plans.slug, 'free-trial'),
+      });
+
+      await db.insert(userExtensions).values({
+        currentPlan: freePlan?.name || 'Free Trial',
+        monthlyApiCallsLimit: 0,
+        monthlyStorageLimit: freePlan?.storageLimit || 1024,
+        monthlyTokenLimit: freePlan ? parseInt(freePlan.credits) : 0,
+        userId: userId,
+      }).onConflictDoNothing();
+    }
   };
 
   static createUser = async (db: LobeChatDatabase, params: NewUser) => {
@@ -234,6 +268,22 @@ export class UserModel {
 
     const normalizedParams = this.normalizeUniqueUserFields(params);
     const [user] = await db.insert(users).values(normalizedParams).returning();
+
+    // Create user extension with initial Free Trial values
+    // Fetch Free Trial plan configuration if exists
+    const freePlan = await db.query.subscriptionPlans.findFirst({
+      where: (plans, { eq }) => eq(plans.slug, 'free-trial'),
+    });
+
+    const initialExtension = {
+      currentPlan: freePlan?.name || 'Free Trial',
+      monthlyApiCallsLimit: 0, // No limit
+      monthlyStorageLimit: freePlan?.storageLimit || 1024,
+      monthlyTokenLimit: freePlan ? parseInt(freePlan.credits) : 0,
+      userId: user.id,
+    };
+
+    await db.insert(userExtensions).values(initialExtension).onConflictDoNothing();
 
     return { duplicate: false, user };
   };

@@ -2,7 +2,6 @@
 import { expo } from '@better-auth/expo';
 import { passkey } from '@better-auth/passkey';
 import { createNanoId, idGenerator, serverDB } from '@lobechat/database';
-import * as schema from '@lobechat/database/schemas';
 import { emailHarmony } from 'better-auth-harmony';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { betterAuth } from 'better-auth/minimal';
@@ -121,7 +120,7 @@ export const auth = betterAuth({
     schema: {
       account,
       session,
-      user: users,
+      users,
       verification,
     },
   }),
@@ -187,13 +186,6 @@ export const auth = betterAuth({
       },
     },
   },
-  experimental: {
-    /**
-     * Enable joins for session lookups.
-     * Required for findSession to properly join session with user data.
-     */
-    joins: true,
-  },
   plugins: [
     expo(),
     emailHarmony({ allowNormalizedSignin: false }),
@@ -234,29 +226,29 @@ export const auth = betterAuth({
     }),
     ...(genericOAuthProviders.length > 0
       ? [
-          genericOAuth({
-            config: genericOAuthProviders,
-          }),
-        ]
+        genericOAuth({
+          config: genericOAuthProviders,
+        }),
+      ]
       : []),
     ...(enableMagicLink
       ? [
-          magicLink({
-            expiresIn: MAGIC_LINK_EXPIRES_IN,
-            sendMagicLink: async ({ email, url }) => {
-              const template = getMagicLinkEmailTemplate({
-                expiresInSeconds: MAGIC_LINK_EXPIRES_IN,
-                url,
-              });
+        magicLink({
+          expiresIn: MAGIC_LINK_EXPIRES_IN,
+          sendMagicLink: async ({ email, url }) => {
+            const template = getMagicLinkEmailTemplate({
+              expiresInSeconds: MAGIC_LINK_EXPIRES_IN,
+              url,
+            });
 
-              const emailService = new EmailService();
-              await emailService.sendMail({
-                to: email,
-                ...template,
-              });
-            },
-          }),
-        ]
+            const emailService = new EmailService();
+            await emailService.sendMail({
+              to: email,
+              ...template,
+            });
+          },
+        }),
+      ]
       : []),
   ],
 });

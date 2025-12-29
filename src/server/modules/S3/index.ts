@@ -29,7 +29,7 @@ export class S3 {
 
   private readonly bucket: string;
 
-  private readonly setAcl: boolean;
+  public readonly setAcl: boolean;
 
   constructor() {
     if (!fileEnv.S3_ACCESS_KEY_ID || !fileEnv.S3_SECRET_ACCESS_KEY || !fileEnv.S3_BUCKET)
@@ -100,10 +100,11 @@ export class S3 {
     return response.Body.transformToByteArray();
   }
 
-  public async createPreSignedUrl(key: string): Promise<string> {
+  public async createPreSignedUrl(key: string, contentType?: string): Promise<string> {
     const command = new PutObjectCommand({
       ACL: this.setAcl ? 'public-read' : undefined,
       Bucket: this.bucket,
+      ContentType: contentType,
       Key: key,
     });
 

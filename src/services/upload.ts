@@ -150,7 +150,10 @@ class UploadService {
   ): Promise<FileMetadata> => {
     const xhr = new XMLHttpRequest();
 
-    const { preSignUrl, ...result } = await this.getSignedUploadUrl(file, { directory, pathname });
+    const { preSignUrl, setAcl, ...result } = await this.getSignedUploadUrl(file, {
+      directory,
+      pathname,
+    });
     let startTime = Date.now();
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable) {
@@ -169,8 +172,14 @@ class UploadService {
       }
     });
 
+    const contentType = file.type || 'application/octet-stream';
     xhr.open('PUT', preSignUrl);
-    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.setRequestHeader('Content-Type', contentType);
+
+    if (setAcl) {
+      xhr.setRequestHeader('x-amz-acl', 'public-read');
+    }
+
     const data = await file.arrayBuffer();
 
     await new Promise((resolve, reject) => {
@@ -183,6 +192,7 @@ class UploadService {
           });
           resolve(xhr.response);
         } else {
+          console.error(`[UploadService] Upload failed with status ${xhr.status}: ${xhr.statusText}`);
           reject(xhr.statusText);
         }
       });
@@ -230,12 +240,17 @@ class UploadService {
   ): Promise<
     FileMetadata & {
       preSignUrl: string;
+      setAcl: boolean;
     }
   > => {
     // Generate file path metadata
     const { date, dirname, filename, pathname } = generateFilePathMetadata(file.name, options);
 
-    const preSignUrl = await lambdaClient.upload.createS3PreSignedUrl.mutate({ pathname });
+    const contentType = file.type || 'application/octet-stream';
+    const { preSignUrl, setAcl } = await lambdaClient.upload.createS3PreSignedUrl.mutate({
+      contentType,
+      pathname,
+    });
 
     return {
       date,
@@ -243,6 +258,7 @@ class UploadService {
       filename,
       path: pathname,
       preSignUrl,
+      setAcl,
     };
   };
 }

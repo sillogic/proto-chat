@@ -163,11 +163,23 @@ export const sessionRouter = router({
     .input(
       z.object({
         id: z.string(),
-        value: insertSessionSchema.partial(),
+        value: z
+          .object({
+            avatar: z.string().optional().nullable(),
+            backgroundColor: z.string().optional().nullable(),
+            clientId: z.string().optional().nullable(),
+            description: z.string().optional().nullable(),
+            groupId: z.string().optional().nullable(),
+            pinned: z.boolean().optional(),
+            slug: z.string().optional(),
+            title: z.string().optional().nullable(),
+            type: z.enum(['agent', 'group']).optional(),
+          })
+          .partial(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      return ctx.sessionModel.update(input.id, input.value);
+      return ctx.sessionModel.update(input.id, input.value as any);
     }),
   updateSessionChatConfig: sessionProcedure
     .input(

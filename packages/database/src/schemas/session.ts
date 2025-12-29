@@ -53,7 +53,7 @@ export const sessions = pgTable(
     avatar: text('avatar'),
     backgroundColor: text('background_color'),
 
-    type: text('type', { enum: ['agent', 'group'] }).default('agent'),
+    type: text('type').$type<'agent' | 'group'>().default('agent'),
 
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })

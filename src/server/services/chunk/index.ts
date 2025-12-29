@@ -5,6 +5,7 @@ import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { FileModel } from '@/database/models/file';
 import { ChunkContentParams, ContentChunk } from '@/server/modules/ContentChunk';
 import { createAsyncCaller } from '@/server/routers/async';
+import { UserUsageService } from '@/server/services/user/usageService';
 import {
   AsyncTaskError,
   AsyncTaskErrorType,
@@ -17,6 +18,7 @@ export class ChunkService {
   private chunkClient: ContentChunk;
   private fileModel: FileModel;
   private asyncTaskModel: AsyncTaskModel;
+  private usageService: UserUsageService;
 
   constructor(serverDB: LobeChatDatabase, userId: string) {
     this.userId = userId;
@@ -25,6 +27,7 @@ export class ChunkService {
 
     this.fileModel = new FileModel(serverDB, userId);
     this.asyncTaskModel = new AsyncTaskModel(serverDB, userId);
+    this.usageService = new UserUsageService(serverDB, userId);
   }
 
   async chunkContent(params: ChunkContentParams) {
@@ -35,6 +38,10 @@ export class ChunkService {
     const result = await this.fileModel.findById(fileId);
 
     if (!result) return;
+
+    // Check vector storage limit
+    // We check with 0 size to see if the user has already reached the limit
+    await this.usageService.checkVectorStorageLimit(0);
 
     // 1. create a asyncTaskId
     const asyncTaskId = await this.asyncTaskModel.create({

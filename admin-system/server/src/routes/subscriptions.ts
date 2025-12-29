@@ -20,7 +20,8 @@ router.get('/records', requirePermission('plans.read'), async (req: Authenticate
         const offset = (pageNum - 1) * limitNum;
 
         const whereConditions = [
-            eq(userTransactions.type, 'SUBSCRIPTION_GRANT')
+            eq(userTransactions.type, 'SUBSCRIPTION_GRANT'),
+            sql`${userTransactions.userId} NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')`
         ];
 
         if (search) {
@@ -45,6 +46,7 @@ router.get('/records', requirePermission('plans.read'), async (req: Authenticate
           SELECT count(*) as count 
           FROM user_transactions 
           WHERE type = 'SUBSCRIPTION_GRANT'
+          AND user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
           ${search ? sql`AND (user_id ILIKE ${'%' + search + '%'} OR description ILIKE ${'%' + search + '%'} OR category ILIKE ${'%' + search + '%'})` : sql``}
         `);
 
