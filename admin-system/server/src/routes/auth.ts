@@ -1,8 +1,8 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { Secret } from 'jsonwebtoken';
 import { z } from 'zod';
-import { db, checkAndCreateTables } from '../config/database';
+import { db } from '../config/database';
 import { adminUsers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/auth';
@@ -14,59 +14,9 @@ const JWT_EXPIRES_IN_LOCAL = JWT_EXPIRES_IN;
 
 // 登录验证schema
 const loginSchema = z.object({
-  username: z.string().min(1, '用户名不能为空'),
   password: z.string().min(1, '密码不能为空'),
+  username: z.string().min(1, '用户名不能为空'),
 });
-
-// 创建默认管理员用户
-async function ensureDefaultAdmin() {
-  try {
-    // 首先检查并创建表结构
-    console.log('检查数据库表结构...');
-    const tablesReady = await checkAndCreateTables();
-    if (!tablesReady) {
-      console.error('❌ 数据库表结构检查失败');
-      return;
-    }
-
-    // 检查是否已存在管理员用户
-    const existingAdmin = await db
-      .select()
-      .from(adminUsers)
-      .where(eq(adminUsers.username, 'admin'))
-      .limit(1);
-
-    if (existingAdmin.length === 0) {
-      const passwordHash = await bcrypt.hash('admin123', 10);
-      await db.insert(adminUsers).values({
-        username: 'admin',
-        email: 'admin@protochat.com',
-        passwordHash,
-        role: 'super_admin',
-        permissions: [
-          'users.read',
-          'users.write',
-          'plans.read',
-          'plans.write',
-          'api_keys.read',
-          'api_keys.write',
-          'stats.read',
-          'system.admin',
-        ],
-        isActive: true,
-        authMethod: 'local',
-      });
-      console.log('✅ 默认管理员用户创建成功 (用户名: admin, 密码: admin123)');
-    } else {
-      console.log('✅ 管理员用户已存在，跳过创建');
-    }
-  } catch (error) {
-    console.error('创建默认管理员失败:', error);
-  }
-}
-
-// 确保默认管理员存在 - 已禁用自动创建
-// ensureDefaultAdmin();
 
 // POST /api/auth/login - 管理员登录
 router.post('/login', async (req, res) => {
@@ -75,9 +25,9 @@ router.post('/login', async (req, res) => {
     const validationResult = loginSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
-        success: false,
-        message: '输入数据无效',
         errors: validationResult.error.errors.map(err => err.message),
+        message: '输入数据无效',
+        success: false,
       });
     }
 
@@ -92,8 +42,8 @@ router.post('/login', async (req, res) => {
 
     if (adminUser.length === 0) {
       return res.status(401).json({
-        success: false,
         message: '用户名或密码错误',
+        success: false,
       });
     }
 
@@ -101,8 +51,8 @@ router.post('/login', async (req, res) => {
 
     if (!user.isActive) {
       return res.status(401).json({
-        success: false,
         message: '账户已被禁用',
+        success: false,
       });
     }
 
@@ -110,22 +60,22 @@ router.post('/login', async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
       return res.status(401).json({
-        success: false,
         message: '用户名或密码错误',
+        success: false,
       });
     }
 
     // 生成JWT令牌
     const token = jwt.sign(
       {
-        id: user.id,
-        username: user.username,
         email: user.email,
-        role: user.role,
+        id: user.id,
         permissions: user.permissions,
+        role: user.role,
+        username: user.username,
       },
-      JWT_SECRET_LOCAL,
-      { expiresIn: JWT_EXPIRES_IN_LOCAL }
+      JWT_SECRET_LOCAL as Secret,
+      { expiresIn: JWT_EXPIRES_IN_LOCAL as any }
     );
 
     // 更新最后登录时间
@@ -138,24 +88,24 @@ router.post('/login', async (req, res) => {
       .where(eq(adminUsers.id, user.id));
 
     return res.json({
-      success: true,
-      message: '登录成功',
       data: {
         token,
         user: {
-          id: user.id,
-          username: user.username,
           email: user.email,
-          role: user.role,
+          id: user.id,
           permissions: user.permissions,
+          role: user.role,
+          username: user.username,
         },
       },
+      message: '登录成功',
+      success: true,
     });
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({
-      success: false,
       message: '登录失败，请稍后重试',
+      success: false,
     });
   }
 });
@@ -164,8 +114,8 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   // 在实际应用中，可以在这里将token加入黑名单
   return res.json({
-    success: true,
     message: '登出成功',
+    success: true,
   });
 });
 

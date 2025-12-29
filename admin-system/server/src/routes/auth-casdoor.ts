@@ -1,6 +1,6 @@
 import express from 'express';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import jwt, { Secret } from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import { casdoorSyncService } from '../services/casdoor-sync';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/auth';
 
@@ -35,9 +35,9 @@ router.get('/login', (req, res) => {
 
     // 构建Casdoor授权URL
     const authParams = new URLSearchParams({
-      client_id: process.env.AUTH_CASDOOR_ID,
+      client_id: process.env.AUTH_CASDOOR_ID || '',
+      redirect_uri: process.env.CASDOOR_REDIRECT_URI || '',
       response_type: 'code',
-      redirect_uri: process.env.CASDOOR_REDIRECT_URI,
       scope: 'openid profile email',
       state: state,
     });
@@ -45,17 +45,17 @@ router.get('/login', (req, res) => {
     const authUrl = `${process.env.AUTH_CASDOOR_ISSUER}/login/oauth/authorize?${authParams.toString()}`;
 
     return res.json({
-      success: true,
       data: {
         authUrl,
         state,
       },
+      success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get Casdoor auth URL error:', error);
     return res.status(500).json({
-      success: false,
       message: '获取授权URL失败',
+      success: false,
     });
   }
 });
@@ -72,8 +72,8 @@ router.get('/callback', async (req, res) => {
 
     if (!code || !state) {
       return res.status(400).json({
-        success: false,
         message: '授权码或状态参数缺失',
+        success: false,
       });
     }
 
@@ -82,8 +82,8 @@ router.get('/callback', async (req, res) => {
     if (!storedState) {
       console.log('🔍 State not found in store:', state);
       return res.status(400).json({
-        success: false,
         message: '状态无效或已过期',
+        success: false,
       });
     }
 
@@ -94,10 +94,10 @@ router.get('/callback', async (req, res) => {
     const userInfo = await casdoorSyncService.getCasdoorUserInfo(code as string);
 
     console.log('🔍 Casdoor user info received:', {
-      id: userInfo.id,
-      name: userInfo.name,
       displayName: userInfo.displayName,
       email: userInfo.email,
+      id: userInfo.id,
+      name: userInfo.name,
     });
 
     const userType = 'user';
@@ -106,49 +106,49 @@ router.get('/callback', async (req, res) => {
     // 生成JWT令牌
     const token = jwt.sign(
       {
-        id: userInfo.id,
-        username: userInfo.name,
-        email: userInfo.email,
-        displayName: userInfo.displayName || userInfo.name,
-        avatar: userInfo.avatar,
-        role: userType,
-        permissions,
-        casdoorId: userInfo.id,
-        userType,
         authMethod: 'casdoor',
+        avatar: userInfo.avatar,
+        casdoorId: userInfo.id,
+        displayName: userInfo.displayName || userInfo.name,
+        email: userInfo.email,
+        id: userInfo.id,
+        permissions,
+        role: userType,
+        userType,
+        username: userInfo.name,
       },
-      JWT_SECRET_LOCAL,
-      { expiresIn: JWT_EXPIRES_IN_LOCAL }
+      JWT_SECRET_LOCAL as Secret,
+      { expiresIn: JWT_EXPIRES_IN_LOCAL as any }
     );
 
     // 获取重定向URL
     const redirectTo = storedState.redirectTo || '/dashboard';
 
     return res.json({
-      success: true,
-      message: '登录成功',
       data: {
+        redirectTo,
         token,
         user: {
-          id: userInfo.id,
-          username: userInfo.name,
-          name: userInfo.displayName || userInfo.name,
           displayName: userInfo.displayName || userInfo.name,
-          email: userInfo.email,
-          role: userType,
-          permissions,
-          userType,
           authMethod: 'casdoor',
+          email: userInfo.email,
           avatar: userInfo.avatar,
+          id: userInfo.id,
+          name: userInfo.displayName || userInfo.name,
+          permissions,
+          role: userType,
+          username: userInfo.name,
+          userType,
         },
-        redirectTo,
       },
+      message: '登录成功',
+      success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Casdoor callback error:', error);
     return res.status(500).json({
+      message: '登录失败: ' + (error.message || 'Unknown error'),
       success: false,
-      message: '登录失败: ' + error.message,
     });
   }
 });
@@ -161,8 +161,8 @@ router.get('/current-user', async (req, res) => {
 
     if (!token) {
       return res.status(401).json({
-        success: false,
         message: '缺少认证令牌',
+        success: false,
       });
     }
 
@@ -171,8 +171,8 @@ router.get('/current-user', async (req, res) => {
 
     if (decoded.authMethod !== 'casdoor') {
       return res.status(400).json({
-        success: false,
         message: '非Casdoor认证用户',
+        success: false,
       });
     }
 
@@ -180,30 +180,30 @@ router.get('/current-user', async (req, res) => {
     const casdoorUserInfo = await casdoorSyncService.getCasdoorUserById(decoded.casdoorId);
 
     return res.json({
-      success: true,
       data: {
         user: {
-          id: decoded.id,
-          username: decoded.username,
-          email: decoded.email,
-          role: decoded.role,
-          permissions: decoded.permissions,
-          userType: decoded.userType,
           authMethod: decoded.authMethod,
           casdoorInfo: {
-            displayName: casdoorUserInfo.displayName,
             avatar: casdoorUserInfo.avatar,
+            displayName: casdoorUserInfo.displayName,
             phone: casdoorUserInfo.phone,
             roles: casdoorUserInfo.roles,
           },
+          email: decoded.email,
+          id: decoded.id,
+          permissions: decoded.permissions,
+          role: decoded.role,
+          userType: decoded.userType,
+          username: decoded.username,
         },
       },
+      success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get current user error:', error);
     return res.status(500).json({
-      success: false,
       message: '获取用户信息失败',
+      success: false,
     });
   }
 });
@@ -211,8 +211,8 @@ router.get('/current-user', async (req, res) => {
 // 登出
 router.post('/logout', (req, res) => {
   return res.json({
-    success: true,
     message: '登出成功',
+    success: true,
   });
 });
 

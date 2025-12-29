@@ -1,26 +1,28 @@
-import { pgTable, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, jsonb } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // 用户表 (引用主系统的用户表结构)
 export const users = pgTable('users', {
   avatar: text('avatar'),
-  email: text('email').unique(),
-  banned: boolean('banned').default(false),
-  emailVerified: boolean('email_verified').default(false).notNull(),
   banExpires: timestamp('ban_expires'),
-  firstName: text('first_name'),
   banReason: text('ban_reason'),
-  fullName: text('full_name'),
+  banned: boolean('banned').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  email: text('email').unique(),
+  emailVerified: boolean('email_verified').default(false).notNull(),
   emailVerifiedAt: timestamp('email_verified_at'),
+  firstName: text('first_name'),
+  fullName: text('full_name'),
   id: text('id').primaryKey().notNull(),
   lastActiveAt: timestamp('last_active_at').defaultNow().notNull(),
-  username: text('username').unique(),
   lastName: text('last_name'),
   normalizedEmail: text('normalized_email').unique(),
   phone: text('phone').unique(),
   phoneNumberVerified: boolean('phone_number_verified'),
   role: text('role'),
   twoFactorEnabled: boolean('two_factor_enabled').default(false),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  username: text('username').unique(),
 });
 
 
@@ -42,6 +44,27 @@ export const systemStats = pgTable('system_stats', {
 
   totalTokensUsed: integer('total_tokens_used').default(0).notNull(),
   totalUsers: integer('total_users').default(0).notNull(),
+});
+
+// 后台管理员用户表
+export const adminUsers = pgTable('admin_users', {
+  authMethod: text('auth_method').default('local'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  email: text('email').unique().notNull(),
+
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+
+
+  isActive: boolean('is_active').default(true).notNull(),
+
+  lastLoginAt: timestamp('last_login_at'),
+
+  passwordHash: text('password_hash').notNull(),
+  // admin, super_admin
+  permissions: jsonb('permissions').default([]).notNull(),
+  role: text('role').default('admin').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  username: text('username').unique().notNull(),
 });
 
 export type User = typeof users.$inferSelect;

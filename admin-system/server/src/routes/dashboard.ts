@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from '../config/database';
-import { users, systemStats } from '../db/schema';
-import { eq, desc, and, count, gte, lte, sql, ne } from 'drizzle-orm';
+import { users } from '../db/schema';
+import { desc, and, count, gte, lte, sql, ne } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 
 const router = express.Router();
@@ -19,20 +19,25 @@ router.get('/stats', requirePermission('stats.read'), async (req: AuthenticatedR
     let startDate: Date;
 
     switch (period) {
-      case '24h':
+      case '24h': {
         startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         break;
-      case '7d':
+      }
+      case '7d': {
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
-      case '30d':
+      }
+      case '30d': {
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
-      case '90d':
+      }
+      case '90d': {
         startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
         break;
-      default:
+      }
+      default: {
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      }
     }
 
     // 获取用户总数
@@ -62,7 +67,7 @@ router.get('/stats', requirePermission('stats.read'), async (req: AuthenticatedR
         COUNT(*) as count
       FROM user_extensions
       GROUP BY current_plan
-    `));
+    `)) as unknown as { count: number; planType: string; }[];
 
     // 获取最近7天的用户增长趋势
     const userGrowthTrend = [];
@@ -87,10 +92,10 @@ router.get('/stats', requirePermission('stats.read'), async (req: AuthenticatedR
 
     // 构建套餐分布数据
     const planDistribution = {
-      free: 0,
       basic: 0,
-      pro: 0,
       enterprise: 0,
+      free: 0,
+      pro: 0,
     };
 
     planDistributionResult.forEach(result => {
@@ -110,23 +115,23 @@ router.get('/stats', requirePermission('stats.read'), async (req: AuthenticatedR
       ));
 
     const stats = {
-      totalUsers: totalUsersResult[0]?.count || 0,
       activeUsers: activeUsersResult[0]?.count || 0,
       newUsers: newUsersResult[0]?.count || 0,
-      todayActiveUsers: todayActiveUsers[0]?.count || 0,
       planDistribution,
+      todayActiveUsers: todayActiveUsers[0]?.count || 0,
+      totalUsers: totalUsersResult[0]?.count || 0,
       userGrowthTrend,
     };
 
     return res.json({
-      success: true,
       data: stats,
+      success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get dashboard stats error:', error);
     return res.status(500).json({
-      success: false,
       message: '获取仪表盘统计数据失败',
+      success: false,
     });
   }
 });
@@ -138,28 +143,28 @@ router.get('/recent-users', requirePermission('users.read'), async (req: Authent
 
     const recentUsers = await db
       .select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
         avatarUrl: users.avatar,
-        isActive: !users.banned,
         createdAt: users.createdAt,
+        email: users.email,
+        id: users.id,
+        isActive: sql<boolean>`CASE WHEN ${users.banned} = false THEN true ELSE false END`,
+        username: users.username,
       })
       .from(users)
       .orderBy(desc(users.createdAt))
       .limit(limit);
 
     return res.json({
-      success: true,
       data: {
         users: recentUsers,
       },
+      success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get recent users error:', error);
     return res.status(500).json({
-      success: false,
       message: '获取最近用户失败',
+      success: false,
     });
   }
 });
