@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { createServer } from 'node:http';
+import path from 'node:path';
 
 // 导入路由
 import authRoutes from './routes/auth';
@@ -71,6 +72,20 @@ app.use('/api/admin/models/pricing', adminPricingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin/subscriptions', subscriptionRoutes);
+
+// 托管前端静态文件
+const distPath = path.join(__dirname, '../../dist');
+
+// 处理 API 以外的所有请求，返回前端页面
+app.use(express.static(distPath));
+
+app.get('*', (req, res, next) => {
+  // 如果是 API 请求但没匹配到，交给 404 处理
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 // 404处理
 app.use((req, res) => {

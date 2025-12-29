@@ -44,8 +44,8 @@
     "antd-style": "^3.7.0",
     "classnames": "^2.5.1",
     "dayjs": "^1.11.13",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@ant-design/pro-cli": "^3.3.0",
@@ -58,8 +58,8 @@
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.10",
     "@types/node": "^24.0.10",
-    "@types/react": "^19.1.5",
-    "@types/react-dom": "^19.1.5",
+    "@types/react": "^19.2.3",
+    "@types/react-dom": "^19.2.3",
     "@types/react-helmet": "^6.1.11",
     "@umijs/max": "^4.3.24",
     "cross-env": "^7.0.3",
