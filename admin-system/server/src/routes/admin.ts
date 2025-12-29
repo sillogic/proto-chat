@@ -4,16 +4,16 @@ import { z } from 'zod';
 import { db } from '../config/database';
 import { adminUsers } from '../db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
-import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
+import { requirePermission, AuthenticatedRequest } from '../middleware/auth';
 
 const router = express.Router();
 
 // 创建管理员用户的验证schema
 const createAdminSchema = z.object({
-  username: z.string().min(3, '用户名至少3个字符').max(50, '用户名最多50个字符'),
   email: z.string().email('邮箱格式不正确'),
   password: z.string().min(8, '密码至少8个字符').max(128, '密码最多128个字符'),
   role: z.enum(['admin', 'super_admin']).default('admin'),
+  username: z.string().min(3, '用户名至少3个字符').max(50, '用户名最多50个字符'),
 });
 
 // 重置密码的验证schema
@@ -28,9 +28,9 @@ router.post('/users', requirePermission('system.admin'), async (req: Authenticat
     const validationResult = createAdminSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
-        success: false,
-        message: '输入数据无效',
         errors: validationResult.error.errors.map(err => err.message),
+        message: '输入数据无效',
+        success: false,
       });
     }
 
@@ -45,8 +45,8 @@ router.post('/users', requirePermission('system.admin'), async (req: Authenticat
 
     if (existingUsername.length > 0) {
       return res.status(409).json({
-        success: false,
         message: '用户名已存在',
+        success: false,
       });
     }
 
@@ -59,8 +59,8 @@ router.post('/users', requirePermission('system.admin'), async (req: Authenticat
 
     if (existingEmail.length > 0) {
       return res.status(409).json({
-        success: false,
         message: '邮箱已存在',
+        success: false,
       });
     }
 
@@ -75,36 +75,36 @@ router.post('/users', requirePermission('system.admin'), async (req: Authenticat
 
     // 创建管理员用户
     const [newAdmin] = await db.insert(adminUsers).values({
-      username,
-      email,
-      passwordHash,
-      role,
-      permissions,
-      isActive: true,
       createdAt: new Date(),
+      email,
+      isActive: true,
+      passwordHash,
+      permissions,
+      role,
       updatedAt: new Date(),
+      username,
     }).returning({
-      id: adminUsers.id,
-      username: adminUsers.username,
-      email: adminUsers.email,
-      role: adminUsers.role,
-      permissions: adminUsers.permissions,
-      isActive: adminUsers.isActive,
       createdAt: adminUsers.createdAt,
+      email: adminUsers.email,
+      id: adminUsers.id,
+      isActive: adminUsers.isActive,
+      permissions: adminUsers.permissions,
+      role: adminUsers.role,
+      username: adminUsers.username,
     });
 
     return res.json({
-      success: true,
-      message: '管理员用户创建成功',
       data: {
         user: newAdmin,
       },
+      message: '管理员用户创建成功',
+      success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create admin error:', error);
     return res.status(500).json({
-      success: false,
       message: '创建管理员失败',
+      success: false,
     });
   }
 });
@@ -118,9 +118,9 @@ router.post('/users/:userId/reset-password', requirePermission('system.admin'), 
     const validationResult = resetPasswordSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
-        success: false,
-        message: '密码格式无效',
         errors: validationResult.error.errors.map(err => err.message),
+        message: '密码格式无效',
+        success: false,
       });
     }
 
@@ -135,8 +135,8 @@ router.post('/users/:userId/reset-password', requirePermission('system.admin'), 
 
     if (existingUser.length === 0) {
       return res.status(404).json({
-        success: false,
         message: '用户不存在',
+        success: false,
       });
     }
 
@@ -154,14 +154,14 @@ router.post('/users/:userId/reset-password', requirePermission('system.admin'), 
       .where(eq(adminUsers.id, userId));
 
     return res.json({
-      success: true,
       message: '密码重置成功',
+      success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Reset password error:', error);
     return res.status(500).json({
-      success: false,
       message: '重置密码失败',
+      success: false,
     });
   }
 });
@@ -172,24 +172,24 @@ router.get('/users', requirePermission('system.admin'), async (req: Authenticate
     const { page = 1, limit = 20, search = '' } = req.query;
     const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-    let whereConditions = [];
+    let whereConditions: any[] = [];
     if (search) {
       whereConditions.push(
-        `(${adminUsers.username} ILIKE '%${search}%' OR ${adminUsers.email} ILIKE '%${search}%')`
+        sql`(${adminUsers.username} ILIKE ${`%${search}%`} OR ${adminUsers.email} ILIKE ${`%${search}%`})`
       );
     }
 
     const usersList = await db
       .select({
-        id: adminUsers.id,
-        username: adminUsers.username,
+        createdAt: adminUsers.createdAt,
         email: adminUsers.email,
-        role: adminUsers.role,
-        permissions: adminUsers.permissions,
+        id: adminUsers.id,
         isActive: adminUsers.isActive,
         lastLoginAt: adminUsers.lastLoginAt,
-        createdAt: adminUsers.createdAt,
+        permissions: adminUsers.permissions,
+        role: adminUsers.role,
         updatedAt: adminUsers.updatedAt,
+        username: adminUsers.username,
       })
       .from(adminUsers)
       .where(and(...whereConditions.map(condition => sql.raw(condition))))
@@ -198,20 +198,20 @@ router.get('/users', requirePermission('system.admin'), async (req: Authenticate
       .offset(offset);
 
     return res.json({
-      success: true,
       data: {
-        users: usersList,
         pagination: {
-          page: parseInt(page as string),
           limit: parseInt(limit as string),
+          page: parseInt(page as string),
         },
+        users: usersList,
       },
+      success: true,
     });
   } catch (error) {
     console.error('Get admin users error:', error);
     return res.status(500).json({
-      success: false,
       message: '获取管理员列表失败',
+      success: false,
     });
   }
 });
@@ -224,16 +224,16 @@ router.put('/users/:userId/status', requirePermission('system.admin'), async (re
 
     if (typeof isActive !== 'boolean') {
       return res.status(400).json({
-        success: false,
         message: '状态值无效',
+        success: false,
       });
     }
 
     // 不能禁用自己
-    if (userId === req.user?.id && !isActive) {
+    if (String(userId) === String((req as any).user?.id) && !isActive) {
       return res.status(400).json({
-        success: false,
         message: '不能禁用自己的账号',
+        success: false,
       });
     }
 
@@ -246,14 +246,14 @@ router.put('/users/:userId/status', requirePermission('system.admin'), async (re
       .where(eq(adminUsers.id, userId));
 
     return res.json({
-      success: true,
       message: `用户已${isActive ? '启用' : '禁用'}`,
+      success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update admin status error:', error);
     return res.status(500).json({
-      success: false,
       message: '更新用户状态失败',
+      success: false,
     });
   }
 });

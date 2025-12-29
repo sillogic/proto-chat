@@ -65,7 +65,7 @@ export class CasdoorSyncService {
 
       const data = await response.json();
       return data.access_token;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Casdoor access token error:', error);
       throw error;
     }
@@ -197,7 +197,7 @@ export class CasdoorSyncService {
         },
         success: true,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Create Casdoor user error:', error);
       return {
         error: error.message || 'Unknown error',
@@ -226,7 +226,7 @@ export class CasdoorSyncService {
       if (!response.ok) {
         throw new Error(`Failed to assign role ${roleName}: ${response.statusText}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Assign role ${roleName} error:`, error);
       throw error;
     }
@@ -291,7 +291,7 @@ export class CasdoorSyncService {
       console.log('🔍 User info received:', { ...userInfo, access_token: '[REDACTED]' });
 
       return userInfo;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Get Casdoor user info error:', error);
       throw error;
     }
@@ -320,7 +320,7 @@ export class CasdoorSyncService {
       }
 
       return data.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Get Casdoor user by ID error:', error);
       throw error;
     }
@@ -383,7 +383,7 @@ export class CasdoorSyncService {
       }
 
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Update Casdoor user error:', error);
       return {
         error: error.message || 'Unknown error',
@@ -414,7 +414,7 @@ export class CasdoorSyncService {
       }
 
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Delete Casdoor user error:', error);
       return {
         error: error.message || 'Unknown error',
@@ -428,7 +428,7 @@ export class CasdoorSyncService {
     try {
       const accessToken = await this.getAccessToken();
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       return {
         error: error.message || 'Connection failed',
         success: false,

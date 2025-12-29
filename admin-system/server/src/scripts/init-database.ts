@@ -1,6 +1,7 @@
 import { db } from '../config/database';
 import { adminUsers } from '../db/schema';
 import bcrypt from 'bcryptjs';
+import { eq } from 'drizzle-orm';
 
 async function initDatabase() {
   try {
@@ -10,7 +11,7 @@ async function initDatabase() {
     const existingAdmin = await db
       .select()
       .from(adminUsers)
-      .where((adminUsers) => adminUsers.username === 'admin')
+      .where(eq(adminUsers.username, 'admin'))
       .limit(1);
 
     if (existingAdmin.length === 0) {
@@ -18,10 +19,10 @@ async function initDatabase() {
       const passwordHash = await bcrypt.hash('admin123', 10);
 
       await db.insert(adminUsers).values({
-        username: 'admin',
+        authMethod: 'local',
         email: 'admin@protochat.com',
+        isActive: true,
         passwordHash,
-        role: 'super_admin',
         permissions: [
           'users.read',
           'users.write',
@@ -32,29 +33,32 @@ async function initDatabase() {
           'stats.read',
           'system.admin',
         ],
-        isActive: true,
+        role: 'super_admin',
+        username: 'admin',
       });
 
-      console.log('✅ 默认管理员用户创建成功!');
-      console.log('   用户名: admin');
-      console.log('   密码: admin123');
-      console.log('   ⚠️  请在生产环境中立即修改默认密码!');
+      console.log('✅ 默认管理员用户创建成功 (用户名: admin, 密码: admin123)');
     } else {
-      console.log('✅ 管理员用户已存在');
+      console.log('ℹ️ 管理员用户已存在，跳过创建');
     }
 
     console.log('🎉 数据库初始化完成!');
   } catch (error) {
     console.error('❌ 数据库初始化失败:', error);
-    process.exit(1);
+    throw error;
   }
 }
 
 // 如果直接运行此脚本
 if (require.main === module) {
-  initDatabase().then(() => {
-    process.exit(0);
-  });
+  initDatabase()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('Error:', error);
+      process.exit(1);
+    });
 }
 
-export default initDatabase;
+export { initDatabase };
