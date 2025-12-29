@@ -84,7 +84,8 @@ export class UserUsageService {
         // Limit is in MB.
         // 1 vector (1024 dims) ~ 4KB.
         // 1 MB = 256 vectors.
-        const limitCount = limits.vectorLimit * 256;
+        const vectorLimit = limits.vectorLimit ?? 0;
+        const limitCount = vectorLimit * 256;
 
         if (limitCount === 0) return; // If 0 in plan usually means "no vector storage" or "unlimited"?
         // In subscription.ts: vectorLimit default 0.
@@ -101,17 +102,23 @@ export class UserUsageService {
     }
 
     async checkTokenLimit() {
-        // We check if *current* usage is already over limit. 
-        // We don't know exact incoming usage for tokens before generation.
+        // Fetch lastUsageReset from userExtensions
+        const extension = await this.db.query.userExtensions.findFirst({
+            where: eq(userExtensions.userId, this.userId),
+        });
+
+        const lastReset = extension?.lastUsageReset || new Date(0); // fallback to epoch if missing
+
         const limits = await this.getUserLimits();
 
-        const usageRecords = await this.usageRecordService.findByMonth();
+        // Calculate usage since lastReset instead of calendar month
+        const usageRecords = await this.usageRecordService.findUsageSince(lastReset);
         const currentTokens = usageRecords.reduce((acc, record) => acc + (record.totalTokens || 0), 0);
 
         if (currentTokens >= limits.monthlyTokenLimit) {
             throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: `Monthly token limit exceeded. Current: ${currentTokens}, Limit: ${limits.monthlyTokenLimit}`,
+                message: `Current cycle token limit exceeded. Current: ${currentTokens}, Limit: ${limits.monthlyTokenLimit}. Next reset at: ${extension?.planExpiresAt ? new Date(extension.planExpiresAt).toLocaleDateString() : 'N/A'}`,
             });
         }
     }

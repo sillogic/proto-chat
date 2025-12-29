@@ -20,6 +20,56 @@ export class UsageRecordService {
   }
 
   /**
+   * @description Find usage records since a specific date.
+   * @param startAt Start date
+   * @returns UsageRecordItem[]
+   */
+  findUsageSince = async (startAt: Date): Promise<UsageRecordItem[]> => {
+    const spends = await this.db
+      .select({
+        createdAt: messages.createdAt,
+        id: messages.id,
+        metadata: messages.metadata,
+        model: messages.model,
+        provider: messages.provider,
+        role: messages.role,
+        updatedAt: messages.createdAt,
+        userId: messages.userId,
+      })
+      .from(messages)
+      .where(
+        genWhere([
+          eq(messages.userId, this.userId),
+          eq(messages.role, 'assistant'),
+          genRangeWhere([startAt.toISOString(), new Date().toISOString()], messages.createdAt, (date) =>
+            date.toDate(),
+          ),
+        ]),
+      )
+      .orderBy(desc(messages.createdAt));
+
+    return spends.map((spend) => {
+      const metadata = spend.metadata as MessageMetadata;
+      return {
+        createdAt: spend.createdAt,
+        id: spend.id,
+        metadata: spend.metadata,
+        model: spend.model,
+        provider: spend.provider,
+        spend: metadata?.cost || 0,
+        totalInputTokens: metadata?.totalInputTokens || 0,
+        totalOutputTokens: metadata?.totalOutputTokens || 0,
+        totalTokens: (metadata?.totalInputTokens || 0) + (metadata?.totalOutputTokens || 0),
+        tps: metadata?.tps || 0,
+        ttft: metadata?.ttft || 0,
+        type: 'chat',
+        updatedAt: spend.createdAt,
+        userId: spend.userId,
+      } as UsageRecordItem;
+    });
+  };
+
+  /**
    * @description Find usage records by month.
    * @param mo Month
    * @returns UsageRecordItem[]
