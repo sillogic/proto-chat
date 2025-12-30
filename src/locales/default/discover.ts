@@ -303,10 +303,10 @@ export default {
               '- 打开安装了 Cline 扩展的 VS Code\n- 点击侧边栏中的 Cline 图标\n- 从下拉菜单中选择 **MCP Servers**\n- 在 **Remote Servers** 标签页中，输入服务器名称和您的 MCP 服务器 URL\n- 点击 **Add Server** 进行连接',
             cursor:
               '- 导航到 **设置**，然后选择 Cursor 设置\n- 在左侧选择 **MCP**\n- 点击右上角的 **添加新的全局 MCP 服务器**\n- 复制并粘贴服务器配置到现有文件中，然后保存',
-            protoChat:
-              '- 打开 **Proto Chat 桌面版** 应用\n- 前往 **设置** - **默认助手**\n- 然后选择 **插件设置** - **自定义插件**\n- 点击 **快速导入 JSON 配置**\n- 复制并粘贴服务器配置到文本框，然后安装',
             openai:
               '- 打开您的 **OpenAI 应用** 或开发环境\n- 在 **Responses API** 中配置 MCP 工具\n- 在 API 请求的 **tools** 数组中添加 MCP 块\n- 设置 **server_url** 为您的 MCP 服务器端点\n- 包含认证所需的头部信息（API 密钥、令牌等）\n- 使用 `allowed_tools` 参数限制暴露的工具\n- 设置 `require_approval` 来控制工具执行审批',
+            protoChat:
+              '- 打开 **Proto Chat 桌面版** 应用\n- 前往 **设置** - **默认助手**\n- 然后选择 **插件设置** - **自定义插件**\n- 点击 **快速导入 JSON 配置**\n- 复制并粘贴服务器配置到文本框，然后安装',
             vscode:
               '- 打开 VS Code\n- 打开命令面板（`Ctrl+Shift+P` / `Cmd+Shift+P`）\n- 输入 **MCP: Add Server** 并选择它\n- 选择添加到工作区或用户设置\n- 复制并粘贴服务器配置',
           },

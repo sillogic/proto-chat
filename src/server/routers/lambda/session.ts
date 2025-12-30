@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { ChatGroupModel } from '@/database/models/chatGroup';
 import { SessionModel } from '@/database/models/session';
 import { SessionGroupModel } from '@/database/models/sessionGroup';
-import { insertAgentSchema, insertSessionSchema } from '@/database/schemas';
 import { getServerDB } from '@/database/server';
 import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
@@ -75,18 +74,9 @@ export const sessionRouter = router({
   createSession: sessionProcedure
     .input(
       z.object({
-        config: insertAgentSchema
-          .omit({
-            chatConfig: true,
-            openingMessage: true,
-            openingQuestions: true,
-            plugins: true,
-            tags: true,
-            tts: true,
-          })
-          .passthrough()
-          .partial(),
-        session: insertSessionSchema.omit({ createdAt: true, updatedAt: true }).partial(),
+        config: z.object({}).passthrough().optional(),
+        session: z.object({}).passthrough().optional(),
+        slug: z.string().optional(),
         type: z.enum(['agent', 'group']),
       }),
     )

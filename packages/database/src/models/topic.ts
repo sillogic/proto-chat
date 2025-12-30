@@ -102,7 +102,7 @@ export class TopicModel {
     }
 
     // Query topics found by message content
-    const topicIds = topicIdsByMessages.map((t) => t.topicId);
+    const topicIds = topicIdsByMessages.map((t) => t.topicId).filter((id): id is string => !!id);
     const topicsByMessages = await this.db.query.topics.findMany({
       orderBy: [desc(topics.updatedAt)],
       where: and(eq(topics.userId, this.userId), inArray(topics.id, topicIds)),

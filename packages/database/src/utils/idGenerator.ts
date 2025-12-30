@@ -17,11 +17,14 @@ const prefixes = {
   memory: 'mem',
   messageGroups: 'mg',
   messages: 'msg',
+  mp: 'mp',
+  plan: 'pln',
   plugins: 'plg',
   sessionGroups: 'sg',
   sessions: 'ssn',
   threads: 'thd',
   topics: 'tpc',
+  tx: 'tx',
   user: 'user',
 } as const;
 

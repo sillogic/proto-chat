@@ -107,3 +107,5 @@ export const GET = async (req: NextRequest) => {
     return NextResponse.redirect(errorUrl);
   }
 };
+
+export const dynamic = 'force-dynamic';
