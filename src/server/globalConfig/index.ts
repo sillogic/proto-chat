@@ -1,3 +1,4 @@
+import { klavisEnv } from '@/config/klavis';
 import { isDesktop } from '@/const/version';
 import { appEnv, getAppConfig } from '@/envs/app';
 import { authEnv } from '@/envs/auth';
@@ -63,9 +64,11 @@ export const getServerGlobalConfig = async () => {
         withDeploymentName: true,
       },
     }),
+    casdoorRopcEnabled: authEnv.AUTH_CASDOOR_ROPC_ENABLED,
     defaultAgent: {
       config: parseAgentConfig(DEFAULT_AGENT_CONFIG),
     },
+    enableKlavis: !!klavisEnv.KLAVIS_API_KEY,
     enableUploadFileToServer: !!fileEnv.S3_SECRET_ACCESS_KEY,
     enabledAccessCode: ACCESS_CODES?.length > 0,
 

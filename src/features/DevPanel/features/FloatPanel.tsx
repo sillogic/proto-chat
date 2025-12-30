@@ -1,9 +1,9 @@
 'use client';
 
-import { ActionIcon, FluentEmoji, Icon, SideNav } from '@lobehub/ui';
+import { ActionIcon, Icon, SideNav } from '@lobehub/ui';
 import { FloatButton } from 'antd';
 import { createStyles } from 'antd-style';
-import { BugIcon, BugOff, XIcon } from 'lucide-react';
+import { BugIcon, BugOff, Wrench, XIcon } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { ReactNode, memo, useEffect, useState } from 'react';
 import { Flexbox } from 'react-layout-kit';
@@ -157,7 +157,7 @@ const CollapsibleFloatPanel = memo<CollapsibleFloatPanelProps>(({ items }) => {
             width={'100%'}
           >
             <SideNav
-              avatar={<FluentEmoji emoji={'🧰'} size={24} />}
+              avatar={<Wrench size={20} />}
               bottomActions={[]}
               style={{
                 paddingBlock: 12,

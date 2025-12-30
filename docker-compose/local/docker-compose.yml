@@ -6,7 +6,7 @@ services:
     restart: always
     ports:
       - '${MINIO_PORT}:${MINIO_PORT}' # MinIO API
-      - '9001:9001' # MinIO Console
+      - '8801:9001' # MinIO Console
       - '${CASDOOR_PORT}:${CASDOOR_PORT}' # Casdoor
       - '${LOBE_PORT}:3210' # LobeChat
       - '3000:3000' # Grafana
@@ -27,7 +27,7 @@ services:
       - 'POSTGRES_DB=${LOBE_DB_NAME}'
       - 'POSTGRES_PASSWORD=${POSTGRES_PASSWORD}'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: [ 'CMD-SHELL', 'pg_isready -U postgres' ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -44,7 +44,7 @@ services:
     volumes:
       - 'redis_data:/data'
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: [ 'CMD', 'redis-cli', 'ping' ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -217,7 +217,7 @@ services:
     volumes:
       - ./tempo/tempo.yaml:/etc/tempo.yaml
       - tempo_data:/var/tempo
-    command: ['-config.file=/etc/tempo.yaml']
+    command: [ '-config.file=/etc/tempo.yaml' ]
 
   prometheus:
     profiles:
@@ -244,7 +244,7 @@ services:
     restart: always
     volumes:
       - ./otel-collector/collector-config.yaml:/etc/otelcol/config.yaml
-    command: ['--config', '/etc/otelcol/config.yaml']
+    command: [ '--config', '/etc/otelcol/config.yaml' ]
     depends_on:
       - tempo
       - prometheus

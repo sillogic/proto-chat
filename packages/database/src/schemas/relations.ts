@@ -13,6 +13,7 @@ import { chunks, documentChunks, unstructuredChunks } from './rag';
 import { sessionGroups, sessions } from './session';
 import { threads, topicDocuments, topics } from './topic';
 import { users } from './user';
+import { userExtensions } from './userExtension';
 
 export const agentsToSessions = pgTable(
   'agents_to_sessions',
@@ -55,8 +56,12 @@ export const filesToSessions = pgTable(
 export const fileChunks = pgTable(
   'file_chunks',
   {
-    fileId: varchar('file_id').references(() => files.id, { onDelete: 'cascade' }),
-    chunkId: uuid('chunk_id').references(() => chunks.id, { onDelete: 'cascade' }),
+    fileId: varchar('file_id')
+      .references(() => files.id, { onDelete: 'cascade' })
+      .notNull(),
+    chunkId: uuid('chunk_id')
+      .references(() => chunks.id, { onDelete: 'cascade' })
+      .notNull(),
     createdAt: createdAt(),
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
@@ -329,4 +334,18 @@ export const messageGroupsRelations = relations(messageGroups, ({ many, one }) =
   }),
   childGroups: many(messageGroups),
   messages: many(messages),
+}));
+
+export const userRelations = relations(users, ({ one }) => ({
+  extension: one(userExtensions, {
+    fields: [users.id],
+    references: [userExtensions.userId],
+  }),
+}));
+
+export const userExtensionsRelations = relations(userExtensions, ({ one }) => ({
+  user: one(users, {
+    fields: [userExtensions.userId],
+    references: [users.id],
+  }),
 }));

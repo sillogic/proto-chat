@@ -203,11 +203,34 @@ const LabsPage = dynamic(() => import('./(main)/labs'), {
 // Welcome components
 const MobileWelcomePage = dynamic(
   () => import('./(main)/welcome/index').then((m) => m.MobileWelcomePage),
+// Subscription components
+const MobileSubscriptionPlansPage = dynamic(
+  () => import('./(main)/subscription/plans/index').then((m) => m.MobileSubscriptionPlansPage),
   {
     loading: () => <Loading />,
     ssr: false,
   },
 );
+const SubscriptionLayoutWrapper = dynamic(
+  () => import('./(main)/subscription/_layout/DesktopWrapper'),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+
+// Contact components
+const MobileContactPage = dynamic(
+  () => import('./(main)/contact/index').then((m) => m.MobileContactPage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+const ContactLayoutWrapper = dynamic(() => import('./(main)/contact/_layout/DesktopWrapper'), {
+  loading: () => <Loading />,
+  ssr: false,
+});
 
 // Profile components
 const ProfileHomePage = dynamic(() => import('./(main)/profile/(home)'), {
@@ -301,6 +324,8 @@ const KnowledgeErrorBoundary = createErrorBoundary('/knowledge');
 const SettingsErrorBoundary = createErrorBoundary('/settings');
 const ImageErrorBoundary = createErrorBoundary('/image');
 const ProfileErrorBoundary = createErrorBoundary('/profile');
+const SubscriptionErrorBoundary = createErrorBoundary('/subscription');
+const ContactErrorBoundary = createErrorBoundary('/contact');
 const MeErrorBoundary = createErrorBoundary('/me'); // Mobile only
 const RootErrorBoundary = createErrorBoundary('/chat'); // Root level falls back to chat
 
@@ -492,6 +517,36 @@ export const createMobileRouter = (locale: Locales) =>
           element: <ProfileLayoutMobile />,
           errorElement: <ProfileErrorBoundary />,
           path: 'profile',
+        },
+
+        // Subscription routes
+        {
+          children: [
+            {
+              element: <MobileSubscriptionPlansPage />,
+              index: true,
+            },
+            {
+              element: <MobileSubscriptionPlansPage />,
+              path: 'plans',
+            },
+          ],
+          element: <SubscriptionLayoutWrapper />,
+          errorElement: <SubscriptionErrorBoundary />,
+          path: 'subscription',
+        },
+
+        // Contact routes
+        {
+          children: [
+            {
+              element: <MobileContactPage />,
+              index: true,
+            },
+          ],
+          element: <ContactLayoutWrapper />,
+          errorElement: <ContactErrorBoundary />,
+          path: 'contact',
         },
 
         // Me routes (mobile personal center)

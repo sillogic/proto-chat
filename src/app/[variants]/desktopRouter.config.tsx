@@ -203,11 +203,34 @@ const LabsPage = dynamic(() => import('./(main)/labs'), {
 // Welcome components
 const DesktopWelcomePage = dynamic(
   () => import('./(main)/welcome/index').then((m) => m.DesktopWelcomePage),
+// Subscription components
+const DesktopSubscriptionPlansPage = dynamic(
+  () => import('./(main)/subscription/plans/index').then((m) => m.DesktopSubscriptionPlansPage),
   {
     loading: () => <Loading />,
     ssr: false,
   },
 );
+const SubscriptionLayoutWrapper = dynamic(
+  () => import('./(main)/subscription/_layout/DesktopWrapper'),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+
+// Contact components
+const DesktopContactPage = dynamic(
+  () => import('./(main)/contact/index').then((m) => m.DesktopContactPage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+const ContactLayoutWrapper = dynamic(() => import('./(main)/contact/_layout/DesktopWrapper'), {
+  loading: () => <Loading />,
+  ssr: false,
+});
 
 // Profile components
 const ProfileHomePage = dynamic(() => import('./(main)/profile/(home)/desktop'), {
@@ -281,6 +304,8 @@ const KnowledgeErrorBoundary = createErrorBoundary('/knowledge');
 const SettingsErrorBoundary = createErrorBoundary('/settings');
 const ImageErrorBoundary = createErrorBoundary('/image');
 const ProfileErrorBoundary = createErrorBoundary('/profile');
+const SubscriptionErrorBoundary = createErrorBoundary('/subscription');
+const ContactErrorBoundary = createErrorBoundary('/contact');
 const ChangelogErrorBoundary = createErrorBoundary('/changelog');
 const RootErrorBoundary = createErrorBoundary('/chat'); // Root level falls back to chat
 
@@ -484,6 +509,36 @@ export const createDesktopRouter = (locale: Locales) =>
           element: <ProfileLayoutWrapper />,
           errorElement: <ProfileErrorBoundary />,
           path: 'profile',
+        },
+
+        // Subscription routes
+        {
+          children: [
+            {
+              element: <DesktopSubscriptionPlansPage />,
+              index: true,
+            },
+            {
+              element: <DesktopSubscriptionPlansPage />,
+              path: 'plans',
+            },
+          ],
+          element: <SubscriptionLayoutWrapper />,
+          errorElement: <SubscriptionErrorBoundary />,
+          path: 'subscription',
+        },
+
+        // Contact routes
+        {
+          children: [
+            {
+              element: <DesktopContactPage />,
+              index: true,
+            },
+          ],
+          element: <ContactLayoutWrapper />,
+          errorElement: <ContactErrorBoundary />,
+          path: 'contact',
         },
 
         // changelog routes

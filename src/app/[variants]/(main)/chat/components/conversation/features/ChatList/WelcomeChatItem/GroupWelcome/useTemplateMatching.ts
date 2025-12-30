@@ -7,7 +7,7 @@ import { sessionSelectors } from '@/store/session/selectors';
 import { LobeGroupSession } from '@/types/session';
 
 interface TemplateMatch {
-  activities: Record<string, { description: string; emoji: string; prompt: string; title: string }>;
+  activities: Record<string, { description: string; icon: string; prompt: string; title: string }>;
   templateId: string;
 }
 
@@ -58,7 +58,7 @@ export const useTemplateMatching = (): TemplateMatch | null => {
         // Get template-specific activities from i18n
         const templateActivities = (t as any)(`guide.groupActivities.${template.id}`, {
           returnObjects: true,
-        }) as Record<string, { description: string; emoji: string; prompt: string; title: string }>;
+        }) as Record<string, { description: string; icon: string; prompt: string; title: string }>;
 
         console.log('Template activities:', templateActivities);
 
@@ -88,7 +88,7 @@ export const useTemplateMatching = (): TemplateMatch | null => {
         console.log('Found partial match for template:', template.id);
         const templateActivities = (t as any)(`guide.groupActivities.${template.id}`, {
           returnObjects: true,
-        }) as Record<string, { description: string; emoji: string; prompt: string; title: string }>;
+        }) as Record<string, { description: string; icon: string; prompt: string; title: string }>;
 
         console.log('Template activities:', templateActivities);
 

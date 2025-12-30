@@ -1,8 +1,9 @@
-import { Avatar, GroupAvatar, List, type ListItemProps } from '@lobehub/ui';
+import { GroupAvatar, List, type ListItemProps } from '@lobehub/ui';
 import { useHover } from 'ahooks';
 import { createStyles } from 'antd-style';
 import { memo, useMemo, useRef } from 'react';
 
+import AgentAvatar from '@/components/AgentAvatar';
 import { useServerConfigStore } from '@/store/serverConfig';
 
 const { Item } = List;
@@ -44,9 +45,9 @@ const ListItem = memo<
       return <GroupAvatar avatars={avatars} size={40} />;
     }
 
-    // For regular sessions, use the regular Avatar component
+    // For regular sessions, use AgentAvatar to support icon avatars
     return (
-      <Avatar
+      <AgentAvatar
         animation={isHovering}
         avatar={avatar}
         background={avatarBackground}

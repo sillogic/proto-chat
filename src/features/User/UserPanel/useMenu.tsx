@@ -6,6 +6,7 @@ import {
   Book,
   CircleUserRound,
   Cloudy,
+  CreditCard,
   Download,
   FileClockIcon,
   HardDriveDownload,
@@ -70,6 +71,14 @@ export const useMenu = () => {
       icon: <Icon icon={CircleUserRound} />,
       key: 'profile',
       label: <Link to="/profile">{t('userPanel.profile')}</Link>,
+    },
+  ];
+
+  const subscription: MenuProps['items'] = [
+    {
+      icon: <Icon icon={CreditCard} />,
+      key: 'subscription',
+      label: <Link to="/subscription/plans">{t('userPanel.plans')}</Link>,
     },
   ];
 
@@ -191,6 +200,7 @@ export const useMenu = () => {
       type: 'divider',
     },
     ...(!enableAuth || (enableAuth && isLoginWithAuth) ? profile : []),
+    ...(!enableAuth || (enableAuth && isLoginWithAuth) ? subscription : []),
     ...(isLogin ? settings : []),
     /* ↓ cloud slot ↓ */
 

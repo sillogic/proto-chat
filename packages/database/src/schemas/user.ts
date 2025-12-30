@@ -1,7 +1,8 @@
 /* eslint-disable sort-keys-fix/sort-keys-fix  */
-import { DEFAULT_PREFERENCE } from '@lobechat/const';
+
 import type { CustomPluginParams } from '@lobechat/types';
 import { LobeChatPluginManifest } from '@lobehub/chat-plugin-sdk';
+import { sql } from 'drizzle-orm';
 import { boolean, index, jsonb, pgTable, primaryKey, text } from 'drizzle-orm/pg-core';
 
 import { timestamps, timestamptz, varchar255 } from './_helpers';
@@ -19,17 +20,10 @@ export const users = pgTable(
     firstName: text('first_name'),
     lastName: text('last_name'),
     fullName: text('full_name'),
-
-    isOnboarded: boolean('is_onboarded').default(false),
-    // Time user was created in Clerk
-    clerkCreatedAt: timestamptz('clerk_created_at'),
-
     // Required by better-auth
     emailVerified: boolean('email_verified').default(false).notNull(),
     // Required by nextauth, all null allowed
     emailVerifiedAt: timestamptz('email_verified_at'),
-
-    preference: jsonb('preference').$defaultFn(() => DEFAULT_PREFERENCE),
 
     // better-auth admin
     role: text('role'),
@@ -42,13 +36,22 @@ export const users = pgTable(
 
     // better-auth phone number
     phoneNumberVerified: boolean('phone_number_verified'),
+    lastActiveAt: timestamptz('last_active_at').notNull().defaultNow(),
 
     ...timestamps,
   },
-  (table) => ({
-    emailIdx: index('users_email_idx').on(table.email),
-    usernameIdx: index('users_username_idx').on(table.username),
-  }),
+  (table) => [
+    index('users_email_idx').on(table.email),
+    index('users_username_idx').on(table.username),
+    index('users_created_at_idx').on(table.createdAt),
+    /**
+     * Partial index to speed up admin queries on banned users.
+     * Only rows with banned=true are indexed.
+     */
+    index('users_banned_true_created_at_idx')
+      .on(table.createdAt)
+      .where(sql`${table.banned} = true`),
+  ],
 );
 
 export type NewUser = typeof users.$inferInsert;
@@ -67,6 +70,7 @@ export const userSettings = pgTable('user_settings', {
   systemAgent: jsonb('system_agent'),
   defaultAgent: jsonb('default_agent'),
   market: jsonb('market'),
+  memory: jsonb('memory'),
   tool: jsonb('tool'),
   image: jsonb('image'),
 });

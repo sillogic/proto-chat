@@ -1,10 +1,11 @@
-import { Avatar, Markdown, Tag } from '@lobehub/ui';
+import { Markdown, Tag } from '@lobehub/ui';
 import { Divider } from 'antd';
 import { createStyles } from 'antd-style';
 import { startCase } from 'lodash-es';
 import { CSSProperties, memo } from 'react';
 import { Center } from 'react-layout-kit';
 
+import AgentAvatar from '@/components/AgentAvatar';
 import { MetaData } from '@/types/meta';
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -37,7 +38,7 @@ const AgentInfo = memo<AgentInfoProps>(({ systemRole, style, meta, onAvatarClick
   return (
     <Center gap={16} style={style}>
       {meta.avatar && (
-        <Avatar
+        <AgentAvatar
           animation
           avatar={meta.avatar}
           background={meta.backgroundColor || theme.colorFillTertiary}

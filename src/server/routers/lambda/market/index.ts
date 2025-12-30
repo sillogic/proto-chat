@@ -4,6 +4,7 @@ import { serialize } from 'cookie';
 import debug from 'debug';
 import { z } from 'zod';
 
+import { ToolCallContent } from '@/libs/mcp';
 import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { DiscoverService } from '@/server/services/discover';
@@ -20,6 +21,23 @@ import {
   PluginSorts,
   ProviderSorts,
 } from '@/types/discover';
+
+/**
+ * Convert external MCP content to internal ToolCallContent type
+ * Filters out content items with missing required data
+ */
+const toToolCallContent = (content: unknown[] | undefined): ToolCallContent[] => {
+  if (!content) return [];
+  return content.filter((item): item is ToolCallContent => {
+    if (!item || typeof item !== 'object') return false;
+    const typed = item as Record<string, unknown>;
+    // For image/audio types, ensure data is present
+    if (typed.type === 'image' || typed.type === 'audio') {
+      return typeof typed.data === 'string' && typed.data.length > 0;
+    }
+    return true;
+  }) as ToolCallContent[];
+};
 
 const log = debug('lambda-router:market');
 
@@ -80,13 +98,17 @@ export const marketRouter = router({
           toolName: input.toolName,
           userAccessToken,
         });
+        const cloudResultContent = (cloudResult?.content ?? []) as ToolCallContent[];
 
         // Format the cloud result to MCPToolCallResult format
+        // Convert external content type to internal ToolCallContent type
+        const contentBlocks = toToolCallContent(cloudResult?.content);
+
         // Process content blocks (upload images, etc.)
         const newContent =
           cloudResult?.isError || !ctx.fileService
-            ? cloudResult?.content
-            : await processContentBlocks(cloudResult?.content, ctx.fileService);
+            ? contentBlocks
+            : await processContentBlocks(contentBlocks, ctx.fileService);
 
         // Convert content blocks to string
         const content = contentBlocksToString(newContent);

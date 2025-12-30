@@ -1,6 +1,8 @@
 'use client';
 
-import { Button, FluentEmoji } from '@lobehub/ui';
+import { Button } from '@lobehub/ui';
+import { createStyles, keyframes } from 'antd-style';
+import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,8 +10,27 @@ import { Flexbox } from 'react-layout-kit';
 
 import { MAX_WIDTH } from '@/const/layoutTokens';
 
+const searchPulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+`;
+
+const useStyles = createStyles(({ css, token }) => ({
+  searchIcon: css`
+    color: ${token.colorTextSecondary};
+    animation: ${searchPulse} 2s ease-in-out infinite;
+  `,
+}));
+
 const NotFound = memo(() => {
   const { t } = useTranslation('error');
+  const { styles } = useStyles();
   return (
     <Flexbox align={'center'} justify={'center'} style={{ minHeight: '100%', width: '100%' }}>
       <h1
@@ -25,7 +46,7 @@ const NotFound = memo(() => {
       >
         404
       </h1>
-      <FluentEmoji emoji={'👀'} size={64} />
+      <Search className={styles.searchIcon} size={64} strokeWidth={1.5} />
       <h2 style={{ fontWeight: 'bold', marginTop: '1em', textAlign: 'center' }}>
         {t('notFound.title')}
       </h2>

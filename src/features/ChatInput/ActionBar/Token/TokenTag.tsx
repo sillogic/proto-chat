@@ -1,11 +1,11 @@
 import { Tooltip } from '@lobehub/ui';
-import { TokenTag } from '@lobehub/ui/chat';
 import { useTheme } from 'antd-style';
 import numeral from 'numeral';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 
+import TokenTag from '@/components/TokenTag';
 import { createAgentToolsEngine } from '@/helpers/toolEngineering';
 import { useModelContextWindowTokens } from '@/hooks/useModelContextWindowTokens';
 import { useModelSupportToolUse } from '@/hooks/useModelSupportToolUse';

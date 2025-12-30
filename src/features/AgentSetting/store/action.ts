@@ -1,6 +1,6 @@
 import { MessageTextChunk } from '@lobechat/fetch-sse';
 import {
-  chainPickEmoji,
+  chainPickIcon,
   chainSummaryAgentName,
   chainSummaryDescription,
   chainSummaryTags,
@@ -27,10 +27,10 @@ import { MetaDataDispatch, metaDataReducer } from './reducers/meta';
 
 export interface PublicAction {
   /**
-   * 自动选择表情
-   * @param id - 表情的 ID
+   * 自动选择图标
+   * @returns Promise
    */
-  autoPickEmoji: () => Promise<void>;
+  autoPickIcon: () => Promise<void>;
   /**
    * 自动完成代理描述
    * @param id - 代理的 ID
@@ -82,21 +82,21 @@ const t = setNamespace('AgentSettings');
 
 export const store: StateCreator<Store, [['zustand/devtools', never]]> = (set, get) => ({
   ...initialState,
-  autoPickEmoji: async () => {
+  autoPickIcon: async () => {
     const { config, meta, dispatchMeta } = get();
 
     const systemRole = config.systemRole;
 
     chatService.fetchPresetTaskResult({
-      onFinish: async (emoji) => {
-        dispatchMeta({ type: 'update', value: { avatar: emoji } });
+      onFinish: async (icon) => {
+        dispatchMeta({ type: 'update', value: { avatar: icon } });
       },
       onLoadingChange: (loading) => {
         get().updateLoadingState('avatar', loading);
       },
       params: merge(
         get().internal_getSystemAgentForMeta(),
-        chainPickEmoji([meta.title, meta.description, systemRole].filter(Boolean).join(',')),
+        chainPickIcon([meta.title, meta.description, systemRole].filter(Boolean).join(',')),
       ),
       trace: get().getCurrentTracePayload({ traceName: TraceNameMap.EmojiPicker }),
     });
@@ -201,7 +201,7 @@ export const store: StateCreator<Store, [['zustand/devtools', never]]> = (set, g
     }
 
     if (!meta.avatar || replace) {
-      get().autoPickEmoji();
+      get().autoPickIcon();
     }
 
     if (!meta.tags || replace) {
@@ -210,7 +210,7 @@ export const store: StateCreator<Store, [['zustand/devtools', never]]> = (set, g
   },
   autocompleteMeta: (key) => {
     const {
-      autoPickEmoji,
+      autoPickIcon,
       autocompleteAgentTitle,
       autocompleteAgentDescription,
       autocompleteAgentTags,
@@ -218,7 +218,7 @@ export const store: StateCreator<Store, [['zustand/devtools', never]]> = (set, g
 
     switch (key) {
       case 'avatar': {
-        autoPickEmoji();
+        autoPickIcon();
         return;
       }
 

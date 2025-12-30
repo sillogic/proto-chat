@@ -6,6 +6,7 @@ import { sha256 } from 'js-sha256';
 import { serverDBEnv } from '@/config/db';
 import { FileModel } from '@/database/models/file';
 import { FileItem } from '@/database/schemas';
+import { UserUsageService } from '@/server/services/user/usageService';
 import { TempFileManager } from '@/server/utils/tempFileManager';
 
 import { FileServiceImpl, createFileServiceModule } from './impls';
@@ -17,12 +18,14 @@ import { FileServiceImpl, createFileServiceModule } from './impls';
 export class FileService {
   private userId: string;
   private fileModel: FileModel;
+  private usageService: UserUsageService;
 
   private impl: FileServiceImpl = createFileServiceModule();
 
   constructor(db: LobeChatDatabase, userId: string) {
     this.userId = userId;
     this.fileModel = new FileModel(db, userId);
+    this.usageService = new UserUsageService(db, userId);
   }
 
   /**
@@ -111,6 +114,9 @@ export class FileService {
     size: number;
     url: string;
   }): Promise<{ fileId: string; url: string }> {
+    // Check storage limit
+    await this.usageService.checkFileStorageLimit(params.size);
+
     // Check if hash already exists in globalFiles
     const { isExist } = await this.fileModel.checkHash(params.fileHash);
 

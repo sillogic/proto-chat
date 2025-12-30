@@ -1,10 +1,12 @@
 import auth from './auth';
+import authError from './authError';
 import changelog from './changelog';
 import chat from './chat';
 import clerk from './clerk';
 import color from './color';
 import common from './common';
 import components from './components';
+import contact from './contact';
 import discover from './discover';
 import editor from './editor';
 import electron from './electron';
@@ -33,12 +35,14 @@ import welcome from './welcome';
 
 const resources = {
   auth,
+  authError,
   changelog,
   chat,
   clerk,
   color,
   common,
   components,
+  contact,
   discover,
   editor,
   electron,

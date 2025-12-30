@@ -5,22 +5,22 @@
 export const LOBE_CHAT_CLOUD = 'Proto Chat Cloud';
 
 export const BRANDING_NAME = 'Proto Chat';
-export const BRANDING_LOGO_URL = '';
+export const BRANDING_LOGO_URL = '/logo.png';
 
 export const ORG_NAME = 'Proto Chat';
 
 export const BRANDING_URL = {
-  help: undefined,
-  privacy: undefined,
-  terms: undefined,
+  help: 'https://protochat.ai/docs',
+  privacy: 'https://protochat.ai/privacy',
+  terms: 'https://protochat.ai/terms',
 };
 
 export const SOCIAL_URL = {
-  discord: undefined,
-  github: undefined,
-  medium: undefined,
-  x: undefined,
-  youtube: undefined,
+  discord: 'https://discord.gg/protochat',
+  github: 'https://github.com/protochat',
+  medium: 'https://medium.com/protochat',
+  x: 'https://x.com/protochat',
+  youtube: 'https://youtube.com/@protochat',
 };
 
 export const BRANDING_EMAIL = {

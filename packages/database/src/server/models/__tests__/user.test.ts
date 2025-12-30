@@ -10,7 +10,7 @@ import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { getTestDBInstance } from '../../../core/dbForTest';
 import { SessionModel } from '../../../models/session';
 import { UserModel, UserNotFoundError } from '../../../models/user';
-import { UserSettingsItem, nextauthAccounts, userSettings, users } from '../../../schemas';
+import { UserSettingsItem, nextauthAccounts, userExtensions, userSettings, users } from '../../../schemas';
 
 let serverDB = await getTestDBInstance();
 
@@ -21,12 +21,14 @@ const userModel = new UserModel(serverDB, userId);
 beforeEach(async () => {
   await serverDB.delete(users);
   await serverDB.delete(userSettings);
+  await serverDB.delete(userExtensions);
   process.env.KEY_VAULTS_SECRET = 'ofQiJCXLF8mYemwfMWLOHoHimlPu91YmLfU7YZ4lreQ=';
 });
 
 afterEach(async () => {
   await serverDB.delete(users);
   await serverDB.delete(userSettings);
+  await serverDB.delete(userExtensions);
   process.env.KEY_VAULTS_SECRET = undefined;
 });
 
@@ -92,7 +94,8 @@ describe('UserModel', () => {
       const preference = { useCmdEnterToSend: true } as UserPreference;
       const keyVaults = { apiKey: 'secret' };
 
-      await serverDB.insert(users).values({ id: userId, preference });
+      await serverDB.insert(users).values({ id: userId });
+      await serverDB.insert(userExtensions).values({ userId, preference });
 
       const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
       const encryptedKeyVaults = await gateKeeper.encrypt(JSON.stringify(keyVaults));
@@ -194,22 +197,26 @@ describe('UserModel', () => {
   describe('updatePreference', () => {
     it('should update user preference', async () => {
       const preference = { guide: { topic: false } } as UserPreference;
-      await serverDB.insert(users).values({ id: userId, preference });
+      await serverDB.insert(users).values({ id: userId });
+      await serverDB.insert(userExtensions).values({ userId, preference });
 
       const newPreference: Partial<UserPreference> = {
         guide: { topic: true, moveSettingsToAvatar: true },
       };
       await userModel.updatePreference(newPreference);
 
-      const updatedUser = await serverDB.query.users.findFirst({ where: eq(users.id, userId) });
-      expect(updatedUser?.preference).toEqual({ ...preference, ...newPreference });
+      const updatedExtension = await serverDB.query.userExtensions.findFirst({
+        where: eq(userExtensions.userId, userId),
+      });
+      expect(updatedExtension?.preference).toEqual({ ...preference, ...newPreference });
     });
   });
 
   describe('updateGuide', () => {
     it('should update user guide', async () => {
       const preference = { guide: { topic: false } } as UserGuide;
-      await serverDB.insert(users).values({ id: userId, preference });
+      await serverDB.insert(users).values({ id: userId });
+      await serverDB.insert(userExtensions).values({ userId, preference });
 
       const newGuide: Partial<UserGuide> = {
         topic: true,
@@ -218,8 +225,10 @@ describe('UserModel', () => {
       };
       await userModel.updateGuide(newGuide);
 
-      const updatedUser = await serverDB.query.users.findFirst({ where: eq(users.id, userId) });
-      expect(updatedUser?.preference).toEqual({ ...preference, guide: newGuide });
+      const updatedExtension = await serverDB.query.userExtensions.findFirst({
+        where: eq(userExtensions.userId, userId),
+      });
+      expect(updatedExtension?.preference).toEqual({ ...preference, guide: newGuide });
     });
   });
 
@@ -310,6 +319,7 @@ describe('UserModel', () => {
     describe('updatePreference', () => {
       it('should handle undefined preference', async () => {
         await serverDB.insert(users).values({ id: userId });
+        await serverDB.insert(userExtensions).values({ userId });
 
         const newPreference: Partial<UserPreference> = {
           guide: { topic: true },
@@ -317,11 +327,10 @@ describe('UserModel', () => {
 
         await userModel.updatePreference(newPreference);
 
-        const updatedUser = await serverDB.query.users.findFirst({
-          where: eq(users.id, userId),
+        const updatedExtension = await serverDB.query.userExtensions.findFirst({
+          where: eq(userExtensions.userId, userId),
         });
-
-        expect(updatedUser?.preference).toMatchObject(newPreference);
+        expect(updatedExtension?.preference).toMatchObject(newPreference);
       });
 
       it('should do nothing if user not found', async () => {
@@ -333,9 +342,10 @@ describe('UserModel', () => {
 
     describe('updateGuide', () => {
       it('should handle undefined guide', async () => {
-        await serverDB.insert(users).values({
-          id: userId,
+        await serverDB.insert(users).values({ id: userId });
+        await serverDB.insert(userExtensions).values({
           preference: {} as UserPreference,
+          userId,
         });
 
         const newGuide: Partial<UserGuide> = {
@@ -344,10 +354,10 @@ describe('UserModel', () => {
 
         await userModel.updateGuide(newGuide);
 
-        const updatedUser = await serverDB.query.users.findFirst({
-          where: eq(users.id, userId),
+        const updatedExtension = await serverDB.query.userExtensions.findFirst({
+          where: eq(userExtensions.userId, userId),
         });
-        expect(updatedUser?.preference).toEqual({ guide: newGuide });
+        expect(updatedExtension?.preference).toEqual({ guide: newGuide });
       });
 
       it('should do nothing if user not found', async () => {
@@ -383,10 +393,11 @@ describe('UserModel', () => {
 
     describe('getUserState', () => {
       it('should handle empty settings', async () => {
-        await serverDB.insert(users).values({
-          id: userId,
-          preference: {} as UserPreference,
+        await serverDB.insert(users).values({ id: userId });
+        await serverDB.insert(userExtensions).values({
           isOnboarded: true,
+          preference: {} as UserPreference,
+          userId,
         });
 
         const state = await userModel.getUserState(KeyVaultsGateKeeper.getUserKeyVaults);

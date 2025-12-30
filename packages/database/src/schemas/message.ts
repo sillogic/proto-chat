@@ -58,6 +58,11 @@ export const messageGroups = pgTable(
     title: varchar255('title'),
     description: text('description'),
 
+    // Compression fields
+    type: text('type', { enum: ['parallel', 'compression'] }),
+    content: text('content'), // compression summary (plain text)
+    editorData: jsonb('editor_data'), // rich text editor data (future extension)
+
     clientId: varchar255('client_id'),
 
     ...timestamps,
@@ -65,6 +70,7 @@ export const messageGroups = pgTable(
   (t) => [
     uniqueIndex('message_groups_client_id_user_id_unique').on(t.clientId, t.userId),
     index('message_groups_topic_id_idx').on(t.topicId),
+    index('message_groups_type_idx').on(t.type),
   ],
 );
 
@@ -84,6 +90,7 @@ export const messages = pgTable(
     role: varchar255('role').notNull(),
     content: text('content'),
     editorData: jsonb('editor_data'),
+    summary: text('summary'),
     reasoning: jsonb('reasoning').$type<ModelReasoning>(),
     search: jsonb('search').$type<GroundingSearch>(),
     metadata: jsonb('metadata'),
@@ -137,6 +144,7 @@ export const messages = pgTable(
     index('messages_session_id_idx').on(table.sessionId),
     index('messages_thread_id_idx').on(table.threadId),
     index('messages_agent_id_idx').on(table.agentId),
+    index('messages_group_id_idx').on(table.groupId),
   ],
 );
 
@@ -163,12 +171,10 @@ export const messagePlugins = pgTable(
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
   },
-  (t) => ({
-    clientIdUnique: uniqueIndex('message_plugins_client_id_user_id_unique').on(
-      t.clientId,
-      t.userId,
-    ),
-  }),
+  (t) => [
+    uniqueIndex('message_plugins_client_id_user_id_unique').on(t.clientId, t.userId),
+    index('message_plugins_tool_call_id_idx').on(t.toolCallId),
+  ],
 );
 
 export const messageTTS = pgTable(
@@ -260,9 +266,15 @@ export type NewMessageQuery = typeof messageQueries.$inferInsert;
 export const messageQueryChunks = pgTable(
   'message_query_chunks',
   {
-    messageId: text('id').references(() => messages.id, { onDelete: 'cascade' }),
-    queryId: uuid('query_id').references(() => messageQueries.id, { onDelete: 'cascade' }),
-    chunkId: uuid('chunk_id').references(() => chunks.id, { onDelete: 'cascade' }),
+    messageId: text('id')
+      .references(() => messages.id, { onDelete: 'cascade' })
+      .notNull(),
+    queryId: uuid('query_id')
+      .references(() => messageQueries.id, { onDelete: 'cascade' })
+      .notNull(),
+    chunkId: uuid('chunk_id')
+      .references(() => chunks.id, { onDelete: 'cascade' })
+      .notNull(),
     similarity: numeric('similarity', { precision: 6, scale: 5 }),
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
@@ -279,8 +291,12 @@ export type NewMessageFileChunk = typeof messageQueryChunks.$inferInsert;
 export const messageChunks = pgTable(
   'message_chunks',
   {
-    messageId: text('message_id').references(() => messages.id, { onDelete: 'cascade' }),
-    chunkId: uuid('chunk_id').references(() => chunks.id, { onDelete: 'cascade' }),
+    messageId: text('message_id')
+      .references(() => messages.id, { onDelete: 'cascade' })
+      .notNull(),
+    chunkId: uuid('chunk_id')
+      .references(() => chunks.id, { onDelete: 'cascade' })
+      .notNull(),
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),

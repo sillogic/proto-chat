@@ -1,17 +1,23 @@
 /* eslint-disable sort-keys-fix/sort-keys-fix, typescript-sort-keys/interface */
+import { expo } from '@better-auth/expo';
+import { passkey } from '@better-auth/passkey';
 import { createNanoId, idGenerator, serverDB } from '@lobechat/database';
-import { betterAuth } from 'better-auth';
 import { emailHarmony } from 'better-auth-harmony';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { admin, genericOAuth, magicLink } from 'better-auth/plugins';
+import { betterAuth } from 'better-auth/minimal';
+import { admin, emailOTP, genericOAuth, magicLink } from 'better-auth/plugins';
 
+import { account, session, verification } from '@/database/schemas/betterAuth';
+import { users } from '@/database/schemas/user';
 import { authEnv } from '@/envs/auth';
 import {
   getMagicLinkEmailTemplate,
   getResetPasswordEmailTemplate,
   getVerificationEmailTemplate,
+  getVerificationOTPEmailTemplate,
 } from '@/libs/better-auth/email-templates';
 import { initBetterAuthSSOProviders } from '@/libs/better-auth/sso';
+import { createSecondaryStorage, getTrustedOrigins } from '@/libs/better-auth/utils/config';
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
 import { EmailService } from '@/server/services/email';
 import { UserService } from '@/server/services/user';
@@ -19,56 +25,38 @@ import { UserService } from '@/server/services/user';
 // Email verification link expiration time (in seconds)
 // Default is 1 hour (3600 seconds) as per Better Auth documentation
 const VERIFICATION_LINK_EXPIRES_IN = 3600;
-const MAGIC_LINK_EXPIRES_IN = 900;
-const enableMagicLink = authEnv.NEXT_PUBLIC_ENABLE_MAGIC_LINK;
-const APPLE_TRUSTED_ORIGIN = 'https://appleid.apple.com';
-const enabledSSOProviders = parseSSOProviders(authEnv.AUTH_SSO_PROVIDERS);
-
-const { socialProviders, genericOAuthProviders } = initBetterAuthSSOProviders();
 
 /**
- * Normalize a URL-like string to an origin with https fallback.
+ * Safely extract hostname from AUTH_URL for passkey rpID.
+ * Returns undefined if AUTH_URL is not set (e.g., in e2e tests).
  */
-const normalizeOrigin = (url?: string) => {
-  if (!url) return undefined;
-
+const getPasskeyRpID = (): string | undefined => {
+  if (!authEnv.NEXT_PUBLIC_AUTH_URL) return undefined;
   try {
-    const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
-
-    return new URL(normalizedUrl).origin;
+    return new URL(authEnv.NEXT_PUBLIC_AUTH_URL).hostname;
   } catch {
     return undefined;
   }
 };
 
 /**
- * Build trusted origins with env override and Vercel-aware defaults.
+ * Get passkey origins array.
+ * Returns undefined if AUTH_URL is not set (e.g., in e2e tests).
  */
-const getTrustedOrigins = () => {
-  if (authEnv.AUTH_TRUSTED_ORIGINS) {
-    const originsFromEnv = authEnv.AUTH_TRUSTED_ORIGINS.split(',')
-      .map((item) => normalizeOrigin(item.trim()))
-      .filter(Boolean) as string[];
-
-    if (originsFromEnv.length > 0) return Array.from(new Set(originsFromEnv));
-  }
-
-  const defaults = [
+const getPasskeyOrigins = (): string[] | undefined => {
+  if (!authEnv.NEXT_PUBLIC_AUTH_URL) return undefined;
+  return [
+    // Web origin
     authEnv.NEXT_PUBLIC_AUTH_URL,
-    normalizeOrigin(process.env.APP_URL),
-    normalizeOrigin(process.env.VERCEL_BRANCH_URL),
-    normalizeOrigin(process.env.VERCEL_URL),
-  ].filter(Boolean) as string[];
-
-  const baseTrustedOrigins = defaults.length > 0 ? Array.from(new Set(defaults)) : undefined;
-
-  if (!enabledSSOProviders.includes('apple')) return baseTrustedOrigins;
-
-  const mergedOrigins = new Set(baseTrustedOrigins || []);
-  mergedOrigins.add(APPLE_TRUSTED_ORIGIN);
-
-  return Array.from(mergedOrigins);
+  ];
 };
+const MAGIC_LINK_EXPIRES_IN = 900;
+// OTP expiration time (in seconds) - 5 minutes for mobile OTP verification
+const OTP_EXPIRES_IN = 300;
+const enableMagicLink = authEnv.NEXT_PUBLIC_ENABLE_MAGIC_LINK;
+const enabledSSOProviders = parseSSOProviders(authEnv.AUTH_SSO_PROVIDERS);
+
+const { socialProviders, genericOAuthProviders } = initBetterAuthSSOProviders();
 
 export const auth = betterAuth({
   account: {
@@ -82,7 +70,7 @@ export const auth = betterAuth({
   // Use renamed env vars (fallback to next-auth vars is handled in src/envs/auth.ts)
   baseURL: authEnv.NEXT_PUBLIC_AUTH_URL,
   secret: authEnv.AUTH_SECRET,
-  trustedOrigins: getTrustedOrigins(),
+  trustedOrigins: getTrustedOrigins(enabledSSOProviders),
 
   emailAndPassword: {
     autoSignIn: true,
@@ -118,10 +106,32 @@ export const auth = betterAuth({
       });
     },
   },
-
+  onAPIError: {
+    errorURL: '/auth-error',
+  },
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 10 * 60, // Cache duration in seconds
+    },
+  },
   database: drizzleAdapter(serverDB, {
     provider: 'pg',
+    schema: {
+      account,
+      session,
+      users,
+      verification,
+    },
   }),
+  secondaryStorage: createSecondaryStorage(),
+  /**
+   * Database joins is useful when Better-Auth needs to fetch related data from multiple tables in a single query.
+   * Endpoints like /get-session, /get-full-organization and many others benefit greatly from this feature,
+   * seeing upwards of 2x to 3x performance improvements depending on database latency.
+   * Ref: https://www.better-auth.com/docs/adapters/drizzle#joins-experimental
+   */
+  experimental: { joins: true },
   /**
    * Run user bootstrap for every newly created account (email, magic link, OAuth/social, etc.).
    * Using Better Auth database hooks ensures we catch social flows that bypass /sign-up/* routes.
@@ -177,33 +187,68 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    expo(),
     emailHarmony({ allowNormalizedSignin: false }),
     admin(),
+    // Email OTP plugin for mobile verification
+    emailOTP({
+      expiresIn: OTP_EXPIRES_IN,
+      otpLength: 6,
+      allowedAttempts: 3,
+      // Don't automatically send OTP on sign up - let mobile client manually trigger it
+      sendVerificationOnSignUp: false,
+      async sendVerificationOTP({ email, otp }) {
+        const emailService = new EmailService();
+
+        // For all OTP types, use the same template
+        // userName is optional and will be null since we don't have user context here
+        const template = getVerificationOTPEmailTemplate({
+          expiresInSeconds: OTP_EXPIRES_IN,
+          otp,
+          userName: null,
+        });
+
+        await emailService.sendMail({
+          to: email,
+          ...template,
+        });
+      },
+    }),
+    passkey({
+      rpName: 'LobeHub',
+      // Extract rpID from auth URL (e.g., 'lobehub.com' from 'https://lobehub.com')
+      // Returns undefined if AUTH_URL is not set (e.g., in e2e tests)
+      rpID: getPasskeyRpID(),
+      // Support multiple origins: web + Android APK key hashes
+      // Android origin format: android:apk-key-hash:<base64url-sha256-fingerprint>
+      // Returns undefined if AUTH_URL is not set (e.g., in e2e tests)
+      origin: getPasskeyOrigins(),
+    }),
     ...(genericOAuthProviders.length > 0
       ? [
-          genericOAuth({
-            config: genericOAuthProviders,
-          }),
-        ]
+        genericOAuth({
+          config: genericOAuthProviders,
+        }),
+      ]
       : []),
     ...(enableMagicLink
       ? [
-          magicLink({
-            expiresIn: MAGIC_LINK_EXPIRES_IN,
-            sendMagicLink: async ({ email, url }) => {
-              const template = getMagicLinkEmailTemplate({
-                expiresInSeconds: MAGIC_LINK_EXPIRES_IN,
-                url,
-              });
+        magicLink({
+          expiresIn: MAGIC_LINK_EXPIRES_IN,
+          sendMagicLink: async ({ email, url }) => {
+            const template = getMagicLinkEmailTemplate({
+              expiresInSeconds: MAGIC_LINK_EXPIRES_IN,
+              url,
+            });
 
-              const emailService = new EmailService();
-              await emailService.sendMail({
-                to: email,
-                ...template,
-              });
-            },
-          }),
-        ]
+            const emailService = new EmailService();
+            await emailService.sendMail({
+              to: email,
+              ...template,
+            });
+          },
+        }),
+      ]
       : []),
   ],
 });
