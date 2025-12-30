@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { KnowledgeBaseModel } from '@/database/models/knowledgeBase';
-import { insertKnowledgeBasesSchema } from '@/database/schemas';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { KnowledgeBaseItem } from '@/types/knowledgeBase';
@@ -71,7 +70,7 @@ export const knowledgeBaseRouter = router({
     .input(
       z.object({
         id: z.string(),
-        value: insertKnowledgeBasesSchema.partial(),
+        value: z.any(),
       }),
     )
     .mutation(async ({ input, ctx }) => {

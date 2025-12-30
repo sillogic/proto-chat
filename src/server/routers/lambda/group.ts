@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { DEFAULT_CHAT_GROUP_CHAT_CONFIG } from '@/const/settings';
 import { ChatGroupModel } from '@/database/models/chatGroup';
-import { insertChatGroupSchema } from '@/database/schemas/chatGroup';
 import { ChatGroupConfig } from '@/database/types/chatGroup';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
@@ -20,9 +19,9 @@ const groupProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
 const normalizeGroupConfig = (config?: ChatGroupConfig | null): ChatGroupConfig | undefined =>
   config
     ? {
-        ...DEFAULT_CHAT_GROUP_CHAT_CONFIG,
-        ...config,
-      }
+      ...DEFAULT_CHAT_GROUP_CHAT_CONFIG,
+      ...config,
+    }
     : undefined;
 
 export const groupRouter = router({
@@ -38,11 +37,21 @@ export const groupRouter = router({
     }),
 
   createGroup: groupProcedure
-    .input(insertChatGroupSchema.omit({ userId: true }))
+    .input(
+      z.object({
+        config: z.object({}).passthrough().optional().nullable(),
+        description: z.string().optional().nullable(),
+        groupId: z.string().optional().nullable(),
+        id: z.string().optional(),
+        pinned: z.boolean().optional().nullable(),
+        title: z.string().optional().nullable(),
+      }),
+    )
     .mutation(async ({ input, ctx }) => {
+      const { config, ...res } = input;
       return ctx.chatGroupModel.create({
-        ...input,
-        config: normalizeGroupConfig(input.config as ChatGroupConfig | null),
+        ...res,
+        config: normalizeGroupConfig(config as unknown as ChatGroupConfig | null),
       });
     }),
 
@@ -99,13 +108,13 @@ export const groupRouter = router({
     .input(
       z.object({
         id: z.string(),
-        value: insertChatGroupSchema.partial(),
+        value: z.any(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
       return ctx.chatGroupModel.update(input.id, {
         ...input.value,
-        config: normalizeGroupConfig(input.value.config as ChatGroupConfig | null),
+        config: normalizeGroupConfig(input.value.config as unknown as ChatGroupConfig | null),
       });
     }),
 });

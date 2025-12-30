@@ -39,7 +39,9 @@ export const genServerAiProvidersConfig = async (
       }
     }
   } catch (error) {
-    console.error('Failed to fetch global providers from database:', error);
+    if (process.env.SKIP_DB_OPERATIONS !== '1' && process.env.SKIP_DB_CHECK !== '1') {
+      console.error('Failed to fetch global providers from database:', error);
+    }
   }
 
   // Process all providers concurrently

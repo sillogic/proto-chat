@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { SessionGroupModel } from '@/database/models/sessionGroup';
-import { insertSessionGroupSchema } from '@/database/schemas';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { SessionGroupItem } from '@/types/session';
@@ -51,7 +50,7 @@ export const sessionGroupRouter = router({
     .input(
       z.object({
         id: z.string(),
-        value: insertSessionGroupSchema.partial(),
+        value: z.any(),
       }),
     )
     .mutation(async ({ input, ctx }) => {

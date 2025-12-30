@@ -231,10 +231,10 @@ export class MessageModel {
             translate,
             tts: ttsId
               ? {
-                  contentMd5: ttsContentMd5,
-                  file: ttsFile,
-                  voice: ttsVoice,
-                }
+                contentMd5: ttsContentMd5,
+                file: ttsFile,
+                voice: ttsVoice,
+              }
               : undefined,
           },
           fileList: fileList
@@ -647,7 +647,10 @@ export class MessageModel {
   };
 
   async updateMessageRAG(id: string, { ragQueryId, fileChunks }: UpdateMessageRAGParams) {
+    if (!fileChunks || fileChunks.length === 0) return;
+
     return this.db.insert(messageQueryChunks).values(
+      // @ts-ignore
       fileChunks.map((chunk) => ({
         chunkId: chunk.id,
         messageId: id,

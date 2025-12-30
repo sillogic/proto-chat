@@ -21,6 +21,12 @@ const migrationsFolder = join(__dirname, '../../packages/database/migrations');
 
 const isDesktop = process.env.NEXT_PUBLIC_IS_DESKTOP_APP === '1';
 
+if (process.env.SKIP_DB_OPERATIONS === '1') {
+  console.log('🟢 SKIP_DB_OPERATIONS is set to 1, migration skipped');
+  // eslint-disable-next-line unicorn/no-process-exit
+  process.exit(0);
+}
+
 const runMigrations = async () => {
   const { serverDB } = await import('../../packages/database/src/server');
 

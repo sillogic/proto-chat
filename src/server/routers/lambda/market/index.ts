@@ -98,7 +98,6 @@ export const marketRouter = router({
           toolName: input.toolName,
           userAccessToken,
         });
-        const cloudResultContent = (cloudResult?.content ?? []) as ToolCallContent[];
 
         // Format the cloud result to MCPToolCallResult format
         // Convert external content type to internal ToolCallContent type

@@ -2,7 +2,7 @@ import { UserPreference } from '@lobechat/types';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { nextauthAccounts, userSettings, users } from '../../schemas';
+import { nextauthAccounts, userExtensions, userSettings, users } from '../../schemas';
 import { LobeChatDatabase } from '../../type';
 import { UserModel, UserNotFoundError } from '../user';
 import { getTestDB } from './_util';
@@ -202,32 +202,35 @@ describe('UserModel', () => {
 
   describe('updatePreference', () => {
     it('should update user preference', async () => {
+      // Create user extension first
+      await serverDB.insert(userExtensions).values({ userId });
+
       await userModel.updatePreference({
         telemetry: false,
       });
 
-      const user = await serverDB.query.users.findFirst({
-        where: eq(users.id, userId),
+      const extension = await serverDB.query.userExtensions.findFirst({
+        where: eq(userExtensions.userId, userId),
       });
 
-      expect((user?.preference as UserPreference)?.telemetry).toBe(false);
+      expect((extension?.preference as any)?.telemetry).toBe(false);
     });
 
     it('should merge with existing preference', async () => {
       await serverDB
-        .update(users)
+        .update(userExtensions)
         .set({ preference: { telemetry: true, useCmdEnterToSend: true } })
-        .where(eq(users.id, userId));
+        .where(eq(userExtensions.userId, userId));
 
       await userModel.updatePreference({
         telemetry: false,
       });
 
-      const user = await serverDB.query.users.findFirst({
-        where: eq(users.id, userId),
+      const extension = await serverDB.query.userExtensions.findFirst({
+        where: eq(userExtensions.userId, userId),
       });
 
-      const preference = user?.preference as UserPreference;
+      const preference = extension?.preference as any;
       expect(preference?.telemetry).toBe(false);
       expect(preference?.useCmdEnterToSend).toBe(true);
     });
@@ -247,11 +250,11 @@ describe('UserModel', () => {
         moveSettingsToAvatar: true,
       });
 
-      const user = await serverDB.query.users.findFirst({
-        where: eq(users.id, userId),
+      const extension = await serverDB.query.userExtensions.findFirst({
+        where: eq(userExtensions.userId, userId),
       });
 
-      const preference = user?.preference as UserPreference;
+      const preference = extension?.preference as any;
       expect(preference?.guide?.moveSettingsToAvatar).toBe(true);
     });
 

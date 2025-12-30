@@ -85,7 +85,10 @@ describe('UploadService', () => {
       global.XMLHttpRequest = vi.fn(() => xhrMock) as any;
 
       // Mock createS3PreSignedUrl
-      vi.mocked(lambdaClient.upload.createS3PreSignedUrl.mutate).mockResolvedValue(mockPreSignUrl);
+      (vi.mocked(lambdaClient.upload.createS3PreSignedUrl.mutate) as any).mockResolvedValue({
+        preSignUrl: mockPreSignUrl,
+        setAcl: false,
+      });
     });
 
     it('should upload to server S3 in non-desktop mode', async () => {
@@ -140,7 +143,10 @@ describe('UploadService', () => {
       global.XMLHttpRequest = vi.fn(() => xhrMock) as any;
 
       // Mock createS3PreSignedUrl
-      vi.mocked(lambdaClient.upload.createS3PreSignedUrl.mutate).mockResolvedValue(mockPreSignUrl);
+      (vi.mocked(lambdaClient.upload.createS3PreSignedUrl.mutate) as any).mockResolvedValue({
+        preSignUrl: mockPreSignUrl,
+        setAcl: false,
+      });
     });
 
     it('should upload base64 data successfully', async () => {
@@ -223,7 +229,10 @@ describe('UploadService', () => {
       global.XMLHttpRequest = vi.fn(() => xhrMock) as any;
 
       // Mock createS3PreSignedUrl
-      vi.mocked(lambdaClient.upload.createS3PreSignedUrl.mutate).mockResolvedValue(mockPreSignUrl);
+      (vi.mocked(lambdaClient.upload.createS3PreSignedUrl.mutate) as any).mockResolvedValue({
+        preSignUrl: mockPreSignUrl,
+        setAcl: false,
+      });
     });
 
     it('should upload JSON data successfully', async () => {
@@ -263,7 +272,10 @@ describe('UploadService', () => {
       global.XMLHttpRequest = vi.fn(() => xhrMock) as any;
 
       // Mock createS3PreSignedUrl
-      vi.mocked(lambdaClient.upload.createS3PreSignedUrl.mutate).mockResolvedValue(mockPreSignUrl);
+      (vi.mocked(lambdaClient.upload.createS3PreSignedUrl.mutate) as any).mockResolvedValue({
+        preSignUrl: mockPreSignUrl,
+        setAcl: false,
+      });
     });
 
     it('should upload file successfully with progress', async () => {
@@ -307,7 +319,11 @@ describe('UploadService', () => {
       vi.spyOn(xhr, 'addEventListener').mockImplementation((event, handler) => {
         if (event === 'load') {
           // @ts-expect-error - mock implementation
-          handler({ target: { status: 200 } });
+          handler({
+            target: {
+              status: 200,
+            },
+          } as any);
         }
       });
 
@@ -359,7 +375,11 @@ describe('UploadService', () => {
       vi.spyOn(xhr, 'addEventListener').mockImplementation((event, handler) => {
         if (event === 'load') {
           // @ts-expect-error - mock implementation
-          handler({ target: { status: 200 } });
+          handler({
+            target: {
+              status: 200,
+            },
+          } as any);
         }
       });
 
