@@ -200,6 +200,9 @@ const LabsPage = dynamic(() => import('./(main)/labs'), {
   ssr: false,
 });
 
+// Welcome components
+const MobileWelcomePage = dynamic(
+  () => import('./(main)/welcome/index').then((m) => m.MobileWelcomePage),
 // Subscription components
 const MobileSubscriptionPlansPage = dynamic(
   () => import('./(main)/subscription/plans/index').then((m) => m.MobileSubscriptionPlansPage),
@@ -594,10 +597,16 @@ export const createMobileRouter = (locale: Locales) =>
           path: 'changelog',
         },
 
-        // Default route - redirect to chat
+        // Welcome route
+        {
+          element: <MobileWelcomePage />,
+          path: 'welcome',
+        },
+
+        // Default route - redirect to welcome
         {
           index: true,
-          loader: () => redirect('/chat', { status: 302 }),
+          loader: () => redirect('/welcome', { status: 302 }),
         },
 
         // Catch-all route

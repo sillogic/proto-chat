@@ -200,6 +200,9 @@ const LabsPage = dynamic(() => import('./(main)/labs'), {
   ssr: false,
 });
 
+// Welcome components
+const DesktopWelcomePage = dynamic(
+  () => import('./(main)/welcome/index').then((m) => m.DesktopWelcomePage),
 // Subscription components
 const DesktopSubscriptionPlansPage = dynamic(
   () => import('./(main)/subscription/plans/index').then((m) => m.DesktopSubscriptionPlansPage),
@@ -550,10 +553,16 @@ export const createDesktopRouter = (locale: Locales) =>
           errorElement: <ChangelogErrorBoundary />,
           path: 'changelog',
         },
-        // Default route - redirect to chat
+        // Welcome route
+        {
+          element: <DesktopWelcomePage />,
+          path: 'welcome',
+        },
+
+        // Default route - redirect to welcome
         {
           index: true,
-          loader: () => redirect('/chat', { status: 302 }),
+          loader: () => redirect('/welcome', { status: 302 }),
         },
 
         // Catch-all route
