@@ -203,6 +203,12 @@ const LabsPage = dynamic(() => import('./(main)/labs'), {
 // Welcome components
 const DesktopWelcomePage = dynamic(
   () => import('./(main)/welcome/index').then((m) => m.DesktopWelcomePage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+
 // Subscription components
 const DesktopSubscriptionPlansPage = dynamic(
   () => import('./(main)/subscription/plans/index').then((m) => m.DesktopSubscriptionPlansPage),
