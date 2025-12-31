@@ -12,8 +12,8 @@ import { ProductLogo } from '@/components/Branding';
 const useStyles = createStyles(({ css, token }) => ({
   container: css`
     position: relative;
-    height: 100vh;
     width: 100%;
+    height: 100vh;
     background: linear-gradient(
       135deg,
       ${token.colorBgLayout} 0%,
@@ -21,12 +21,39 @@ const useStyles = createStyles(({ css, token }) => ({
       ${token.colorBgLayout} 100%
     );
   `,
+  enterButton: css`
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+
+    height: 48px;
+    padding-block: 0;
+    padding-inline: 32px;
+    border-radius: 24px;
+
+    font-size: 16px;
+    font-weight: 500;
+
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateX(4px);
+    }
+  `,
+  footer: css`
+    position: absolute;
+    inset-block-end: 24px;
+    font-size: 12px;
+    color: ${token.colorTextQuaternary};
+  `,
   glassPanel: css`
     padding: 48px;
+    border: 1px solid ${token.colorBorderSecondary};
     border-radius: 24px;
+
     background: ${token.colorBgElevated}80;
     backdrop-filter: blur(20px);
-    border: 1px solid ${token.colorBorderSecondary};
     box-shadow: 0 8px 32px ${token.colorBgMask};
   `,
   logo: css`
@@ -38,23 +65,11 @@ const useStyles = createStyles(({ css, token }) => ({
         transform: scale(1);
         opacity: 1;
       }
+
       50% {
         transform: scale(1.05);
         opacity: 0.8;
       }
-    }
-  `,
-  title: css`
-    margin: 0;
-    font-size: 48px;
-    font-weight: 700;
-    background: linear-gradient(135deg, ${token.colorPrimary}, ${token.colorInfo});
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-
-    @media (max-width: 768px) {
-      font-size: 36px;
     }
   `,
   subtitle: css`
@@ -66,27 +81,21 @@ const useStyles = createStyles(({ css, token }) => ({
       font-size: 14px;
     }
   `,
-  enterButton: css`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 48px;
-    padding: 0 32px;
-    font-size: 16px;
-    font-weight: 500;
-    border-radius: 24px;
-    transition: all 0.3s ease;
+  title: css`
+    margin: 0;
 
-    &:hover {
-      transform: translateX(4px);
+    font-size: 48px;
+    font-weight: 700;
+
+    background: linear-gradient(135deg, ${token.colorPrimary}, ${token.colorInfo});
+    background-clip: text;
+    background-clip: text;
+
+    -webkit-text-fill-color: transparent;
+
+    @media (max-width: 768px) {
+      font-size: 36px;
     }
-  `,
-  footer: css`
-    position: absolute;
-    bottom: 24px;
-    font-size: 12px;
-    color: ${token.colorTextQuaternary};
   `,
 }));
 

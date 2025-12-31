@@ -203,6 +203,12 @@ const LabsPage = dynamic(() => import('./(main)/labs'), {
 // Welcome components
 const MobileWelcomePage = dynamic(
   () => import('./(main)/welcome/index').then((m) => m.MobileWelcomePage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+
 // Subscription components
 const MobileSubscriptionPlansPage = dynamic(
   () => import('./(main)/subscription/plans/index').then((m) => m.MobileSubscriptionPlansPage),
