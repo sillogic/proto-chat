@@ -1109,5 +1109,56 @@
     "bps": true,
     "folderMillis": 1766580718992,
     "hash": "9f19e8c3cc95b3cc53c391442d7f0d34abcf07f0443e6edc0a624e9c50f82981"
+  },
+  {
+    "sql": [
+      "ALTER TABLE \"model_pricings\" ALTER COLUMN \"input_price\" SET DATA TYPE numeric(12, 4);",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"input_price\" SET DEFAULT '0';",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"output_price\" SET DATA TYPE numeric(12, 4);",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"output_price\" SET DEFAULT '0';",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"per_request_price\" SET DATA TYPE numeric(12, 4);",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"per_request_price\" SET DEFAULT '0';",
+      "\nALTER TABLE \"user_extensions\" ADD COLUMN \"plan_id\" text;",
+      "\nALTER TABLE \"user_subscription_history\" ADD COLUMN \"plan_id\" text;",
+      "\nALTER TABLE \"user_subscription_history\" ADD COLUMN \"slug\" text;",
+      "\nALTER TABLE \"user_extensions\" DROP COLUMN \"current_api_calls_used\";",
+      "\nALTER TABLE \"user_extensions\" DROP COLUMN \"current_tokens_used\";",
+      "\nALTER TABLE \"user_extensions\" DROP COLUMN \"monthly_api_calls_limit\";",
+      "\nALTER TABLE \"user_extensions\" DROP COLUMN \"monthly_storage_limit\";",
+      "\nALTER TABLE \"user_extensions\" DROP COLUMN \"monthly_token_limit\";",
+      "\nALTER TABLE \"user_subscription_history\" DROP COLUMN \"api_calls_limit\";",
+      "\nALTER TABLE \"user_subscription_history\" DROP COLUMN \"token_limit\";"
+    ],
+    "bps": true,
+    "folderMillis": 1767520625037,
+    "hash": "cbb670a5a67426eb032d7cd138109d695d9d821838015c5379ffc49ab9192274"
+  },
+  {
+    "sql": [
+      "ALTER TABLE \"model_pricings\" ALTER COLUMN \"input_price\" SET DATA TYPE numeric(15, 6);",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"input_price\" SET DEFAULT '0';",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"input_price\" SET NOT NULL;",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"output_price\" SET DATA TYPE numeric(15, 6);",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"output_price\" SET DEFAULT '0';",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"output_price\" SET NOT NULL;",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"per_request_price\" SET DATA TYPE numeric(15, 6);",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"per_request_price\" SET DEFAULT '0';",
+      "\nALTER TABLE \"model_pricings\" ALTER COLUMN \"per_request_price\" SET NOT NULL;",
+      "\nALTER TABLE \"model_pricings\" ADD COLUMN \"memo\" text;",
+      "\nCREATE UNIQUE INDEX \"model_provider_idx\" ON \"model_pricings\" USING btree (\"model\",\"provider\");"
+    ],
+    "bps": true,
+    "folderMillis": 1767594994030,
+    "hash": "090a54cf7c19b1b33f4a1eab1912778d79b0c607e9e753881d3948e641cb17d6"
+  },
+  {
+    "sql": [
+      "ALTER TABLE \"user_extensions\" ADD COLUMN \"next_plan_id\" text;",
+      "\nALTER TABLE \"user_subscription_history\" ADD COLUMN \"auto_renew\" boolean DEFAULT true NOT NULL;",
+      "\nALTER TABLE \"user_subscription_history\" ADD COLUMN \"status\" text DEFAULT 'active' NOT NULL;"
+    ],
+    "bps": true,
+    "folderMillis": 1767631999536,
+    "hash": "75595369af1bc479ed8313a259bacae57f8d49621b2890134be002d1008c7cf8"
   }
 ]

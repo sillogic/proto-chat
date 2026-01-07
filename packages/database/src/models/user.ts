@@ -7,7 +7,7 @@ import {
 } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
 import dayjs from 'dayjs';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import type { PartialDeep } from 'type-fest';
 
 import { merge } from '@/utils/merge';
@@ -18,6 +18,7 @@ import {
   UserItem,
   UserSettingsItem,
   nextauthAccounts,
+  subscriptionPlans,
   userExtensions,
   userSettings,
   users,
@@ -68,6 +69,7 @@ export class UserModel {
     const result = await this.db
       .select({
         avatar: users.avatar,
+        currentPlan: userExtensions.currentPlan,
         email: users.email,
         firstName: users.firstName,
         fullName: users.fullName,
@@ -85,12 +87,20 @@ export class UserModel {
         settingsSystemAgent: userSettings.systemAgent,
         settingsTTS: userSettings.tts,
         settingsTool: userSettings.tool,
+        subscriptionPlanName: subscriptionPlans.name,
         username: users.username,
       })
       .from(users)
       .where(eq(users.id, this.userId))
       .leftJoin(userSettings, eq(users.id, userSettings.id))
       .leftJoin(userExtensions, eq(users.id, userExtensions.userId))
+      .leftJoin(
+        subscriptionPlans,
+        or(
+          eq(userExtensions.planId, subscriptionPlans.id),
+          eq(userExtensions.currentPlan, subscriptionPlans.slug),
+        ),
+      )
       .limit(1);
 
     if (!result || !result[0]) {
@@ -130,6 +140,7 @@ export class UserModel {
       lastName: state.lastName || undefined,
       preference: state.preference as UserPreference,
       settings,
+      subscriptionPlan: (state.subscriptionPlanName || state.currentPlan) as any,
       userId: this.userId,
       username: state.username || undefined,
     };
@@ -250,10 +261,8 @@ export class UserModel {
       });
 
       await db.insert(userExtensions).values({
-        currentPlan: freePlan?.name || 'Free Trial',
-        monthlyApiCallsLimit: 0,
-        monthlyStorageLimit: freePlan?.storageLimit || 1024,
-        monthlyTokenLimit: freePlan ? parseInt(freePlan.credits) : 0,
+        currentPlan: freePlan?.slug || 'free-trial',
+        planId: freePlan?.id,
         userId: userId,
       }).onConflictDoNothing();
     }
@@ -276,10 +285,8 @@ export class UserModel {
     });
 
     const initialExtension = {
-      currentPlan: freePlan?.name || 'Free Trial',
-      monthlyApiCallsLimit: 0, // No limit
-      monthlyStorageLimit: freePlan?.storageLimit || 1024,
-      monthlyTokenLimit: freePlan ? parseInt(freePlan.credits) : 0,
+      currentPlan: freePlan?.slug || 'free-trial',
+      planId: freePlan?.id,
       userId: user.id,
     };
 

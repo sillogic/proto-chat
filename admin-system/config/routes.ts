@@ -70,10 +70,10 @@ export default [
     component: './Subscription/ModelPricing',
   },
   {
-    path: '/api-keys',
-    name: 'apiKeys',
-    icon: 'KeyOutlined',
-    component: './ApiKeys',
+    path: '/ai-providers',
+    name: 'aiProviders',
+    icon: 'RobotOutlined',
+    component: './AiProviders',
   },
   {
     path: '/usage-statistics',

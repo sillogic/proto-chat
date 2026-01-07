@@ -5,7 +5,8 @@ import {
     pgEnum,
     pgTable,
     text,
-    numeric
+    numeric,
+    uniqueIndex
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { idGenerator } from '../utils/idGenerator';
@@ -81,21 +82,28 @@ export const modelPricings = pgTable('model_pricings', {
         .primaryKey()
         .$defaultFn(() => idGenerator('mp')),
 
-    // e.g. "openai"
-    inputPrice: numeric('input_price', { precision: 10, scale: 6 }).default('0'),
+    // Price in credits per 1,000,000 tokens
+    inputPrice: numeric('input_price', { precision: 15, scale: 6 }).default('0').notNull(),
 
     model: text('model').notNull(),
 
+    // Price in credits per 1,000,000 tokens
+    outputPrice: numeric('output_price', { precision: 15, scale: 6 }).default('0').notNull(),
 
-    // Credits per 1000 tokens
-    outputPrice: numeric('output_price', { precision: 10, scale: 6 }).default('0'),
+    // Price in credits per request
+    perRequestPrice: numeric('per_request_price', { precision: 15, scale: 6 }).default('0').notNull(),
 
-    // Credits per 1000 tokens
-    perRequestPrice: numeric('per_request_price', { precision: 10, scale: 6 }).default('0'),
-    // e.g. "gpt-4"
-    provider: text('provider').notNull(), // Credits per request
+    // e.g. "openai"
+    provider: text('provider').notNull(),
+
+    // Memo for admin
+    memo: text('memo'),
 
     ...timestamps,
+}, (table) => {
+    return {
+        modelProviderIdx: uniqueIndex('model_provider_idx').on(table.model, table.provider),
+    };
 });
 
 export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans);

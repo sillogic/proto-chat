@@ -293,10 +293,10 @@ export default {
     cards: {
       month: {
         modelCalls: '模型调用',
-        title: '本月花费',
+        title: '本月积分消耗',
       },
       today: {
-        title: '今日花费',
+        title: '今日积分消耗',
         yesterday: '昨日',
       },
     },
@@ -312,7 +312,7 @@ export default {
       type: '调用类型',
     },
     trends: {
-      spend: '金额',
+      spend: '积分',
       tokens: 'Token',
     },
     welcome: {

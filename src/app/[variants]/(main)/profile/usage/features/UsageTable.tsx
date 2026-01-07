@@ -1,10 +1,7 @@
-import { ProviderIcon } from '@lobehub/icons';
 import { Tag } from '@lobehub/ui';
 import { Table, TableColumnType, Typography } from 'antd';
-import { useTheme } from 'antd-style';
-import { memo, useEffect } from 'react';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from 'react-layout-kit';
 
 import { parseAsInteger, useQueryParam } from '@/hooks/useQueryParam';
 import { useClientDataSWR } from '@/libs/swr';
@@ -14,115 +11,95 @@ import { formatDate, formatNumber } from '@/utils/format';
 import { UsageChartProps } from '../Client';
 
 const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
-  const theme = useTheme();
-  const { t } = useTranslation('auth');
-
-  const { data, isLoading, mutate } = useClientDataSWR('usage-logs', async () =>
-    usageService.findByMonth(dateStrings),
-  );
+  useTranslation('auth');
 
   const [currentPage, setCurrentPage] = useQueryParam('current', parseAsInteger.withDefault(1), {
     clearOnDefault: true,
   });
-  const [pageSize, setPageSize] = useQueryParam('pageSize', parseAsInteger.withDefault(5), {
+  const [pageSize, setPageSize] = useQueryParam('pageSize', parseAsInteger.withDefault(10), {
     clearOnDefault: true,
   });
 
-  useEffect(() => {
-    if (dateStrings) {
-      mutate();
-    }
-  }, [dateStrings]);
+  const { data, isLoading } = useClientDataSWR(
+    ['transactions', currentPage, pageSize, dateStrings],
+    async () =>
+      usageService.getTransactions({
+        limit: pageSize,
+        mo: dateStrings,
+        offset: (currentPage - 1) * pageSize,
+      }),
+  );
 
   const columns: TableColumnType<any>[] = [
     {
-      hidden: true,
+      dataIndex: 'id',
       key: 'id',
-      title: 'ID',
+      render: (id) => (
+        <Typography.Text copyable style={{ color: '#8c8c8c', fontSize: '12px' }}>
+          {id}
+        </Typography.Text>
+      ),
+      title: '交易流水号',
+      width: 150,
     },
     {
-      dataIndex: 'model',
-      key: 'model',
-      render: (value, record) => (
-        <Flexbox align={'start'} gap={16} horizontal>
-          <ProviderIcon
-            provider={record.provider}
-            size={18}
-            style={{
-              border: `2px solid ${theme.colorBgContainer}`,
-              boxSizing: 'content-box',
-              marginRight: -8,
-            }}
-          />
-          <Typography.Text>
-            {value?.length > 12 ? `${value.slice(0, 12)}...` : value}
-          </Typography.Text>
-        </Flexbox>
-      ),
-      title: t('usage.table.model'),
+      dataIndex: 'category',
+      key: 'category',
+      render: (category) => {
+        const categoryMap: any = {
+          ADJUSTMENT: { color: 'purple', label: '人工调账' },
+          CONSUMPTION: { color: 'orange', label: '对话消费' },
+          DEPOSIT: { color: 'green', label: '赠送/充值' },
+          REFUND: { color: 'blue', label: '退款' },
+          RESET: { color: 'default', label: '周期重置' },
+        };
+        const item = categoryMap[category] || { color: 'default', label: category };
+        return <Tag color={item.color}>{item.label}</Tag>;
+      },
+      title: '业务类别',
+      width: 120,
     },
     {
       dataIndex: 'type',
-      filters: [
-        {
-          text: 'Chat',
-          value: 'chat',
-        },
-      ],
       key: 'type',
-      onFilter: (value, record) => record.callType === value,
+      render: (type) => <Tag>{type}</Tag>,
+      title: '交易类型',
+      width: 100,
+    },
+    {
+      dataIndex: 'amount',
+      key: 'amount',
       render: (value) => {
-        return <Tag>{value}</Tag>;
+        const num = Number(value);
+        const prefix = num > 0 ? '+' : '';
+        const color = num > 0 ? 'green' : 'red';
+        return (
+          <Typography.Text style={{ color }}>
+            {prefix}
+            {formatNumber(num, 0)}
+          </Typography.Text>
+        );
       },
-      title: t('usage.table.type'),
+      title: '变动数额',
     },
     {
-      dataIndex: 'totalInputTokens',
-      key: 'inputTokens',
-      title: t('usage.table.inputTokens'),
-    },
-    {
-      dataIndex: 'totalOutputTokens',
-      key: 'outputTokens',
-      title: t('usage.table.outputTokens'),
-    },
-    {
-      dataIndex: 'tps',
-      key: 'tps',
-      render: (value) => formatNumber(value, 2),
-      title: t('usage.table.tps'),
-    },
-    {
-      dataIndex: 'ttft',
-      key: 'ttft',
-      render: (value) => formatNumber(value / 1000, 2),
-      title: t('usage.table.ttft'),
-    },
-    {
-      dataIndex: 'spend',
-      key: 'spend',
-      render: (value) => {
-        return `$${formatNumber(value, 6)}`;
-      },
-      title: t('usage.table.spend'),
+      dataIndex: 'balanceAfter',
+      key: 'balanceAfter',
+      render: (value) => formatNumber(Number(value || 0), 0),
+      title: '变动后余额',
     },
     {
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (value) => {
-        return formatDate(new Date(value));
-      },
-      sortDirections: ['descend'],
-      sorter: (a, b) => a.createdAt - b.createdAt,
-      title: t('usage.table.createdAt'),
+      render: (value) => formatDate(new Date(value)),
+      title: '时间',
     },
   ];
 
   return (
     <Table
       columns={columns}
-      dataSource={data}
-      key="id"
+      dataSource={data?.list || []}
       loading={isLoading}
       pagination={{
         current: currentPage,
@@ -134,7 +111,9 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
           setPageSize(size);
         },
         pageSize,
+        total: data?.total || 0,
       }}
+      rowKey="id"
       size="small"
     />
   );

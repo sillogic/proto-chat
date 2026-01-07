@@ -14,18 +14,6 @@ export const userExtensions = pgTable(
 
 
 
-        clerkCreatedAt: timestamp('clerk_created_at'),
-
-
-
-
-
-
-
-
-
-
-
         // 暂停时间
         // 管理备注
         adminNotes: text('admin_notes'),
@@ -42,13 +30,7 @@ export const userExtensions = pgTable(
 
 
 
-
-
-
-        currentApiCallsUsed: integer('current_api_calls_used').default(0),
-
-
-
+        clerkCreatedAt: timestamp('clerk_created_at'),
 
 
 
@@ -80,22 +62,13 @@ export const userExtensions = pgTable(
         // 关联主项目用户表 users.id
         // 套餐订阅信息
         currentPlan: text('current_plan').default('free'),
-
-
-
-
-
-
-        // 1024MB default
-        // 当前使用量
-        currentTokensUsed: integer('current_tokens_used').default(0),
-
-
-
-
         // 上次使用量重置时间
         // 扩展功能开关
         features: jsonb('features').default({}).notNull(),
+
+
+
+
 
 
 
@@ -117,21 +90,9 @@ export const userExtensions = pgTable(
 
 
 
-
-
-
         // 扩展功能配置
         // 账户状态
         isSuspended: boolean('is_suspended').default(false),
-
-
-
-
-
-
-
-
-
 
 
 
@@ -159,41 +120,13 @@ export const userExtensions = pgTable(
 
 
 
-        // 0表示无限制
-        monthlyApiCallsLimit: integer('monthly_api_calls_limit').default(0),
+
+        // 下一个计费周期预设的方案 ID (用于中途降级或取消订阅)
+        nextPlanId: text('next_plan_id'),
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-        // 0表示无限制
-        monthlyStorageLimit: integer('monthly_storage_limit').default(1024),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // 套餐过期时间
-        // 使用限制
-        monthlyTokenLimit: integer('monthly_token_limit').default(0),
 
 
 
@@ -212,17 +145,10 @@ export const userExtensions = pgTable(
         onboarding: jsonb('onboarding'),
 
 
-
-
-
-
-
-
-
-
-
         // free, basic, pro, enterprise
         planExpiresAt: timestamp('plan_expires_at'),
+
+        planId: text('plan_id'),
 
 
 
@@ -263,13 +189,21 @@ export const userExtensions = pgTable(
 
 // 套餐历史记录表
 export const userSubscriptionHistory = pgTable('user_subscription_history', {
-    apiCallsLimit: integer('api_calls_limit').default(0),
+
+
+
+    // active, canceled, expired, past_due, upgraded
+    autoRenew: boolean('auto_renew').default(true).notNull(),
+
+
+
+
+
 
 
 
     // 交易ID
     createdAt: timestamp('created_at').defaultNow().notNull(),
-
 
 
 
@@ -281,7 +215,14 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
 
 
 
+
+
     features: jsonb('features').default({}).notNull(),
+
+
+
+
+
 
 
 
@@ -291,26 +232,23 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
         .primaryKey()
         .default(sql`gen_random_uuid()`),
 
-
-
-
-
-
-
-
     // 结束时间
     isActive: boolean('is_active').default(true).notNull(),
-
-
-
-
-
-
-
-
     // 是否激活
     // 支付信息
     paymentMethod: text('payment_method'),
+
+
+
+
+
+
+
+
+
+
+    planId: text('plan_id'),
+
 
 
 
@@ -332,19 +270,17 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
 
 
 
+
+
     // 关联主项目用户ID
     planType: text('plan_type').notNull(),
 
-
-
-
-
-
-
-
-
     // 套餐名称
     price: integer('price').default(0),
+
+    slug: text('slug'),
+
+
 
 
 
@@ -366,10 +302,11 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
 
 
 
+    status: text('status').default('active').notNull(),
 
-    // 价格（分）
-    // 套餐配置
-    tokenLimit: integer('token_limit').default(0),
+
+
+
 
 
 

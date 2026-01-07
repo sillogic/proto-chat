@@ -54,9 +54,33 @@ export async function getUserDetail(id: string): Promise<{ data: any; success: b
 
 // 更新用户套餐
 export async function updateUserPlan(params: UpdateUserPlanParams): Promise<{ success: boolean }> {
-  return request('/api/users/update-plan', {
+  const { userId, ...data } = params;
+  return request(`/api/users/${userId}/plan`, {
     method: 'POST',
-    data: params,
+    data,
+  });
+}
+
+/** 立即升级订阅 (仿真) */
+export async function upgradeSubscription(userId: string, planId: string) {
+  return request<{ success: boolean; message?: string }>(`/api/users/${userId}/plan/upgrade`, {
+    method: 'POST',
+    data: { planId },
+  });
+}
+
+/** 预设变更 (仿真) */
+export async function schedulePlanChange(userId: string, nextPlanId: string | null) {
+  return request<{ success: boolean; message?: string }>(`/api/users/${userId}/plan/schedule`, {
+    method: 'POST',
+    data: { nextPlanId },
+  });
+}
+
+/** 仿真过期处理 */
+export async function simulateExpiry(userId: string) {
+  return request<{ success: boolean; message?: string }>(`/api/users/${userId}/plan/simulate-expiry`, {
+    method: 'POST',
   });
 }
 

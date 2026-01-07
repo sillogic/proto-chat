@@ -1,4 +1,3 @@
-import type { IconType } from '@lobehub/icons';
 import type { LobeChatProps } from '@lobehub/ui/brand';
 import { createStyles, useTheme } from 'antd-style';
 import Image, { ImageProps } from 'next/image';
@@ -48,7 +47,7 @@ const CustomImageLogo = memo<Omit<ImageProps, 'alt' | 'src'> & { size: number }>
   },
 );
 
-const Divider: IconType = forwardRef(({ size = '1em', style, ...rest }, ref) => (
+const Divider = forwardRef<SVGSVGElement, any>(({ size = '1em', style, ...rest }, ref) => (
   <svg
     fill="none"
     height={size}

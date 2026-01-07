@@ -41,7 +41,7 @@ const groupByType = (
       const key = groupBy === GroupBy.Model ? item.model : item.provider;
       let displayValue = (todayCate.get(key) || 0) + value;
       if (type === 'spend') {
-        const formattedNum = formatNumber((todayCate.get(key) || 0) + value, 2);
+        const formattedNum = formatNumber((todayCate.get(key) || 0) + value, 0);
         if (typeof formattedNum !== 'string') {
           displayValue = formattedNum;
         }

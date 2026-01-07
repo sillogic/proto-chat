@@ -57,7 +57,7 @@ const AvatarWithUpload = memo<AvatarWithUploadProps>(
     return (
       <Spin indicator={<LoadingOutlined spin />} spinning={uploading}>
         <Upload beforeUpload={handleUploadAvatar} itemRender={() => void 0} maxCount={1}>
-          <UserAvatar clickable size={size} {...rest} />
+          <UserAvatar clickable size={size} {...(rest as any)} />
         </Upload>
       </Spin>
     );

@@ -1,27 +1,62 @@
 import { PageContainer, ProTable, ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Tag, Space, message, Modal, Form, Select, InputNumber } from 'antd';
-import { EditOutlined, StopOutlined } from '@ant-design/icons';
-import { useRef, useState } from 'react';
+import { Button, Tag, Space, message, Modal, Form, Select, Dropdown, MenuProps } from 'antd';
+import { useRef, useState, useEffect } from 'react';
 import { Drawer } from 'antd';
 import { UsageStatsView } from '../UsageStatistics';
-import { getUserList, updateUserPlan, updateUserStatus } from '@/services/admin';
+import { getUserList, updateUserPlan, updateUserStatus, upgradeSubscription, schedulePlanChange, simulateExpiry } from '@/services/admin';
+import { getPlans, SubscriptionPlan } from '@/services/subscription';
 import type { User, UserListParams } from '@/services/api.d';
 
 const { Option } = Select;
 
 const UsersPage: React.FC = () => {
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType>(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [usageDrawerVisible, setUsageDrawerVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [form] = Form.useForm();
 
-  // 方案类型配置
-  const planTypeConfig = {
-    free: { text: 'Free Trial', color: 'blue' },
-    basic: { text: '基础版', color: 'blue' },
-    pro: { text: '专业版', color: 'green' },
-    enterprise: { text: '企业版', color: 'gold' },
+  // 获取方案列表
+  const fetchPlans = async () => {
+    try {
+      const res = await getPlans();
+      if (res.success) {
+        setPlans(res.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch plans:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  // 仿真操作处理
+  const handleSimulation = async (action: string, record: User, extra?: any) => {
+    try {
+      let res;
+      if (action === 'upgrade') {
+        res = await upgradeSubscription(record.id, extra);
+      } else if (action === 'schedule') {
+        res = await schedulePlanChange(record.id, extra);
+      } else if (action === 'cancel') {
+        const freePlan = plans.find(p => p.slug === 'free' || p.slug === 'plan_free');
+        res = await schedulePlanChange(record.id, freePlan?.id || null);
+      } else if (action === 'expiry') {
+        res = await simulateExpiry(record.id);
+      }
+
+      if (res?.success) {
+        message.success(res.message || '操作成功');
+        actionRef.current?.reload();
+      } else {
+        message.error(res?.message || '操作失败');
+      }
+    } catch (error) {
+      message.error('请求失败');
+    }
   };
 
   // 表格列定义
@@ -29,120 +64,125 @@ const UsersPage: React.FC = () => {
     {
       title: '邮箱',
       dataIndex: 'email',
-      width: 220,
+      width: 200,
       ellipsis: true,
       fixed: 'left',
     },
     {
-      title: '显示名',
-      dataIndex: 'full_name',
-      width: 150,
-      ellipsis: true,
-      render: (_, record) => {
-        return record.full_name || '未设置';
+      title: '账户余额',
+      dataIndex: 'credit_balance',
+      width: 100,
+      render: (val) => {
+        const balance = parseFloat(String(val || '0'));
+        return <span style={{ fontWeight: 'bold', color: balance > 0 ? '#52c41a' : '#f5222d' }}>
+          {balance.toLocaleString()}
+        </span>;
       },
+      search: false,
     },
     {
       title: '方案类型',
-      dataIndex: 'planType',
-      width: 120,
-      render: (planType) => {
-        const config = planTypeConfig[planType as keyof typeof planTypeConfig] || planTypeConfig.free;
-        return <Tag color={config.color}>{config.text}</Tag>;
+      dataIndex: 'plan_name',
+      width: 150,
+      render: (planName, record) => {
+        const color = record.planType === 'free' ? 'blue' : 'gold';
+        return (
+          <Space direction="vertical" size={0}>
+            <Tag color={color}>{planName || 'Free Trial'}</Tag>
+            {record.nextPlanId && (
+              <Tag color="orange" style={{ fontSize: '10px' }}>
+                次月: {plans.find(p => p.id === record.nextPlanId)?.name || '免费'}
+              </Tag>
+            )}
+          </Space>
+        );
       },
       valueType: 'select',
-      valueEnum: {
-        free: { text: 'Free Trial', status: 'Processing' },
-        basic: { text: '基础版', status: 'Processing' },
-        pro: { text: '专业版', status: 'Success' },
-        enterprise: { text: '企业版', status: 'Warning' },
-      },
+      fieldProps: {
+        options: plans.map(p => ({ label: p.name, value: p.slug }))
+      }
     },
     {
       title: '状态',
       dataIndex: 'banned',
-      width: 100,
+      width: 80,
       render: (banned) => {
         const isBanned = banned === true || banned === 't' || banned === 1;
-        if (isBanned) {
-          return <Tag color="red">已封禁</Tag>;
-        }
-        return <Tag color="green">正常</Tag>;
+        return <Tag color={isBanned ? 'red' : 'green'}>{isBanned ? '已封禁' : '正常'}</Tag>;
       },
       filters: [
         { text: '正常', value: false },
         { text: '已封禁', value: true },
       ],
-      onFilter: (value, record) => {
-        const isBanned = record.banned === true || record.banned === 't' || record.banned === 1;
-        return isBanned === value;
+    },
+    {
+      title: '到期时间',
+      dataIndex: 'plan_expires_at',
+      width: 160,
+      render: (date: any) => {
+        if (!date) return '-';
+        return new Date(date).toLocaleString();
       },
+      search: false,
     },
     {
       title: '注册时间',
       dataIndex: 'created_at',
-      width: 180,
-      render: (date: any) => {
-        if (!date) return '-';
-        try {
-          const dateObj = new Date(date);
-          return isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleString();
-        } catch (error) {
-          return '-';
-        }
-      },
-    },
-    {
-      title: '最后活跃',
-      dataIndex: 'last_active_at',
-      width: 180,
-      render: (date: any) => {
-        if (!date) return '-';
-        try {
-          const dateObj = new Date(date);
-          return isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleString();
-        } catch (error) {
-          return '-';
-        }
-      },
+      width: 160,
+      render: (date: any) => date ? new Date(date).toLocaleString() : '-',
+      search: false,
     },
     {
       title: '操作',
-      width: 180,
+      width: 250,
       fixed: 'right',
       render: (_, record) => {
+        const simMenu: MenuProps['items'] = [
+          {
+            key: 'upgrade',
+            label: '立即升级 (仿真)',
+            children: plans.filter(p => p.slug !== 'free').map(p => ({
+              key: `up_${p.id}`,
+              label: p.name,
+              onClick: () => handleSimulation('upgrade', record, p.id),
+            })),
+          },
+          {
+            key: 'schedule',
+            label: '预设次月降级 (仿真)',
+            children: plans.map(p => ({
+              key: `sch_${p.id}`,
+              label: p.name,
+              onClick: () => handleSimulation('schedule', record, p.id),
+            })),
+          },
+          {
+            key: 'cancel',
+            label: '取消订阅 (不再续费)',
+            onClick: () => handleSimulation('cancel', record),
+          },
+          {
+            type: 'divider',
+          },
+          {
+            key: 'expiry',
+            label: '仿真周期结束 (触发结算)',
+            danger: true,
+            onClick: () => handleSimulation('expiry', record),
+          },
+        ];
+
         return (
           <Space>
-            <Button
-              type="link"
-              onClick={() => handleEditUser(record)}
-            >
-              编辑方案
-            </Button>
-            <Button
-              type="link"
-              onClick={() => {
-                setCurrentUser(record);
-                setUsageDrawerVisible(true);
-              }}
-            >
-              用量统计
-            </Button>
+            <Button size="small" type="link" onClick={() => handleEditUser(record)}>编辑</Button>
+            <Button size="small" type="link" onClick={() => { setCurrentUser(record); setUsageDrawerVisible(true); }}>用量</Button>
+            <Dropdown menu={{ items: simMenu }}>
+              <Button size="small" type="link">仿真测试</Button>
+            </Dropdown>
             {record.banned ? (
-              <Button
-                type="link"
-                onClick={() => handleUpdateUserStatus(record.id, false)}
-              >
-                解封
-              </Button>
+              <Button size="small" type="link" onClick={() => handleUpdateUserStatus(record.id, false)}>解封</Button>
             ) : (
-              <Button
-                type="link"
-                danger
-                onClick={() => handleUpdateUserStatus(record.id, true)}
-              >
-                封禁
-              </Button>
+              <Button size="small" type="link" danger onClick={() => handleUpdateUserStatus(record.id, true)}>封禁</Button>
             )}
           </Space>
         );
@@ -153,9 +193,9 @@ const UsersPage: React.FC = () => {
   // 编辑用户
   const handleEditUser = (user: User) => {
     setCurrentUser(user);
+    const currentPlan = plans.find(p => p.slug === user.planType);
     form.setFieldsValue({
-      planType: user.planType,
-      monthlyTokenLimit: user.monthlyTokenLimit,
+      planId: currentPlan?.id,
     });
     setEditModalVisible(true);
   };
@@ -195,18 +235,9 @@ const UsersPage: React.FC = () => {
         headerTitle="用户管理"
         actionRef={actionRef}
         rowKey="id"
-        search={{
-          labelWidth: 120,
-        }}
+        search={{ labelWidth: 120 }}
         toolBarRender={() => [
-          <Button
-            key="refresh"
-            onClick={() => {
-              actionRef.current?.reload();
-            }}
-          >
-            刷新
-          </Button>,
+          <Button key="refresh" onClick={() => actionRef.current?.reload()}>刷新</Button>,
         ]}
         request={async (params) => {
           const response = await getUserList(params);
@@ -217,12 +248,8 @@ const UsersPage: React.FC = () => {
           };
         }}
         columns={columns}
-        scroll={{ x: 1200 }}
-        sticky={{ offsetHeader: 0 }}
-        pagination={{
-          defaultPageSize: 20,
-          showSizeChanger: true,
-        }}
+        scroll={{ x: 1300 }}
+        pagination={{ defaultPageSize: 20, showSizeChanger: true }}
       />
 
       <Modal
@@ -230,48 +257,30 @@ const UsersPage: React.FC = () => {
         open={editModalVisible}
         onCancel={() => setEditModalVisible(false)}
         onOk={() => form.submit()}
-        width={600}
+        width={500}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleEditSubmit}
-        >
+        <Form form={form} layout="vertical" onFinish={handleEditSubmit}>
           <Form.Item
-            label="方案类型"
-            name="planType"
-            rules={[{ required: true, message: '请选择方案类型' }]}
+            label="当前计费方案"
+            name="planId"
+            rules={[{ required: true, message: '请选择订阅方案' }]}
+            help="编辑此处将立即变更用户的当前方案。如需模拟降级，请使用列表中的“仿真”功能。"
           >
-            <Select placeholder="请选择方案类型">
-              <Option value="free">Free Trial</Option>
-              <Option value="basic">基础版</Option>
-              <Option value="pro">专业版</Option>
-              <Option value="enterprise">企业版</Option>
+            <Select placeholder="请选择订阅方案">
+              {plans.map(plan => (
+                <Option key={plan.id} value={plan.id}>
+                  {plan.name} ({plan.slug})
+                </Option>
+              ))}
             </Select>
-          </Form.Item>
-
-          <Form.Item
-            label="月度积分额度"
-            name="monthlyTokenLimit"
-            help="设置为0表示无限制"
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              max={999999999}
-              placeholder="请输入月度积分额度"
-            />
           </Form.Item>
         </Form>
       </Modal>
       <Drawer
         title={`用户用量统计 - ${currentUser?.email || currentUser?.username}`}
-        width={800}
+        width={1000}
         open={usageDrawerVisible}
-        onClose={() => {
-          setUsageDrawerVisible(false);
-          setCurrentUser(null);
-        }}
+        onClose={() => { setUsageDrawerVisible(false); setCurrentUser(null); }}
         destroyOnClose
       >
         {currentUser && <UsageStatsView userId={currentUser.id} />}

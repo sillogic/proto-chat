@@ -2,12 +2,14 @@ import type { ComfyUIKeyVault } from '@lobechat/types';
 import { z } from 'zod';
 
 import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 // Import Framework layer services
 import { ComfyUIClientService } from '@/server/services/comfyui/core/comfyUIClientService';
 import { ImageService } from '@/server/services/comfyui/core/imageService';
 import { ModelResolverService } from '@/server/services/comfyui/core/modelResolverService';
 import { WorkflowBuilderService } from '@/server/services/comfyui/core/workflowBuilderService';
 import type { WorkflowContext } from '@/server/services/comfyui/types';
+import { UserUsageService } from '@/server/services/user/usageService';
 
 // ComfyUI params validation - only validate required fields
 // Other RuntimeImageGenParams fields are passed through automatically
@@ -26,6 +28,7 @@ export const comfyuiRouter = router({
    * Create image with complete business logic
    */
   createImage: authedProcedure
+    .use(serverDatabase)
     .input(
       z.object({
         model: z.string(),
@@ -33,8 +36,12 @@ export const comfyuiRouter = router({
         params: ComfyUIParamsSchema,
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { model, params, options = {} } = input;
+
+      // Check credit balance
+      const userUsageService = new UserUsageService(ctx.serverDB, ctx.userId);
+      await userUsageService.checkTokenLimit();
 
       // Initialize Framework layer services
       const clientService = new ComfyUIClientService(options);

@@ -1,4 +1,4 @@
-import { DivProps, Grid } from '@lobehub/ui';
+import { Grid } from '@lobehub/ui';
 import { forwardRef, memo } from 'react';
 import { Flexbox } from 'react-layout-kit';
 import { VirtuosoGrid, VirtuosoGridProps } from 'react-virtuoso';
@@ -11,9 +11,9 @@ export const VirtuosoList = memo<VirtuosoGridProps<any, any>>(({ data, ...rest }
   return (
     <VirtuosoGrid
       components={{
-        List: forwardRef<HTMLDivElement, DivProps>((props, ref) => (
-          <Flexbox gap={16} ref={ref} {...props} />
-        )),
+        List: forwardRef((props, ref) => (
+          <Flexbox gap={16} ref={ref as any} {...props} />
+        )) as any,
       }}
       customScrollParent={scrollParent}
       data={data}
@@ -35,9 +35,9 @@ const VirtuosoGridList = memo<VirtuosoGridProps<any, any>>(
     return (
       <VirtuosoGrid
         components={{
-          List: forwardRef<HTMLDivElement, DivProps>((props, ref) => (
-            <Grid gap={16} maxItemWidth={280} ref={ref} rows={rows} {...props} />
-          )),
+          List: forwardRef((props, ref) => (
+          <Grid gap={16} maxItemWidth={280} ref={ref as any} rows={rows} {...props} />
+        )) as any,
         }}
         customScrollParent={scrollParent}
         data={data}

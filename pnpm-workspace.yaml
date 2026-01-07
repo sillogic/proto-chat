@@ -3,3 +3,4 @@ packages:
   - '.'
   - 'e2e'
   - 'apps/desktop/src/main'
+  - 'admin-system/**'

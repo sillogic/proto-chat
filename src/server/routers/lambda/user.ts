@@ -142,6 +142,7 @@ export const userRouter = router({
       lastName: state.lastName,
       preference: state.preference as UserPreference,
       settings: state.settings,
+      subscriptionPlan: state.subscriptionPlan,
       userId: ctx.userId,
       username: state.username,
     } satisfies UserInitializationState;

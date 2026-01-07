@@ -1,4 +1,3 @@
-import type { IconType } from '@lobehub/icons';
 import { createStyles } from 'antd-style';
 import { forwardRef, memo } from 'react';
 import { Trans } from 'react-i18next';
@@ -23,7 +22,7 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 }));
 
-const LineIcon: IconType = forwardRef(({ size = 130, style, ...rest }, ref) => (
+const LineIcon = forwardRef<SVGSVGElement, any>(({ size = 130, style, ...rest }, ref) => (
   <svg
     fill="currentColor"
     fillRule="evenodd"

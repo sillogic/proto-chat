@@ -33,6 +33,19 @@ const PlanTag = memo<PlanTagProps>(({ type = PlanType.Preview }) => {
     );
   }
 
+  const isKnownPlan = Object.values(Plans).includes(type as Plans);
+
+  if (!isKnownPlan) {
+    return (
+      <Tag
+        bordered={false}
+        style={{ background: theme.colorFill, borderRadius: 12, cursor: 'pointer' }}
+      >
+        {type}
+      </Tag>
+    );
+  }
+
   const isFree = type === Plans.Free;
 
   return (
@@ -44,7 +57,7 @@ const PlanTag = memo<PlanTagProps>(({ type = PlanType.Preview }) => {
         isFree ? '/subscription/plans' : '/subscription/usage',
       )}
     >
-      <PlanIcon plan={type} size={22} type={'tag'} />
+      <PlanIcon plan={type as Plans} size={22} type={'tag'} />
     </Link>
   );
 });

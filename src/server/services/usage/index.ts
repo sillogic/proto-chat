@@ -1,11 +1,9 @@
 import dayjs from 'dayjs';
 import debug from 'debug';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte, lte } from 'drizzle-orm';
 
-import { messages } from '@/database/schemas';
+import { messages, userTransactions } from '@/database/schemas';
 import { LobeChatDatabase } from '@/database/type';
-import { genRangeWhere, genWhere } from '@/database/utils/genWhere';
-import { MessageMetadata } from '@/types/message';
 import { UsageLog, UsageRecordItem } from '@/types/usage/usageRecord';
 import { formatDate } from '@/utils/format';
 
@@ -27,41 +25,39 @@ export class UsageRecordService {
   findUsageSince = async (startAt: Date): Promise<UsageRecordItem[]> => {
     const spends = await this.db
       .select({
-        createdAt: messages.createdAt,
-        id: messages.id,
-        metadata: messages.metadata,
-        model: messages.model,
-        provider: messages.provider,
-        role: messages.role,
-        updatedAt: messages.createdAt,
-        userId: messages.userId,
+        message: messages,
+        transaction: userTransactions,
       })
-      .from(messages)
+      .from(userTransactions)
+      .leftJoin(messages, eq(userTransactions.refId, messages.id))
       .where(
-        genWhere([
-          eq(messages.userId, this.userId),
-          eq(messages.role, 'assistant'),
-          genRangeWhere([startAt.toISOString(), new Date().toISOString()], messages.createdAt, (date) =>
-            date.toDate(),
-          ),
-        ]),
+        and(
+          eq(userTransactions.userId, this.userId),
+          eq(userTransactions.type, 'CONSUMPTION'),
+          gte(userTransactions.createdAt, startAt),
+        ),
       )
-      .orderBy(desc(messages.createdAt));
+      .orderBy(desc(userTransactions.createdAt));
 
-    return spends.map((spend) => {
-      const metadata = spend.metadata as MessageMetadata;
+    return spends.map(({ transaction: spend, message: m }) => {
+      const metadata = (spend.metadata as any) || {};
+      const msgMetadata = (m?.metadata as any) || {};
+
+      const model = metadata.model || m?.model || '-';
+      const provider = metadata.provider || m?.provider || '-';
+      const inputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
+      const outputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
+
       return {
         createdAt: spend.createdAt,
         id: spend.id,
         metadata: spend.metadata,
-        model: spend.model,
-        provider: spend.provider,
-        spend: metadata?.cost || 0,
-        totalInputTokens: metadata?.totalInputTokens || 0,
-        totalOutputTokens: metadata?.totalOutputTokens || 0,
-        totalTokens: (metadata?.totalInputTokens || 0) + (metadata?.totalOutputTokens || 0),
-        tps: metadata?.tps || 0,
-        ttft: metadata?.ttft || 0,
+        model,
+        provider,
+        spend: Math.abs(Number(spend.amount)),
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
+        totalTokens: inputTokens + outputTokens,
         type: 'chat',
         updatedAt: spend.createdAt,
         userId: spend.userId,
@@ -76,59 +72,54 @@ export class UsageRecordService {
    */
   findByMonth = async (mo?: string): Promise<UsageRecordItem[]> => {
     // 设置 startAt 和 endAt
-    let startAt: string;
-    let endAt: string;
+    let startAt: Date;
+    let endAt: Date;
     if (mo) {
       // mo 格式: "YYYY-MM"
-      startAt = dayjs(mo, 'YYYY-MM').startOf('month').format('YYYY-MM-DD');
-      endAt = dayjs(mo, 'YYYY-MM').endOf('month').format('YYYY-MM-DD');
+      startAt = dayjs(mo, 'YYYY-MM').startOf('month').toDate();
+      endAt = dayjs(mo, 'YYYY-MM').endOf('month').toDate();
     } else {
-      startAt = dayjs().startOf('month').format('YYYY-MM-DD');
-      endAt = dayjs().endOf('month').format('YYYY-MM-DD');
+      startAt = dayjs().startOf('month').toDate();
+      endAt = dayjs().endOf('month').toDate();
     }
-
-    // TODO: To extend to support other features
-    // - Functionality:
-    //  - More type of usage, e.g. image generation, file processing, summary, search engine.
-    //  - More dimension for analysis, e.g. relational analysis.
-    // - Performance: Computing asynchronously for performance.
-    // For now, we only support chat messages for normal users for PoC.
 
     const spends = await this.db
       .select({
-        createdAt: messages.createdAt,
-        id: messages.id,
-        metadata: messages.metadata,
-        model: messages.model,
-        provider: messages.provider,
-        role: messages.role,
-        updatedAt: messages.createdAt,
-        userId: messages.userId,
+        message: messages,
+        transaction: userTransactions,
       })
-      .from(messages)
+      .from(userTransactions)
+      .leftJoin(messages, eq(userTransactions.refId, messages.id))
       .where(
-        genWhere([
-          eq(messages.userId, this.userId),
-          eq(messages.role, 'assistant'),
-          genRangeWhere([startAt, endAt], messages.createdAt, (date) => date.toDate()),
-        ]),
+        and(
+          eq(userTransactions.userId, this.userId),
+          eq(userTransactions.type, 'CONSUMPTION'),
+          gte(userTransactions.createdAt, startAt),
+          lte(userTransactions.createdAt, endAt),
+        ),
       )
-      .orderBy(desc(messages.createdAt));
-    return spends.map((spend) => {
-      const metadata = spend.metadata as MessageMetadata;
+      .orderBy(desc(userTransactions.createdAt));
+
+    return spends.map(({ transaction: spend, message: m }) => {
+      const metadata = (spend.metadata as any) || {};
+      const msgMetadata = (m?.metadata as any) || {};
+
+      const model = metadata.model || m?.model || '-';
+      const provider = metadata.provider || m?.provider || '-';
+      const inputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
+      const outputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
+
       return {
         createdAt: spend.createdAt,
         id: spend.id,
         metadata: spend.metadata,
-        model: spend.model,
-        provider: spend.provider,
-        spend: metadata?.cost || 0, // Messages do not have a direct cost associated
-        totalInputTokens: metadata?.totalInputTokens || 0,
-        totalOutputTokens: metadata?.totalOutputTokens || 0,
-        totalTokens: (metadata?.totalInputTokens || 0) + (metadata?.totalOutputTokens || 0),
-        tps: metadata?.tps || 0,
-        ttft: metadata?.ttft || 0,
-        type: 'chat', // Default to 'chat' for messages
+        model,
+        provider,
+        spend: Math.abs(Number(spend.amount)),
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        type: 'chat',
         updatedAt: spend.createdAt,
         userId: spend.userId,
       } as UsageRecordItem;

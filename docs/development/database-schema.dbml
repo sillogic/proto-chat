@@ -1069,14 +1069,19 @@ table sessions {
 
 table model_pricings {
   id text [pk, not null]
-  input_price "numeric(10, 6)" [default: '0']
+  input_price "numeric(15, 6)" [not null, default: '0']
   model text [not null]
-  output_price "numeric(10, 6)" [default: '0']
-  per_request_price "numeric(10, 6)" [default: '0']
+  output_price "numeric(15, 6)" [not null, default: '0']
+  per_request_price "numeric(15, 6)" [not null, default: '0']
   provider text [not null]
+  memo text
   accessed_at "timestamp with time zone" [not null, default: `now()`]
   created_at "timestamp with time zone" [not null, default: `now()`]
   updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    (model, provider) [name: 'model_provider_idx', unique]
+  }
 }
 
 table subscription_plans {
@@ -1229,23 +1234,20 @@ table users {
 
 table user_extensions {
   accessed_at timestamp [default: `now()`]
-  clerk_created_at timestamp
   admin_notes text
-  current_api_calls_used integer [default: 0]
+  clerk_created_at timestamp
   created_at timestamp [not null, default: `now()`]
   current_plan text [default: 'free']
-  current_tokens_used integer [default: 0]
   features jsonb [not null, default: `{}`]
   id text [pk, not null, default: `gen_random_uuid()`]
   interests text[]
   is_onboarded boolean [default: false]
   is_suspended boolean [default: false]
   last_usage_reset timestamp [default: `now()`]
-  monthly_api_calls_limit integer [default: 0]
-  monthly_storage_limit integer [default: 1024]
-  monthly_token_limit integer [default: 0]
+  next_plan_id text
   onboarding jsonb
   plan_expires_at timestamp
+  plan_id text
   preference jsonb
   suspend_reason text
   suspended_at timestamp
@@ -1258,18 +1260,20 @@ table user_extensions {
 }
 
 table user_subscription_history {
-  api_calls_limit integer [default: 0]
+  auto_renew boolean [not null, default: true]
   created_at timestamp [not null, default: `now()`]
   ended_at timestamp
   features jsonb [not null, default: `{}`]
   id text [pk, not null, default: `gen_random_uuid()`]
   is_active boolean [not null, default: true]
   payment_method text
+  plan_id text
   plan_name text [not null]
   plan_type text [not null]
   price integer [default: 0]
+  slug text
   started_at timestamp [not null, default: `now()`]
-  token_limit integer [default: 0]
+  status text [not null, default: 'active']
   transaction_id text
   user_id text [not null]
 }

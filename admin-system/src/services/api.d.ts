@@ -49,6 +49,9 @@ export interface User {
   full_name?: string;
   avatar?: string;
   planType: string;
+  plan_name?: string;
+  credit_balance?: string | number;
+  nextPlanId?: string;
   monthlyTokenLimit: number | string;
   monthlyApiCallsLimit: number | string;
   monthlyStorageLimit: number | string;
@@ -85,11 +88,10 @@ export interface UserListResponse {
 // 更新用户套餐参数
 export interface UpdateUserPlanParams {
   userId: string;
-  planType: string;
-  monthlyTokenLimit?: number;
-  monthlyApiCallsLimit?: number;
-  monthlyStorageLimit?: number;
+  planId?: string;
+  currentPlan?: string;
   features?: Record<string, any>;
+  planExpiresAt?: string;
 }
 
 // 仪表盘统计数据

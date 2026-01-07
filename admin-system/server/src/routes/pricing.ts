@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import { pricingService } from '../services/pricing-service';
+import { idGenerator } from '../utils/id-generator';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 router.use(authenticateToken);
 
@@ -17,12 +18,24 @@ router.get('/', requirePermission('plans.read'), async (req, res) => {
     }
 });
 
+// POST /api/admin/models/pricing/sync
+router.post('/sync', requirePermission('plans.write'), async (req, res) => {
+    try {
+        const result = await pricingService.syncWithModelBank();
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Sync pricings error:', error);
+        res.status(500).json({ success: false, message: 'Failed to sync pricings' });
+    }
+});
+
 // POST /api/admin/models/pricing
 router.post('/', requirePermission('plans.write'), async (req, res) => {
     try {
+        const { id, ...data } = req.body;
         const newPricing = await pricingService.createPricing({
-            id: crypto.randomUUID(),
-            ...req.body
+            id: id || idGenerator('mp'),
+            ...data
         });
         res.json({ success: true, data: newPricing });
     } catch (error) {
