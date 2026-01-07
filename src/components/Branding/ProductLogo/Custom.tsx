@@ -9,7 +9,7 @@ import { BRANDING_LOGO_URL, BRANDING_NAME } from '@/const/branding';
 const useStyles = createStyles(({ css }) => {
   return {
     extraTitle: css`
-      font-weight: 300;
+      font-weight: 400;
       white-space: nowrap;
     `,
   };
@@ -116,7 +116,7 @@ const CustomLogo = memo<LobeChatProps>(({ extra, size = 32, className, style, ty
   return (
     <Flexbox align={'center'} className={className} flex={'none'} horizontal {...rest}>
       {logoComponent}
-      <Divider size={extraSize} style={{ color: theme.colorFill }} />
+      <Divider size={extraSize} style={{ color: theme.colorFill, marginInline: -6 }} />
       <div className={styles.extraTitle} style={{ fontSize: extraSize }}>
         {extra}
       </div>
