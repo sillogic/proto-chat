@@ -6,7 +6,7 @@ import { adminUsers } from '../db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requirePermission, AuthenticatedRequest } from '../middleware/auth';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // 创建管理员用户的验证schema
 const createAdminSchema = z.object({

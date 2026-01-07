@@ -2,6 +2,7 @@ import { db } from '../config/database';
 import { modelPricings, NewModelPricing } from '../db/subscription-schema';
 import { aiProviders } from '../db/ai-providers-schema';
 import { eq, desc, and } from 'drizzle-orm';
+// @ts-ignore - workspace package with type issues
 import { LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
 import { idGenerator } from '../utils/id-generator';
 

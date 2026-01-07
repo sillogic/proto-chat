@@ -3,7 +3,7 @@ import { authenticateToken, requirePermission, AuthenticatedRequest } from '../m
 import { subscriptionService } from '../services/subscription-service';
 import { z } from 'zod';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 router.use(authenticateToken);
 

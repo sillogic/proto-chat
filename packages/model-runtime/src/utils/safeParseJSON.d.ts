@@ -1,0 +1,2 @@
+export declare const safeParseJSON: <T = Record<string, any>>(text?: string) => T | undefined;
+//# sourceMappingURL=safeParseJSON.d.ts.map

@@ -4,7 +4,7 @@ import { users } from '../db/schema';
 import { desc, and, count, gte, lte, sql, ne } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // 所有路由都需要认证
 router.use(authenticateToken);

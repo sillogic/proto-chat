@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 import { usageService } from '../services/usage-service';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // 所有路由都需要认证
 router.use(authenticateToken);

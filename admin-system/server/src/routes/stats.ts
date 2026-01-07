@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 import { usageService } from '../services/usage-service';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 router.use(authenticateToken);
 
