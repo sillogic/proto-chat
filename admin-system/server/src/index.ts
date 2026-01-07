@@ -21,7 +21,7 @@ import process from 'node:process';
 // 加载环境变量 - 必须在其他 import 之前
 dotenv.config({ override: true });
 
-const app = express();
+const app: express.Application = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 8002;
 

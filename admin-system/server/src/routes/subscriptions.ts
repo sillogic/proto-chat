@@ -1,13 +1,13 @@
 import express from 'express';
 import { db } from '../config/database';
 
-import { users, users } from '../db/schema';
+import { users } from '../db/schema';
 
 import { userTransactions } from '../db/credit-schema';
 import { desc, eq, and, sql, or, ilike } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 router.use(authenticateToken);
 

@@ -7,7 +7,7 @@ import { adminUsers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/auth';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 const JWT_SECRET_LOCAL = JWT_SECRET;
 const JWT_EXPIRES_IN_LOCAL = JWT_EXPIRES_IN;

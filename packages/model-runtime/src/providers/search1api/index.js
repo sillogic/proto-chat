@@ -1,0 +1,86 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LobeSearch1API = exports.params = void 0;
+const model_bank_1 = require("model-bank");
+const openaiCompatibleFactory_1 = require("../../core/openaiCompatibleFactory");
+exports.params = {
+    baseURL: 'https://api.search1api.com/v1',
+    chatCompletion: {
+        handlePayload: (payload) => {
+            const { presence_penalty, frequency_penalty, stream = true, temperature, ...res } = payload;
+            let param;
+            if (presence_penalty !== 0) {
+                param = { presence_penalty };
+            }
+            else {
+                const defaultFrequencyPenalty = 1;
+                param = { frequency_penalty: frequency_penalty || defaultFrequencyPenalty };
+            }
+            return {
+                ...res,
+                ...param,
+                stream,
+                temperature: temperature !== undefined && temperature >= 2 ? undefined : temperature,
+            };
+        },
+    },
+    debug: {
+        chatCompletion: () => process.env.DEBUG_SEARCH1API_CHAT_COMPLETION === '1',
+    },
+    models: async ({ client }) => {
+        const { LOBE_DEFAULT_MODEL_LIST } = await Promise.resolve().then(() => __importStar(require('model-bank')));
+        const modelsPage = (await client.models.list());
+        const modelList = modelsPage.data;
+        return modelList
+            .filter((model) => model && model.id)
+            .map((model) => {
+            const knownModel = LOBE_DEFAULT_MODEL_LIST.find((m) => model.id.toLowerCase() === m.id.toLowerCase());
+            return {
+                contextWindowTokens: knownModel?.contextWindowTokens ?? undefined,
+                displayName: knownModel?.displayName ?? undefined,
+                enabled: knownModel?.enabled ?? false,
+                functionCall: knownModel?.abilities?.functionCall || false,
+                id: model.id,
+                reasoning: knownModel?.abilities?.reasoning || false,
+                vision: knownModel?.abilities?.vision || false,
+            };
+        })
+            .filter(Boolean);
+    },
+    provider: model_bank_1.ModelProvider.Search1API,
+};
+exports.LobeSearch1API = (0, openaiCompatibleFactory_1.createOpenAICompatibleRuntime)(exports.params);
+//# sourceMappingURL=index.js.map

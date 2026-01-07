@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import { KeyVaultsGateKeeper } from '../utils/encryption';
 import { z } from 'zod';
+// @ts-ignore - workspace package with type issues
 import { ModelRuntime } from '@lobechat/model-runtime';
 
 const router: Router = express.Router();
