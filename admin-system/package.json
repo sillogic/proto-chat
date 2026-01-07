@@ -45,7 +45,13 @@
     "classnames": "^2.5.1",
     "dayjs": "^1.11.13",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "model-bank": "workspace:*",
+    "@lobechat/model-runtime": "workspace:*",
+    "@lobehub/icons": "^2.45.0",
+    "@lobehub/ui": "^2.22.0",
+    "lucide-react": "^0.471.0",
+    "react-layout-kit": "^2.0.1"
   },
   "devDependencies": {
     "@ant-design/pro-cli": "^3.3.0",

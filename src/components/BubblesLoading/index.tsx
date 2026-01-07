@@ -1,4 +1,3 @@
-import type { IconType } from '@lobehub/icons';
 import { css, cx, useTheme } from 'antd-style';
 import { forwardRef, memo } from 'react';
 import { Center } from 'react-layout-kit';
@@ -35,7 +34,7 @@ const container = css`
   }
 `;
 
-const BubblesLoadingIcon: IconType = forwardRef(
+const BubblesLoadingIcon = forwardRef<SVGSVGElement, any>(
   ({ size = '1em', style, className, ...rest }, ref) => {
     return (
       <svg

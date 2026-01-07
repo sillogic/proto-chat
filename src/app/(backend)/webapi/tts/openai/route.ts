@@ -1,6 +1,7 @@
 import { OpenAITTSPayload } from '@lobehub/tts';
 import { createOpenaiAudioSpeech } from '@lobehub/tts/server';
 
+import { checkAuth } from '@/app/(backend)/middleware/auth';
 import { createBizOpenAI } from '@/app/(backend)/_deprecated/createBizOpenAI';
 import { createSpeechResponse } from '@/server/utils/createSpeechResponse';
 
@@ -24,7 +25,8 @@ export const preferredRegion = [
   'syd1',
 ];
 
-export const POST = async (req: Request) => {
+
+export const POST = checkAuth(async (req) => {
   const payload = (await req.json()) as OpenAITTSPayload;
 
   // need to be refactored with jwt auth mode
@@ -47,4 +49,4 @@ export const POST = async (req: Request) => {
       },
     },
   );
-};
+});

@@ -5,6 +5,8 @@ import postgres from 'postgres';
 import * as schema from '../db/schema';
 import * as userExtensionsSchema from '../db/user-extensions-schema';
 import * as aiProvidersSchema from '../db/ai-providers-schema';
+import * as subscriptionSchema from '../db/subscription-schema';
+import * as creditSchema from '../db/credit-schema';
 
 dotenv.config({ override: true });
 
@@ -23,7 +25,13 @@ const client = postgres(connectionString, {
   max: 10,
 });
 export const db = drizzle(client, {
-  schema: { ...schema, ...userExtensionsSchema, ...aiProvidersSchema }
+  schema: {
+    ...schema,
+    ...userExtensionsSchema,
+    ...aiProvidersSchema,
+    ...subscriptionSchema,
+    ...creditSchema
+  }
 });
 
 // 检查并创建表的函数

@@ -125,5 +125,33 @@ export const checkAuth =
       return createErrorResponse(errorType, { error, ...res, provider: params?.provider });
     }
 
+    // 2. check credit balance
+    if (jwtPayload.userId !== 'DEV_USER') {
+      try {
+        const { getServerDB } = await import('@/database/index');
+        const { CreditService } = await import('@/server/services/credit');
+        const { AgentRuntimeErrorType } = await import('@lobechat/model-runtime');
+        const db = await getServerDB();
+        const creditService = new CreditService(db, jwtPayload.userId as string);
+
+        if (!(await creditService.hasEnoughCredits())) {
+          const params = await options.params;
+          return createErrorResponse(AgentRuntimeErrorType.InsufficientQuota as any, {
+            message: 'Insufficient credits',
+            provider: params?.provider,
+          });
+        }
+      } catch (e) {
+        console.error('Credit check error:', e);
+        // If credit check fails due to DB issue, we might want to log but maybe allow or block?
+        // Blocking is safer for the business.
+        const params = await options.params;
+        return createErrorResponse(ChatErrorType.InternalServerError, {
+          error: e,
+          provider: params?.provider,
+        });
+      }
+    }
+
     return handler(clonedReq, { ...options, jwtPayload });
   };

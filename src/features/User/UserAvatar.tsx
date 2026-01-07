@@ -48,7 +48,7 @@ export interface UserAvatarProps extends AvatarProps {
   clickable?: boolean;
 }
 
-const UserAvatar = forwardRef<HTMLDivElement, UserAvatarProps>(
+const UserAvatar = forwardRef<any, UserAvatarProps>(
   ({ size = 40, background, clickable, className, style, ...rest }, ref) => {
     const { styles, cx } = useStyles();
     const [avatar, username] = useUserStore((s) => [

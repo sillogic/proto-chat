@@ -10,6 +10,8 @@ const { Text } = Typography;
 interface SubscriptionRecord {
   id: string;
   userId: string;
+  fullName?: string;
+  email?: string;
   amount: string;
   type: string;
   category: string;
@@ -31,15 +33,24 @@ const SubscriptionRecords: React.FC = () => {
     {
       title: '关联用户',
       dataIndex: 'userId',
-      copyable: true,
-      ellipsis: true,
-      width: 200,
-      render: (dom) => (
-        <Space>
-          <UserOutlined style={{ color: '#1890ff' }} />
-          <Text copyable>{dom}</Text>
-        </Space>
-      ),
+      width: 220,
+      render: (_, record) => {
+        const displayName = record.fullName || record.email || record.userId;
+        return (
+          <Space direction="vertical" size={0}>
+            <Space>
+              <UserOutlined style={{ color: '#1890ff' }} />
+              <Text strong>{displayName}</Text>
+            </Space>
+            {record.fullName && record.email && (
+               <Text type="secondary" style={{ fontSize: '11px' }}>{record.email}</Text>
+            )}
+            {displayName !== record.userId && (
+               <Text type="secondary" style={{ fontSize: '10px' }}>ID: {record.userId}</Text>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: '订阅套餐',

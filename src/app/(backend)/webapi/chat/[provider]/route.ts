@@ -16,8 +16,9 @@ export const maxDuration = 300;
 export const POST = checkAuth(async (req: Request, { params, jwtPayload, createRuntime }) => {
   const provider = (await params)!.provider!;
 
+  // ============  1. init services  ============ //
+
   try {
-    // ============  1. init chat model   ============ //
     let modelRuntime: ModelRuntime;
     if (createRuntime) {
       modelRuntime = createRuntime(jwtPayload);

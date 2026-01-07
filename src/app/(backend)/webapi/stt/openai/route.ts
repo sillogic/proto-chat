@@ -1,7 +1,10 @@
 import { OpenAISTTPayload } from '@lobehub/tts';
 import { createOpenaiAudioTranscriptions } from '@lobehub/tts/server';
 
+import { checkAuth } from '@/app/(backend)/middleware/auth';
 import { createBizOpenAI } from '@/app/(backend)/_deprecated/createBizOpenAI';
+
+
 
 export const preferredRegion = [
   'arn1',
@@ -23,7 +26,7 @@ export const preferredRegion = [
   'syd1',
 ];
 
-export const POST = async (req: Request) => {
+export const POST = checkAuth(async (req) => {
   const formData = await req.formData();
   const speechBlob = formData.get('speech') as Blob;
   const optionsString = formData.get('options') as string;
@@ -47,4 +50,4 @@ export const POST = async (req: Request) => {
       'content-type': 'application/json;charset=UTF-8',
     },
   });
-};
+});

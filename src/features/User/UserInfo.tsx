@@ -47,7 +47,7 @@ const UserInfo = memo<UserInfoProps>(({ avatarProps, onClick, ...rest }) => {
       {...rest}
     >
       <Flexbox align={'center'} gap={12} horizontal onClick={onClick}>
-        <UserAvatar background={theme.colorFill} size={48} {...avatarProps} />
+        <UserAvatar background={theme.colorFill} size={48} {...(avatarProps as any)} />
         <Flexbox flex={1} gap={6}>
           <div className={styles.nickname}>{nickname}</div>
           <div className={styles.username}>{username}</div>

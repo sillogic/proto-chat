@@ -1,7 +1,7 @@
 {
   "name": "@protochat/proto-chat",
   "version": "2.0.0-next.159",
-  "description": "Proto Chat - 为科研工作者打造的下一代 AI 交互平台，深度集成全球顶级 AI 大模型",
+  "description": "ProtoChat - 为科研工作者打造的下一代 AI 交互平台，深度集成全球顶级 AI 大模型",
   "keywords": [
     "framework",
     "chatbot",
@@ -25,7 +25,7 @@
     "url": ""
   },
   "license": "MIT",
-  "author": "Proto Chat <hello@protochat.ai>",
+  "author": "ProtoChat <hello@protochat.ai>",
   "sideEffects": false,
   "workspaces": [
     "packages/*",
@@ -424,7 +424,13 @@
       "@vercel/speed-insights"
     ],
     "overrides": {
-      "stylelint-config-clean-order": "7.0.0"
+      "stylelint-config-clean-order": "7.0.0",
+      "@types/react": "19.2.2",
+      "@types/react-dom": "19.2.2",
+      "next": "16.1.1",
+      "react": "19.2.3",
+      "react-dom": "19.2.3",
+      "@lobehub/ui": "2.22.0"
     }
   }
 }

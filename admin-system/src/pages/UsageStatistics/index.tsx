@@ -35,68 +35,142 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
     }
   );
 
-  const columns: any[] = [
+  const tokenColumns: any[] = [
     {
-      title: '模型',
-      dataIndex: 'model',
-      render: (_: any, record: any) => <Tag>{record.model}</Tag>,
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      valueType: 'dateTime',
+      width: 170,
+      render: (val: any) => <Text type="secondary" style={{ fontSize: '13px' }}>{val}</Text>,
     },
     {
       title: '类型',
       dataIndex: 'type',
-      render: (_: any, record: any) => <Tag color="blue">{record.type}</Tag>,
+      width: 120,
+      render: () => (
+        <Space size={4}>
+          <Tag bordered={false} color="blue" style={{ borderRadius: '4px', paddingInline: '8px' }}>
+             <Space size={4}>
+               <span role="img" aria-label="chat">💬</span>
+               <span>文本生成</span>
+             </Space>
+          </Tag>
+        </Space>
+      ),
     },
     {
-      title: '积分用量',
-      dataIndex: 'totalTokens',
+      title: '模型',
+      dataIndex: 'model',
+      width: 220,
       render: (_: any, record: any) => (
         <Space direction="vertical" size={0}>
-          <Text strong>{record.totalTokens}</Text>
-          <div style={{ fontSize: '11px', color: '#8c8c8c', marginBlockStart: -2 }}>
-            <span style={{ marginInlineEnd: 8 }}>Prompt: {record.totalInputTokens}</span>
-            <span>Completion: {record.totalOutputTokens}</span>
-          </div>
+          <Text strong style={{ fontSize: '14px' }}>{record.model}</Text>
+          <Text type="secondary" style={{ fontSize: '11px' }}>{record.provider?.toUpperCase()}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Token 用量',
+      dataIndex: 'totalTokens',
+      width: 200,
+      render: (_: any, record: any) => (
+        <Space size={8}>
+          <Text strong>{Number(record.totalTokens).toLocaleString()}</Text>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            = ↓ {record.totalInputTokens} + ↑ {record.totalOutputTokens}
+          </Text>
         </Space>
       ),
     },
     {
       title: '积分',
       dataIndex: 'credits',
-      render: (_: any, record: any) => (
-        <Text strong style={{ color: '#fa8c16' }}>{Number(record.credits || 0).toLocaleString()}</Text>
+      width: 100,
+      align: 'right',
+      render: (val: number) => (
+        <Text strong style={{ color: '#fa8c16' }}>{Number(val).toLocaleString()}</Text>
       ),
     },
     {
-      title: 'TPS',
-      dataIndex: 'tps',
-      render: (_: any, record: any) => (record.tps ? Number(record.tps).toFixed(2) : '-'),
+      title: '用时',
+      dataIndex: 'duration',
+      width: 100,
+      align: 'right',
+      render: (val: any) => (
+        <Text type="secondary">{val ? `${(Number(val) / 1000).toFixed(2)}s` : '-'}</Text>
+      ),
+    },
+  ];
+
+  const transactionColumns: any[] = [
+    {
+      title: '交易流水号',
+      dataIndex: 'id',
+      width: 150,
+      render: (id: string) => (
+        <Text copyable style={{ fontSize: '12px', color: '#8c8c8c' }}>{id}</Text>
+      ),
     },
     {
-      title: 'TTFT',
-      dataIndex: 'ttft',
-      render: (_: any, record: any) => (record.ttft ? `${Number(record.ttft).toFixed(2)}ms` : '-'),
+      title: '交易类别',
+      dataIndex: 'category',
+      width: 120,
+      render: (category: string) => {
+        const categoryMap: any = {
+          DEPOSIT: { label: '赠送/充值', color: 'green' },
+          CONSUMPTION: { label: '对话消费', color: 'orange' },
+          REFUND: { label: '退款', color: 'blue' },
+          ADJUSTMENT: { label: '人工调账', color: 'purple' },
+          RESET: { label: '周期重置', color: 'default' },
+        };
+        const item = categoryMap[category] || { label: category, color: 'default' };
+        return <Tag color={item.color}>{item.label}</Tag>;
+      },
     },
     {
-      title: '花费',
-      dataIndex: 'spend',
-      render: (_: any, record: any) => (record.spend ? `$${Number(record.spend).toFixed(6)}` : '-'),
+      title: '说明',
+      dataIndex: 'description',
+      ellipsis: true,
+      render: (desc: string) => <Text type="secondary" style={{ fontSize: '13px' }}>{desc}</Text>,
     },
     {
-      title: '创建时间',
+      title: '数值',
+      dataIndex: 'amount',
+      width: 120,
+      align: 'right',
+      render: (amount: string) => {
+        const val = parseFloat(amount);
+        return (
+          <Text strong style={{ color: val >= 0 ? '#52c41a' : '#ff4d4f' }}>
+            {val >= 0 ? '+' : ''}{Number(val).toLocaleString()}
+          </Text>
+        );
+      },
+    },
+    {
+      title: '变更后余额',
+      dataIndex: 'balanceAfter',
+      width: 120,
+      align: 'right',
+      render: (val: string) => <Text strong>{Number(val).toLocaleString()}</Text>,
+    },
+    {
+      title: '完成时间',
       dataIndex: 'createdAt',
+      width: 170,
       valueType: 'dateTime',
-      sorter: (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      render: (val: any) => <Text type="secondary" style={{ fontSize: '13px' }}>{val}</Text>,
     },
   ];
 
   return (
-    <div>
+    <div style={{ paddingBlock: '12px' }}>
       {showSelector && (
-        <Card style={{ marginBlockEnd: 24 }}>
+        <Card style={{ marginBlockEnd: 24, borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
           <div style={{ maxWidth: 400 }}>
             <ProFormSelect
               name="userId"
-              label="选择用户"
+              label="选择查看用户"
               request={async () => {
                 const res = await getUserList({ current: 1, pageSize: 100 });
                 const users = res.data?.users?.map((u: any) => ({
@@ -109,98 +183,130 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
                 onChange: (val) => setSelectedUserId(val),
                 value: selectedUserId,
               }}
-              placeholder="请选择要查看的用户"
+              placeholder="请输入邮箱或用户名搜索"
             />
           </div>
         </Card>
       )}
 
       {selectedUserId && stats && (
-        <>
-          <Row gutter={24} style={{ marginBlockEnd: 24 }}>
-            <Col span={24}>
-              <ProCard title="当前周期用量统计" headerBordered style={{ marginBlockEnd: 24 }}>
-                <div style={{ paddingBlock: "0", paddingInline: "16px" }}>
-                  <div style={{ marginBlockEnd: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}>
-                      <Space>
-                        <Tag color="cyan">计算积分用量</Tag>
-                        <Tooltip title="用于 AI 对话、文生图、语音合成的积分用量 (当前计费周期)">
-                           <QuestionCircleOutlined style={{ color: '#8c8c8c', cursor: 'help' }} />
-                        </Tooltip>
-                      </Space>
-                      <Text strong>
-                        {Number(stats.balance?.totalConsumed || 0).toLocaleString()} / {Number(stats.stats?.userExtension?.monthlyTokenLimit || 0).toLocaleString()} 已使用
-                      </Text>
-                    </div>
-                    <Progress 
-                      percent={Math.min(100, (Number(stats.balance?.totalConsumed || 0) / Math.max(1, Number(stats.stats?.userExtension?.monthlyTokenLimit || 0))) * 100)} 
-                      showInfo={false} 
-                      strokeColor="#1890ff"
-                    />
-                    <div style={{ marginBlockStart: 4 }}>
-                      <Text type="secondary">
-                        配额将于 {stats.stats?.resetCountdown?.nextResetDate || '-'} 重置
-                      </Text>
-                    </div>
+        <Space direction="vertical" size={24} style={{ display: 'flex' }}>
+          {/* Dashboard Summary */}
+          <Row gutter={24}>
+            <Col span={10}>
+              <ProCard 
+                title={<Space><span role="img" aria-label="credits">💎</span><span>计算积分额度</span></Space>} 
+                headerBordered 
+                style={{ borderRadius: '12px', height: '100%' }}
+                extra={<Tooltip title="包含对话、向量化、绘图等所有消耗。每周期重置一次。"><QuestionCircleOutlined /></Tooltip>}
+              >
+                <div style={{ paddingBlock: "8px" }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}>
+                    <Text type="secondary">本周期已消耗</Text>
+                    <Text strong style={{ fontSize: '18px' }}>
+                      {Number(stats.balance?.totalConsumed || 0).toLocaleString()} / {Number(stats.stats?.credits?.limit ?? stats.balance?.limit ?? 0).toLocaleString()}
+                    </Text>
                   </div>
-                </div>
-              </ProCard>
-
-              <ProCard title="存储用量" headerBordered>
-                <div style={{ paddingBlock: "0", paddingInline: "16px" }}>
-                  <div style={{ marginBlockEnd: 24 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}>
-                      <Space>
-                        <Tag color="blue">文件用量</Tag>
-                        <Tooltip title="文件存储用于存储文件、图片等数据">
-                           <QuestionCircleOutlined style={{ color: '#8c8c8c', cursor: 'help' }} />
-                        </Tooltip>
-                      </Space>
-                      <Text strong>
-                        {stats.stats?.files?.totalSizeMB < 0.1 ? `${stats.stats?.files?.totalSizeKB} KB` : `${stats.stats?.files?.totalSizeMB} MB`} / {stats.stats?.userExtension?.monthlyStorageLimit || 0} MB 已使用
-                      </Text>
-                    </div>
-                    <Progress 
-                      percent={Math.min(100, (Number(stats.stats?.files?.totalSizeMB || 0) / Math.max(1, Number(stats.stats?.userExtension?.monthlyStorageLimit || 1))) * 100)} 
-                      showInfo={false} 
-                      strokeColor="#52c41a"
-                    />
-                  </div>
-
-                  <div style={{ marginBlockEnd: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}>
-                      <Space>
-                        <Tag color="purple">向量存储</Tag>
-                        <Tooltip title="一页文档 (1000~1500 字符) 约生成 1 条向量。(使用 OpenAI Embeddings 进行估计，不同模型可能有所不同)">
-                           <QuestionCircleOutlined style={{ color: '#8c8c8c', cursor: 'help' }} />
-                        </Tooltip>
-                      </Space>
-                      <Text strong>
-                        {stats.stats?.vectors?.count || 0} / {stats.stats?.userExtension?.monthlyVectorLimit || 0} 已使用
-                      </Text>
-                    </div>
-                    <Progress 
-                      percent={Math.min(100, (Number(stats.stats?.vectors?.count || 0) / Math.max(1, Number(stats.stats?.userExtension?.monthlyVectorLimit || 1))) * 100)} 
-                      showInfo={false} 
-                      strokeColor="#722ed1"
-                    />
+                  <Progress 
+                    percent={Math.min(100, (Number(stats.balance?.totalConsumed || 0) / Math.max(1, Number(stats.stats?.credits?.limit ?? stats.balance?.limit ?? 0))) * 100)} 
+                    strokeColor={{ '0%': '#1890ff', '100%': '#36cfc9' }}
+                    strokeWidth={12}
+                    showInfo={false} 
+                  />
+                   <div style={{ marginBlockStart: 12, display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>下一重置日: {stats.stats?.resetCountdown?.nextResetDate || '-'}</Text>
+                    <Tag color="processing" bordered={false}>{stats.balance?.currentPlan || '免费版'}</Tag>
                   </div>
                 </div>
               </ProCard>
             </Col>
+            <Col span={14}>
+               <Row gutter={16}>
+                  <Col span={12}>
+                    <ProCard title="文件存储" headerBordered style={{ borderRadius: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Progress 
+                          type="circle" 
+                          size={60} 
+                          percent={Math.min(100, (Number(stats.stats?.files?.totalSizeMB || 0) / Math.max(1, Number(stats.stats?.files?.limit || 1))) * 100)} 
+                          format={p => `${p?.toFixed(0)}%`}
+                        />
+                        <div style={{ textAlign: 'right' }}>
+                          <Text strong style={{ fontSize: '16px' }}>{stats.stats?.files?.totalSizeMB < 0.1 ? `${stats.stats?.files?.totalSizeKB} KB` : `${stats.stats?.files?.totalSizeMB} MB`}</Text>
+                          <br />
+                          <Text type="secondary">上限 {stats.stats?.files?.limit} MB</Text>
+                        </div>
+                      </div>
+                    </ProCard>
+                  </Col>
+                  <Col span={12}>
+                    <ProCard title="向量存储" headerBordered style={{ borderRadius: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                         <Progress 
+                          type="circle" 
+                          size={60} 
+                          percent={Math.min(100, (Number(stats.stats?.vectors?.count || 0) / Math.max(1, Number(stats.stats?.vectors?.limit || 1))) * 100)} 
+                          strokeColor="#722ed1"
+                          format={p => `${p?.toFixed(0)}%`}
+                        />
+                         <div style={{ textAlign: 'right' }}>
+                          <Text strong style={{ fontSize: '16px' }}>{stats.stats?.vectors?.count || 0}</Text>
+                          <br />
+                          <Text type="secondary">上限 {stats.stats?.vectors?.limit} 条</Text>
+                        </div>
+                      </div>
+                    </ProCard>
+                  </Col>
+               </Row>
+            </Col>
           </Row>
 
-          <ProTable
-            headerTitle="使用历史明细 (全部)"
-            rowKey="id"
-            loading={loading}
-            dataSource={stats?.usage || []}
-            columns={columns}
-            search={false}
-            pagination={{ pageSize: 15 }}
-          />
-        </>
+          {/* Table 1: Detailed Consumption */}
+          <ProCard 
+            title={
+              <div style={{ paddingBlock: '8px' }}>
+                <Text strong style={{ fontSize: '16px' }}>计算积分使用明细</Text>
+                <div style={{ fontSize: '12px', color: '#8c8c8c', fontWeight: 'normal' }}>文本生成、向量化、文生图等计算积分使用明细</div>
+              </div>
+            }
+            headerBordered
+            style={{ borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}
+          >
+            <ProTable
+              rowKey="id"
+              loading={loading}
+              dataSource={stats?.usage || []}
+              columns={tokenColumns}
+              search={false}
+              ghost
+              pagination={{ pageSize: 5 }}
+              scroll={{ x: 'max-content' }}
+            />
+          </ProCard>
+
+          {/* Table 2: Account Transactions */}
+          <ProCard 
+            title={
+              <div style={{ paddingBlock: '8px' }}>
+                <Text strong style={{ fontSize: '16px' }}>账户流水记录</Text>
+                <div style={{ fontSize: '12px', color: '#8c8c8c', fontWeight: 'normal' }}>余额变更明细，包含充值、赠送、周期重置及系统扣费流水</div>
+              </div>
+            }
+            headerBordered
+            style={{ borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}
+          >
+            <ProTable
+              rowKey="id"
+              loading={loading}
+              dataSource={stats?.transactions || []}
+              columns={transactionColumns}
+              search={false}
+              ghost
+              pagination={{ pageSize: 5 }}
+              scroll={{ x: 'max-content' }}
+            />
+          </ProCard>
+        </Space>
       )}
     </div>
   );

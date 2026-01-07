@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router } from 'express';
 import { db } from '../config/database';
 import { aiProviders } from '../db/ai-providers-schema';
 import { users } from '../db/schema';
@@ -6,8 +6,9 @@ import { eq, and } from 'drizzle-orm';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import { KeyVaultsGateKeeper } from '../utils/encryption';
 import { z } from 'zod';
+import { ModelRuntime } from '@lobechat/model-runtime';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 const upsertProviderSchema = z.object({
     config: z.record(z.any()).optional(),
@@ -30,7 +31,6 @@ router.get('/', authenticateToken, requirePermission('system.admin'), async (req
             .where(eq(aiProviders.isGlobal, true));
 
         // 对 keyVaults 进行脱敏处理或解密（如果需要显示）
-        // 通常列表页不返回密钥，或者返回已加密的字符串
         const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
 
         const decryptedProviders = await Promise.all(
@@ -78,30 +78,42 @@ router.post('/', authenticateToken, requirePermission('system.admin'), async (re
             });
         }
 
+        // Fetch existing provider to merge settings/config if necessary
+        const existingProviders = await db
+            .select()
+            .from(aiProviders)
+            .where(and(eq(aiProviders.id, validation.data.id), eq(aiProviders.isGlobal, true)))
+            .limit(1);
+
+        const existing = existingProviders[0];
+
         const { id, name, enabled, fetchOnClient, logo, description, keyVaults, settings, config } = validation.data;
 
-        const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
-        const encryptedKeyVaults = keyVaults ? await gateKeeper.encrypt(JSON.stringify(keyVaults)) : null;
-
-        const values = {
-
-            config: config || {},
-
-
-            description,
-
-            // 全局配置使用固定的 userId
-            enabled,
-            fetchOnClient,
+        const values: any = {
             id,
             isGlobal: true,
-            keyVaults: encryptedKeyVaults,
-            logo,
-            name,
-            settings: settings || {},
-            updatedAt: new Date(),
             userId: 'system_admin',
+            updatedAt: new Date(),
         };
+
+        if (name !== undefined) values.name = name;
+        if (enabled !== undefined) values.enabled = enabled;
+        if (fetchOnClient !== undefined) values.fetchOnClient = fetchOnClient;
+        if (logo !== undefined) values.logo = logo;
+        if (description !== undefined) values.description = description;
+
+        if (keyVaults !== undefined) {
+            const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+            values.keyVaults = await gateKeeper.encrypt(JSON.stringify(keyVaults));
+        }
+
+        if (settings !== undefined) {
+            values.settings = { ...(existing?.settings as any || {}), ...settings };
+        }
+
+        if (config !== undefined) {
+            values.config = { ...(existing?.config as any || {}), ...config };
+        }
 
         // 确保 system_admin 用户存在
         const systemAdminExists = await db.select().from(users).where(eq(users.id, 'system_admin')).limit(1);
@@ -118,15 +130,16 @@ router.post('/', authenticateToken, requirePermission('system.admin'), async (re
             });
         }
 
-        await db.insert(aiProviders)
-            .values({
+        if (!existing) {
+            await db.insert(aiProviders).values({
                 ...values,
                 createdAt: new Date(),
-            })
-            .onConflictDoUpdate({
-                set: values,
-                target: [aiProviders.id, aiProviders.userId],
             });
+        } else {
+            await db.update(aiProviders)
+                .set(values)
+                .where(and(eq(aiProviders.id, id), eq(aiProviders.isGlobal, true)));
+        }
 
         return res.json({
             message: '全局供应商配置更新成功',
@@ -141,21 +154,69 @@ router.post('/', authenticateToken, requirePermission('system.admin'), async (re
     }
 });
 
-// DELETE /api/admin/ai-providers/:id - 删除全局供应商配置
-router.delete('/:id', authenticateToken, requirePermission('system.admin'), async (req, res) => {
+// POST /api/admin/ai-providers/check - 连通性测试
+router.post('/check', authenticateToken, requirePermission('system.admin'), async (req, res) => {
     try {
-        const { id } = req.params;
-        await db.delete(aiProviders)
-            .where(and(eq(aiProviders.id, id), eq(aiProviders.isGlobal, true)));
+        const { id, model, keyVaults: inputKeyVaults } = req.body;
+
+        if (!id || !model) {
+            return res.status(400).json({
+                message: '供应商 ID 和模型 ID 是必填项',
+                success: false,
+            });
+        }
+
+        let keyVaults = inputKeyVaults;
+
+        // 如果没有提供 keyVaults，尝试从数据库获取
+        if (!keyVaults) {
+            const provider = await db.select().from(aiProviders).where(eq(aiProviders.id, id)).limit(1);
+            if (provider.length > 0 && provider[0].keyVaults) {
+                const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+                const result = await gateKeeper.decrypt(provider[0].keyVaults);
+                if (result.wasAuthentic) {
+                    keyVaults = JSON.parse(result.plaintext);
+                }
+            }
+        }
+
+        if (!keyVaults || !keyVaults.apiKey) {
+            return res.status(400).json({
+                message: '未找到有效的 API Key 配置',
+                success: false,
+            });
+        }
+
+        const runtime = ModelRuntime.initializeWithProvider(id as any, {
+            apiKey: keyVaults.apiKey,
+            baseURL: keyVaults.proxyUrl || keyVaults.endpoint,
+        });
+
+        // 进行简单的对话测试
+        const response = await runtime.chat({
+            messages: [{ content: 'hello', role: 'user' }],
+            model: model,
+            stream: false,
+        });
+
+        if (response instanceof Response && !response.ok) {
+            const error = await response.json().catch(() => ({}));
+            return res.status(response.status).json({
+                error,
+                message: '连通性测试失败',
+                success: false,
+            });
+        }
 
         return res.json({
-            message: '全局供应商配置已删除',
+            message: '连通性测试通过',
             success: true,
         });
-    } catch (error) {
-        console.error('Delete global ai provider error:', error);
+    } catch (error: any) {
+        console.error('Connectivity check error:', error);
         return res.status(500).json({
-            message: '删除全局供应商配置失败',
+            error: error.message || error,
+            message: '连通性测试发生异常',
             success: false,
         });
     }

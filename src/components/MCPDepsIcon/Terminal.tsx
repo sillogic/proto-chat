@@ -1,14 +1,14 @@
 'use client';
 
-import type { IconType } from '@lobehub/icons';
-import { memo } from 'react';
+import { forwardRef, memo } from 'react';
 
-const Icon: IconType = memo(({ size = '1em', style, ...rest }) => {
+const Icon = memo(forwardRef<SVGSVGElement, any>(({ size = '1em', style, ...rest }, ref) => {
   return (
     <svg
       fill="currentColor"
       fillRule="evenodd"
       height={size}
+      ref={ref}
       style={{ flex: 'none', lineHeight: 1, ...style }}
       viewBox="0 0 24 24"
       width={size}
@@ -18,6 +18,6 @@ const Icon: IconType = memo(({ size = '1em', style, ...rest }) => {
       <path d="M7.293 14.293a1 1 0 101.414 1.414l2.5-2.5a1.707 1.707 0 000-2.414l-2.5-2.5a1 1 0 00-1.414 1.414L9.586 12l-2.293 2.293zM13 14a1 1 0 100 2h3a1 1 0 100-2h-3zm9-6.066V16.066c0 .886 0 1.65-.082 2.262-.088.655-.287 1.284-.797 1.793-.51.51-1.138.709-1.793.797-.612.082-1.376.082-2.262.082H6.934c-.886 0-1.65 0-2.262-.082-.655-.088-1.284-.287-1.793-.797-.51-.51-.709-1.138-.797-1.793C2 17.716 2 16.952 2 16.066V7.934c0-.886 0-1.65.082-2.262.088-.655.287-1.284.797-1.793.51-.51 1.138-.709 1.793-.797C5.284 3 6.048 3 6.934 3H17.066c.886 0 1.65 0 2.262.082.655.088 1.284.287 1.793.797.51.51.709 1.138.797 1.793C22 6.284 22 7.048 22 7.934z" />
     </svg>
   );
-});
+}));
 
 export default Icon;

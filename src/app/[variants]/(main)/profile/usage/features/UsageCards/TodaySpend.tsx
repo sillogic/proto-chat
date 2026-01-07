@@ -49,8 +49,7 @@ const TodaySpend = memo<UsageChartProps>(({ data, isLoading }) => {
       loading={isLoading}
       statistic={{
         description: <Statistic title={t('usage.cards.today.yesterday')} value={yesterday} />,
-        precision: 2,
-        prefix: '$',
+        precision: 0,
         value: today,
       }}
       title={

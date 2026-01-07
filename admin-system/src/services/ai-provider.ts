@@ -36,3 +36,11 @@ export async function deleteGlobalAiProvider(id: string) {
         method: 'DELETE',
     });
 }
+
+/** Check AI provider connectivity */
+export async function checkAiProvider(data: { id: string; model: string; keyVaults?: Record<string, any> }) {
+    return request<{ message?: string; success: boolean; error?: any }>('/api/admin/ai-providers/check', {
+        method: 'POST',
+        data,
+    });
+}

@@ -1,8 +1,7 @@
-import type { IconType } from '@lobehub/icons';
 import { cx, useTheme } from 'antd-style';
 import { forwardRef } from 'react';
 
-const StopLoadingIcon: IconType = forwardRef(({ size = 16, className, style, ...rest }, ref) => {
+const StopLoadingIcon = forwardRef<SVGSVGElement, any>(({ size = 16, className, style, ...rest }, ref) => {
   const theme = useTheme();
   return (
     <svg

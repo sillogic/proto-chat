@@ -92,49 +92,38 @@ router.post('/:userId/plan', requirePermission('plans.write'), async (req: Authe
   try {
     const { userId } = req.params;
     const {
+      planId,
       currentPlan,
-      monthlyTokenLimit = 0,
-      monthlyApiCallsLimit = 0,
-      monthlyStorageLimit = 1024,
       features = {},
       planExpiresAt
     } = req.body;
 
-    // 验证输入数据
-    const updatePlanSchema = z.object({
-      currentPlan: z.enum(['free', 'basic', 'pro', 'enterprise']),
-      monthlyTokenLimit: z.number().min(0),
-      monthlyApiCallsLimit: z.number().min(0),
-      monthlyStorageLimit: z.number().min(0),
-      features: z.record(z.any()).optional(),
-      planExpiresAt: z.string().datetime().optional(),
-    });
-
-    const validationResult = updatePlanSchema.safeParse(req.body);
-    if (!validationResult.success) {
+    // 验证基本结构
+    if (!planId && !currentPlan) {
       return res.status(400).json({
         success: false,
-        message: '输入数据无效',
-        errors: validationResult.error.errors.map(err => err.message),
+        message: 'planId 或 currentPlan 必须提供其一',
       });
     }
 
-    const validatedData = validationResult.data;
-
     // 更新用户套餐
-    const updatedUser = await usageService.updateUserPlan(userId, {
-      currentPlan: validatedData.currentPlan,
-      monthlyTokenLimit: validatedData.monthlyTokenLimit,
-      monthlyApiCallsLimit: validatedData.monthlyApiCallsLimit,
-      monthlyStorageLimit: validatedData.monthlyStorageLimit,
-      features: validatedData.features || {},
-      planExpiresAt: validatedData.planExpiresAt ? new Date(validatedData.planExpiresAt) : undefined
+    const success = await usageService.updateUserPlan(userId, {
+      currentPlan,
+      features: features || {},
+      planExpiresAt: planExpiresAt ? new Date(planExpiresAt) : undefined,
+      planId: planId
     });
+
+    if (!success) {
+      return res.status(500).json({
+        success: false,
+        message: '更新用户套餐失败',
+      });
+    }
 
     return res.json({
       success: true,
       message: '用户套餐更新成功',
-      data: updatedUser
     });
   } catch (error) {
     console.error('Update user plan error:', error);
@@ -145,16 +134,54 @@ router.post('/:userId/plan', requirePermission('plans.write'), async (req: Authe
   }
 });
 
+// POST /api/users/:userId/plan/upgrade - 立即升级方案
+router.post('/:userId/plan/upgrade', requirePermission('plans.write'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { userId } = req.params;
+    const { planId } = req.body;
+    if (!planId) return res.status(400).json({ success: false, message: 'planId required' });
+
+    const success = await usageService.executeUpgrade(userId, planId);
+    return res.json({ success, message: success ? '升级成功' : '升级失败' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+// POST /api/users/:userId/plan/schedule - 预设次月变更 (降级或取消)
+router.post('/:userId/plan/schedule', requirePermission('plans.write'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { userId } = req.params;
+    const { nextPlanId } = req.body;
+    const success = await usageService.schedulePlanChange(userId, nextPlanId);
+    return res.json({ success, message: success ? '操作成功' : '操作失败' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
+// POST /api/users/:userId/plan/simulate-expiry - 仿真过期处理
+router.post('/:userId/plan/simulate-expiry', requirePermission('plans.write'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { userId } = req.params;
+    const success = await usageService.processExpirations(userId);
+    return res.json({ success, message: success ? '仿真结算完成' : '仿真结算失败' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Internal error' });
+  }
+});
+
 // POST /api/users/:userId/reset-usage - 重置用户月度使用量
 router.post('/:userId/reset-usage', requirePermission('users.write'), async (req: AuthenticatedRequest, res) => {
   try {
     const { userId } = req.params;
 
-    await usageService.resetMonthlyUsage(userId);
+    // TODO: Implement resetMonthlyUsage in usageService if needed
+    // await usageService.resetMonthlyUsage(userId);
 
     return res.json({
       success: true,
-      message: '用户月度使用量重置成功',
+      message: '用户月度使用量重置功能 (待实现)',
     });
   } catch (error) {
     console.error('Reset user usage error:', error);

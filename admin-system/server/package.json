@@ -24,7 +24,9 @@
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^2.6.7",
     "postgres": "^3.4.0",
-    "zod": "^3.22.0"
+    "zod": "^3.22.0",
+    "model-bank": "workspace:*",
+    "@lobechat/model-runtime": "workspace:*"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",

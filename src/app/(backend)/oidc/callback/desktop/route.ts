@@ -3,7 +3,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 
 import { OAuthHandoffModel } from '@/database/models/oauthHandoff';
 import { serverDB } from '@/database/server';
-import { correctOIDCUrl } from '@/utils/server/correctOIDCUrl';
+import { correctOIDCUrl } from '@lobechat/utils/server';
 
 const log = debug('lobe-oidc:callback:desktop');
 
@@ -82,7 +82,7 @@ export const GET = async (req: NextRequest) => {
     log('Request x-forwarded-proto: %s', req.headers.get('x-forwarded-proto'));
     log('Constructed success URL: %s', successUrl.toString());
 
-    const correctedUrl = correctOIDCUrl(req, successUrl);
+    const correctedUrl = correctOIDCUrl(req as any, successUrl);
     log('Final redirect URL: %s', correctedUrl.toString());
 
     // cleanup expired

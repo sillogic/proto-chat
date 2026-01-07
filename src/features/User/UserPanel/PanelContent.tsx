@@ -13,6 +13,7 @@ import { authSelectors } from '@/store/user/selectors';
 import DataStatistics from '../DataStatistics';
 import UserInfo from '../UserInfo';
 import UserLoginOrSignup from '../UserLoginOrSignup';
+import CreditUsage from './CreditUsage';
 import LangButton from './LangButton';
 import ThemeButton from './ThemeButton';
 import { useMenu } from './useMenu';
@@ -42,7 +43,7 @@ const PanelContent = memo<{ closePopover: () => void }>(({ closePopover }) => {
       {isDesktop || isLoginWithAuth ? (
         <>
           <UserInfo avatarProps={{ clickable: false }} />
-
+          <CreditUsage />
           <Link style={{ color: 'inherit' }} to={'/profile/stats'}>
             <DataStatistics />
           </Link>

@@ -89,7 +89,6 @@ const useStyles = createStyles(({ css, token }) => ({
 
     background: linear-gradient(135deg, ${token.colorPrimary}, ${token.colorInfo});
     background-clip: text;
-    background-clip: text;
 
     -webkit-text-fill-color: transparent;
 

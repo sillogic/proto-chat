@@ -1,5 +1,8 @@
 import express from 'express';
 import { db } from '../config/database';
+
+import { users, users } from '../db/schema';
+
 import { userTransactions } from '../db/credit-schema';
 import { desc, eq, and, sql, or, ilike } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
@@ -29,14 +32,28 @@ router.get('/records', requirePermission('plans.read'), async (req: Authenticate
                 or(
                     ilike(userTransactions.userId, `%${search}%`),
                     ilike(userTransactions.description, `%${search}%`),
-                    ilike(userTransactions.category, `%${search}%`)
+                    ilike(userTransactions.category, `%${search}%`),
+                    ilike(users.fullName, `%${search}%`),
+                    ilike(users.email, `%${search}%`)
                 ) as any
             );
         }
 
         const records = await db
-            .select()
+            .select({
+                id: userTransactions.id,
+                userId: userTransactions.userId,
+                amount: userTransactions.amount,
+                type: userTransactions.type,
+                category: userTransactions.category,
+                description: userTransactions.description,
+                createdAt: userTransactions.createdAt,
+                metadata: userTransactions.metadata,
+                fullName: users.fullName,
+                email: users.email
+            })
             .from(userTransactions)
+            .leftJoin(users, eq(userTransactions.userId, users.id))
             .where(and(...whereConditions))
             .orderBy(desc(userTransactions.createdAt))
             .limit(limitNum)

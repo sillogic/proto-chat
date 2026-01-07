@@ -14,6 +14,7 @@ import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { keyVaults, serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { createAsyncCaller } from '@/server/routers/async/caller';
 import { FileService } from '@/server/services/file';
+import { UserUsageService } from '@/server/services/user/usageService';
 import {
   AsyncTaskError,
   AsyncTaskErrorType,
@@ -21,6 +22,8 @@ import {
   AsyncTaskType,
 } from '@/types/asyncTask';
 import { generateUniqueSeeds } from '@/utils/number';
+
+
 
 const log = debug('lobe-image:lambda');
 
@@ -33,8 +36,8 @@ function validateNoUrlsInConfig(obj: any, path: string = ''): void {
     if (obj.startsWith('http://') || obj.startsWith('https://')) {
       throw new Error(
         `Invalid configuration: Found full URL instead of key at ${path || 'root'}. ` +
-          `URL: "${obj.slice(0, 100)}${obj.length > 100 ? '...' : ''}". ` +
-          `All URLs must be converted to storage keys before database insertion.`,
+        `URL: "${obj.slice(0, 100)}${obj.length > 100 ? '...' : ''}". ` +
+        `All URLs must be converted to storage keys before database insertion.`,
       );
     }
   } else if (Array.isArray(obj)) {
@@ -55,17 +58,11 @@ const imageProcedure = authedProcedure
   .use(async (opts) => {
     const { ctx } = opts;
 
-    const { apiKey } = ctx.jwtPayload;
-    if (apiKey) {
-      log('API key found in jwtPayload: %s', apiKey);
-    } else {
-      log('No API key found in jwtPayload');
-    }
-
     return opts.next({
       ctx: {
         asyncTaskModel: new AsyncTaskModel(ctx.serverDB, ctx.userId),
         fileService: new FileService(ctx.serverDB, ctx.userId),
+        userUsageService: new UserUsageService(ctx.serverDB, ctx.userId),
       },
     });
   });
@@ -91,7 +88,11 @@ export type CreateImageServicePayload = z.infer<typeof createImageInputSchema>;
 
 export const imageRouter = router({
   createImage: imageProcedure.input(createImageInputSchema).mutation(async ({ input, ctx }) => {
-    const { userId, serverDB, asyncTaskModel, fileService } = ctx;
+    const { userId, serverDB, asyncTaskModel, fileService, userUsageService } = ctx;
+
+    // Check credit balance
+    await userUsageService.checkTokenLimit();
+
     const { generationTopicId, provider, model, imageNum, params } = input;
 
     log('Starting image creation process, input: %O', input);

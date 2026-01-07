@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     let finalRedirectUrl;
     try {
-      finalRedirectUrl = correctOIDCUrl(request, new URL(internalRedirectUrlString));
+      finalRedirectUrl = correctOIDCUrl(request as any, new URL(internalRedirectUrlString));
     } catch {
       finalRedirectUrl = new URL(internalRedirectUrlString);
       log('Warning: Could not parse redirect URL, using as-is: %s', internalRedirectUrlString);

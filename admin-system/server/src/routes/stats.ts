@@ -57,7 +57,7 @@ router.get('/', requirePermission('stats.read'), async (req: AuthenticatedReques
         // 2. Run all major stats queries in parallel
         const queries: any[] = [];
 
-        // Query A: Balance & Consumed
+        // Query A: Balance
         if (isGlobal) {
             queries.push(db.execute(sql`
               SELECT SUM(balance::numeric) as balance, SUM(total_purchased::numeric) as "totalPurchased"
@@ -65,40 +65,44 @@ router.get('/', requirePermission('stats.read'), async (req: AuthenticatedReques
               WHERE user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
             `));
         } else {
-            queries.push(Promise.all([
-                db.execute(sql`
-                  SELECT COALESCE(SUM(calc.credits), 0) as "totalConsumed"
-                  FROM (
-                      SELECT
-                          ( (COALESCE(m.metadata->>'totalInputTokens', '0'))::int / 1000000.0 * COALESCE(mp.input_price, 0)::numeric ) +
-                          ( (COALESCE(m.metadata->>'totalOutputTokens', '0'))::int / 1000000.0 * COALESCE(mp.output_price, 0)::numeric ) +
-                          COALESCE(mp.per_request_price, 0)::numeric as credits
-                      FROM messages m
-                      LEFT JOIN model_pricings mp ON m.model = mp.model AND m.provider = mp.provider
-                      WHERE m.user_id = ${userId}
-                      AND m.role = 'assistant'
-                      AND m.created_at >= ${startOfPeriodStr}
-                  ) calc
-                `),
-                db.execute(sql`
-                  SELECT balance, total_purchased as "totalPurchased"
-                  FROM user_balances
-                  WHERE user_id = ${userId}
-                `)
-            ]));
+            queries.push(db.execute(sql`
+              SELECT balance, total_purchased as "totalPurchased"
+              FROM user_balances
+              WHERE user_id = ${userId}
+            `));
         }
 
         // Query B: Transactions
         if (isGlobal) {
             queries.push(db.execute(sql`
-              SELECT * FROM user_transactions
+              SELECT 
+                id, 
+                amount, 
+                balance_after as "balanceAfter", 
+                category, 
+                description, 
+                ref_id as "refId", 
+                type, 
+                user_id as "userId", 
+                created_at as "createdAt"
+              FROM user_transactions
               WHERE user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
               ORDER BY created_at DESC
               LIMIT 20
             `));
         } else {
             queries.push(db.execute(sql`
-              SELECT * FROM user_transactions
+              SELECT 
+                id, 
+                amount, 
+                balance_after as "balanceAfter", 
+                category, 
+                description, 
+                ref_id as "refId", 
+                type, 
+                user_id as "userId", 
+                created_at as "createdAt"
+              FROM user_transactions
               WHERE user_id = ${userId}
               ORDER BY created_at DESC
               LIMIT 10
@@ -137,17 +141,21 @@ router.get('/', requirePermission('stats.read'), async (req: AuthenticatedReques
         const [balanceBatch, transactionsResult, usageStats, detailedUsage] = await Promise.all(queries);
 
         // Process Balance
-        let balance;
+        let balance: any;
         if (isGlobal) {
-            balance = balanceBatch[0] || { balance: '0.0000', totalPurchased: '0.0000' };
+            balance = (balanceBatch as any)[0] || { balance: '0.0000', totalPurchased: '0.0000' };
         } else {
-            const [consumedRes, balanceRes] = balanceBatch;
+            const balanceRes = balanceBatch as any;
+            const stats = usageStats as any;
+
             balance = {
                 ...(balanceRes[0] || { balance: '0.0000', totalPurchased: '0.0000' }),
-                totalConsumed: consumedRes[0]?.totalConsumed || '0'
+                currentPlan: stats?.credits?.planName || stats?.userExtension?.currentPlan,
+                isUnlimited: stats?.credits?.isUnlimited || false,
+                limit: stats?.credits?.limit || 0,
+                totalConsumed: stats?.credits?.totalConsumed || 0 // 核心变更：使用由交易流水计算出的权威数值
             };
         }
-
         // Post-process Detailed Usage
         const processedUsage = (detailedUsage as any[]).map((item: any) => {
             const inputPrice = parseFloat(item.inputPrice || '0');

@@ -1,7 +1,7 @@
 'use client';
 
 import { Icon, Segmented } from '@lobehub/ui';
-import { Col, DatePicker, DatePickerProps, Row } from 'antd';
+import { Col, DatePicker, DatePickerProps, Row, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { Brain, Codesandbox } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
@@ -13,7 +13,9 @@ import { usageService } from '@/services/usage';
 import { UsageLog } from '@/types/usage/usageRecord';
 
 import Welcome from '../stats/features/Welcome';
+import AccountSummary from './features/AccountSummary';
 import UsageCards from './features/UsageCards';
+import UsageConsumptionTable from './features/UsageConsumptionTable';
 import UsageTable from './features/UsageTable';
 import UsageTrends from './features/UsageTrends';
 
@@ -37,10 +39,15 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
 
   const [groupBy, setGroupBy] = useState<GroupBy>(GroupBy.Model);
   const [dateRange, setDateRange] = useState<dayjs.Dayjs>(dayjs(new Date()));
-  const [dateStrings, setDateStrings] = useState<string>();
+  const [dateStrings, setDateStrings] = useState<string>(dayjs().format('YYYY-MM'));
 
-  const { data, isLoading, mutate } = useClientDataSWR('usage-stat', async () =>
+  const { data, isLoading, mutate } = useClientDataSWR(['usage-stat', dateStrings], async () =>
     usageService.findAndGroupByDay(dateStrings),
+  );
+
+  const { data: statsData, isLoading: isStatsLoading } = useClientDataSWR(
+    ['account-statistics', dateStrings],
+    async () => usageService.getAccountStatistics({ mo: dateStrings }),
   );
 
   useEffect(() => {
@@ -70,7 +77,7 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
             )}
           </Col>
           <Col span={8}>
-            <Flexbox gap={16} horizontal>
+            <Flexbox gap={16} horizontal justify={'flex-end'}>
               <Segmented
                 onChange={(v) => setGroupBy(v as GroupBy)}
                 options={[
@@ -96,17 +103,40 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
         <UsageCards data={data} groupBy={groupBy} isLoading={isLoading} />
       </Flexbox>
       <Flexbox>
+        <AccountSummary data={statsData} isLoading={isStatsLoading} />
+      </Flexbox>
+      <Flexbox>
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <UsageTrends data={data} groupBy={groupBy} isLoading={isLoading} />
           </Col>
         </Row>
       </Flexbox>
-      <Row>
-        <Col span={24}>
+      <Flexbox gap={40}>
+        <Flexbox gap={16}>
+          <Flexbox gap={4}>
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              计算积分使用明细
+            </Typography.Title>
+            <Typography.Text style={{ fontSize: '12px' }} type="secondary">
+              文本生成、向量化、文生图等计算积分使用明细
+            </Typography.Text>
+          </Flexbox>
+          <UsageConsumptionTable data={data} groupBy={groupBy} isLoading={isLoading} />
+        </Flexbox>
+
+        <Flexbox gap={16}>
+          <Flexbox gap={4}>
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              账户流水记录
+            </Typography.Title>
+            <Typography.Text style={{ fontSize: '12px' }} type="secondary">
+              余额变更明细，包含充值、赠送、周期重置及系统扣费流水
+            </Typography.Text>
+          </Flexbox>
           <UsageTable dateStrings={dateStrings} />
-        </Col>
-      </Row>
+        </Flexbox>
+      </Flexbox>
     </Flexbox>
   );
 });

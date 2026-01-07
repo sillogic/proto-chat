@@ -21,6 +21,7 @@ export const userExtensions = pgTable('user_extensions', {
 
   // Plan & Subscription
   currentPlan: text('current_plan').default('free'),
+  planId: text('plan_id'),
 
 
 
@@ -32,50 +33,22 @@ export const userExtensions = pgTable('user_extensions', {
   isSuspended: boolean('is_suspended').default(false),
 
   lastUsageReset: timestamp('last_usage_reset').defaultNow(),
-
-  monthlyApiCallsLimit: integer('monthly_api_calls_limit').default(0),
-
   userId: text('user_id').notNull().unique(),
-
-  // Current Usage counts
-  currentTokensUsed: integer('current_tokens_used').default(0),
-
-
   onboarding: jsonb('onboarding'),
-
-
-
-  currentApiCallsUsed: integer('current_api_calls_used').default(0),
 
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 
   // Feature Flags
   features: jsonb('features').default({}).notNull(),
 
-
-
-
   suspendReason: text('suspend_reason'),
-
-
-
-  monthlyStorageLimit: integer('monthly_storage_limit').default(1024),
-
-
 
   suspendedAt: timestamp('suspended_at'),
 
-
-
-
-  // Limits
-  monthlyTokenLimit: integer('monthly_token_limit').default(0),
-
-
-
   planExpiresAt: timestamp('plan_expires_at'),
 
-
+  // 下一个计费周期预设的方案 ID (用于中途降级或取消订阅)
+  nextPlanId: text('next_plan_id'),
 
   preference: jsonb('preference').default({}),
 }, (table) => ({
@@ -83,3 +56,36 @@ export const userExtensions = pgTable('user_extensions', {
 }));
 
 export type UserExtension = typeof userExtensions.$inferSelect;
+
+// 套餐历史记录表
+export const userSubscriptionHistory = pgTable('user_subscription_history', {
+  id: text('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: text('user_id').notNull(),
+
+  // Plan Info
+  planName: text('plan_name').notNull(),
+  planType: text('plan_type').notNull(), // individual, team
+  planId: text('plan_id'),
+  slug: text('slug').notNull(), // plan_free, plan_pro, etc.
+
+  // Configuration snapshots
+  features: jsonb('features').default({}).notNull(),
+
+  // Payment Info
+  price: integer('price').default(0), // Price in cents
+  paymentMethod: text('payment_method'),
+  transactionId: text('transaction_id'),
+
+  // Status & Time
+  isActive: boolean('is_active').default(true).notNull(),
+  status: text('status').default('active').notNull(), // active, canceled, expired, past_due, upgraded
+  autoRenew: boolean('auto_renew').default(true).notNull(),
+  startedAt: timestamp('started_at', { precision: 3 }).defaultNow().notNull(),
+  endedAt: timestamp('ended_at', { precision: 3 }),
+
+  createdAt: timestamp('created_at', { precision: 3 }).defaultNow().notNull(),
+});
+
+export type UserSubscriptionHistory = typeof userSubscriptionHistory.$inferSelect;

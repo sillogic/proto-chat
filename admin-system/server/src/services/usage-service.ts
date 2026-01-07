@@ -1,30 +1,67 @@
 import { db } from '../config/database';
-import { userExtensions, UserExtension } from '../db/user-extensions-schema';
-import { eq, sql } from 'drizzle-orm';
+import { userExtensions, UserExtension, userSubscriptionHistory } from '../db/user-extensions-schema';
+import { subscriptionPlans } from '../db/subscription-schema';
+import { userBalances, userTransactions } from '../db/credit-schema';
+import { eq, sql, and, or } from 'drizzle-orm';
 
 export class UsageService {
 
-  // 获取用户月度使用统计（基于现有业务表）
+  // 获取用户月度使用统计（基于关联的订阅计划动态获取限额）
   async getUserMonthlyUsage(userId: string) {
-    // 获取用户订阅信息以确定计费周期
     const userExt = await this.getUserExtension(userId);
+
+    // 1. 动态获取计划配置
+    // 优先通过 planId 关联，如果没有则 fallback 到 currentPlan (slug)
+    let planResult: any[] = [];
+    if (userExt?.planId) {
+      planResult = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, userExt.planId)).limit(1);
+    }
+
+    // 如果没有 planId 或没搜到，尝试用 slug
+    if (planResult.length === 0) {
+      planResult = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, userExt?.currentPlan || 'free')).limit(1);
+    }
+
+    const plan = planResult[0];
+
+    // Detailed logging to debug plan discovery
+    console.log(`[UsageService] getUserMonthlyUsage - userId: ${userId}`);
+    console.log(`[UsageService] userExt - planId: ${userExt?.planId}, currentPlan: ${userExt?.currentPlan}`);
+    console.log(`[UsageService] planFound: ${!!plan}, credits: ${plan?.credits}, slug: ${plan?.slug}`);
+
+    // 2. 获取当前余额
+    const balances = await db.select().from(userBalances).where(eq(userBalances.userId, userId)).limit(1);
+    const balance = balances[0];
+
     const startValue = userExt?.createdAt || new Date();
     const startDate = new Date(startValue);
     const now = new Date();
 
-    // Calculate the billing cycle start
-    let cycleStart = new Date(now.getFullYear(), now.getMonth(), startDate.getDate(), startDate.getHours(), startDate.getMinutes());
-    if (cycleStart > now) {
-      cycleStart.setMonth(cycleStart.getMonth() - 1);
+    // 计费周期逻辑：免费套餐固定每月1号，其它套餐按创建日期
+    let cycleStart: Date;
+    const isFreePlan = plan?.slug === 'plan_free' || plan?.slug === 'free' || (!plan && (userExt?.currentPlan || 'free') === 'free');
+
+    if (isFreePlan) {
+      cycleStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      if (cycleStart > now) {
+        cycleStart.setMonth(cycleStart.getMonth() - 1);
+      }
+    } else {
+      cycleStart = new Date(now.getFullYear(), now.getMonth(), startDate.getDate(), startDate.getHours(), startDate.getMinutes());
+      if (cycleStart > now) {
+        cycleStart.setMonth(cycleStart.getMonth() - 1);
+      }
     }
     const cycleStartStr = cycleStart.toISOString();
 
-    // Run all stats queries in parallel
-    const [messageStats, sessionStats, fileStats] = await Promise.all([
+    // 3. 执行用量查询 (并行)
+    const [messageStats, sessionStats, fileStats, transactionStats] = await Promise.all([
       db.execute(sql`
         SELECT 
           COUNT(*) as message_count,
-          COUNT(CASE WHEN role != 'user' THEN 1 END) as assistant_messages
+          COUNT(CASE WHEN role != 'user' THEN 1 END) as assistant_messages,
+          SUM((COALESCE(metadata ->> 'totalInputTokens', '0'))::int) as total_input_tokens,
+          SUM((COALESCE(metadata ->> 'totalOutputTokens', '0'))::int) as total_output_tokens
         FROM messages 
         WHERE user_id = ${userId} 
         AND created_at >= ${cycleStartStr}
@@ -41,27 +78,37 @@ export class UsageService {
           COALESCE(SUM(size), 0) as total_size
         FROM files 
         WHERE user_id = ${userId}
+      `),
+      db.execute(sql`
+        SELECT 
+          ABS(SUM(amount::numeric)) as total_consumed
+        FROM user_transactions 
+        WHERE user_id = ${userId}
+        AND type = 'CONSUMPTION'
+        AND created_at >= ${cycleStartStr}::timestamp
       `)
     ]);
 
-    // 计算重置时间 (距离下一个周期的开始)
-    // 下一个周期的月份
-    const nextMonth = new Date(cycleStart);
-    // 判断是否为年付计划
-    const isYearly = userExt?.currentPlan?.toLowerCase().includes('yearly');
+    const totalConsumedFromTx = parseFloat((transactionStats[0] as any)?.total_consumed || '0');
 
-    if (isYearly) {
-      nextMonth.setFullYear(nextMonth.getFullYear() + 1);
+    // 4. 计算重置时间
+    let nextReset: Date;
+    if (isFreePlan) {
+      nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0);
     } else {
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      const nextMonth = new Date(cycleStart);
+      const isYearly = plan?.interval === 'year';
+
+      if (isYearly) {
+        nextMonth.setFullYear(nextMonth.getFullYear() + 1);
+      } else {
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+      }
+
+      const daysInNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
+      const targetDay = Math.min(startDate.getDate(), daysInNextMonth);
+      nextReset = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), targetDay, startDate.getHours(), startDate.getMinutes(), startDate.getSeconds());
     }
-
-    // 核心：处理月份长度不一导致的日期溢出（如1月31日订，2月没有31日）
-    // 获取目标月的天数
-    const daysInNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
-    const targetDay = Math.min(startDate.getDate(), daysInNextMonth);
-
-    const nextReset = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), targetDay, startDate.getHours(), startDate.getMinutes(), startDate.getSeconds());
 
     const timeDiff = nextReset.getTime() - now.getTime();
     const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
@@ -70,19 +117,41 @@ export class UsageService {
     const fileCount = parseInt((fileStats[0] as any)?.file_count || '0');
     const totalSize = parseInt((fileStats[0] as any)?.total_size || '0');
     const assistantMessages = parseInt((messageStats[0] as any)?.assistant_messages || '0');
+    const totalInputTokens = parseInt((messageStats[0] as any)?.total_input_tokens || '0');
+    const totalOutputTokens = parseInt((messageStats[0] as any)?.total_output_tokens || '0');
     const messageCount = parseInt((messageStats[0] as any)?.message_count || '0');
     const sessionCount = parseInt((sessionStats[0] as any)?.session_count || '0');
 
+    if (!plan) {
+      console.warn(`[UsageService] No plan found for user ${userId}. Fallback to zero-limits.`);
+    }
+
+    const planCredits = plan?.credits ? parseFloat(plan.credits) : 0;
+    const planStorage = plan?.storageLimit ?? 0;
+    const planVector = plan?.vectorLimit ?? 0;
+
     return {
+      credits: {
+        balance: parseFloat(balance?.balance || '0'),
+        isUnlimited: balance?.isUnlimited || false,
+        limit: planCredits,
+        planName: plan?.name || userExt?.currentPlan || 'free',
+        totalConsumed: totalConsumedFromTx, // 新增：从交易流水中统计的本月消耗
+        totalPurchased: parseFloat(balance?.totalPurchased || '0')
+      },
       files: {
         count: fileCount,
+        limit: planStorage,
         totalSize: totalSize,
         totalSizeKB: Math.round(totalSize / 1024),
         totalSizeMB: Math.round((totalSize / 1024 / 1024) * 100) / 100
       },
       messages: {
         assistantMessages: assistantMessages,
-        count: messageCount
+        count: messageCount,
+        totalInputTokens,
+        totalOutputTokens,
+        totalTokens: totalInputTokens + totalOutputTokens
       },
       resetCountdown: {
         days,
@@ -102,7 +171,8 @@ export class UsageService {
       },
       userExtension: userExt,
       vectors: {
-        count: 0 // Vector stats temporarily disabled for stability
+        count: 0,
+        limit: planVector
       }
     };
   }
@@ -117,8 +187,8 @@ export class UsageService {
     const currentUsage = await this.getUserMonthlyUsage(userId);
     const limits = [];
 
-    // 检查存储限制
-    const storageLimit = userExtension.monthlyStorageLimit || 1024;
+    // 检查存储限制 (MB)
+    const storageLimit = currentUsage.files.limit;
     if (storageLimit > 0) {
       const usagePercent = (currentUsage.files.totalSizeMB / storageLimit) * 100;
       if (usagePercent >= 100) {
@@ -140,6 +210,18 @@ export class UsageService {
       }
     }
 
+    // 检查积分限制 (Credits)
+    if (!currentUsage.credits.isUnlimited && currentUsage.credits.limit > 0) {
+      if (currentUsage.credits.balance <= 0) {
+        limits.push({
+          current: currentUsage.credits.limit - currentUsage.credits.balance,
+          exceeded: true,
+          limit: currentUsage.credits.limit,
+          type: 'credit_limit'
+        });
+      }
+    }
+
     return {
       allowed: !limits.some(l => l.exceeded),
       currentUsage,
@@ -149,7 +231,6 @@ export class UsageService {
   }
 
   // 获取用户扩展信息
-  // 如果不存在，则创建一个默认的
   async getUserExtension(userId: string): Promise<UserExtension | null> {
     try {
       const result = await db
@@ -174,13 +255,11 @@ export class UsageService {
     const now = new Date();
 
     if (existing) {
-      // 更新
       await db
         .update(userExtensions)
         .set({ ...data, updatedAt: now })
         .where(eq(userExtensions.userId, userId));
     } else {
-      // 创建
       await db.insert(userExtensions).values({
         userId,
         ...data,
@@ -192,169 +271,285 @@ export class UsageService {
     return this.getUserExtension(userId);
   }
 
-  // 重置月度使用量（在月初调用）
-  async resetMonthlyUsage(userId: string) {
-    const currentUsage = await this.getUserMonthlyUsage(userId);
+  // 全局重置免费计划用户的积分（每月1号调用）
+  async resetAllFreeBalances() {
     const now = new Date();
+    try {
+      // 1. 获取免费计划的实时配置
+      const freePlans = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, 'plan_free')).limit(1);
+      if (freePlans.length === 0) {
+        throw new Error('Critical Error: Free Plan configuration not found in subscription_plans table.');
+      }
+      const freePlan = freePlans[0];
+      const creditsToSet = freePlan.credits;
 
-    await db
-      .update(userExtensions)
-      .set({
-        currentApiCallsUsed: currentUsage.sessions.count,
-        currentTokensUsed: currentUsage.messages.assistantMessages,
-        lastUsageReset: now,
-        updatedAt: now
-      })
-      .where(eq(userExtensions.userId, userId));
+      // 2. 找到所有当前是免费计划的用户 (通过 currentPlan 或 planId)
+      const freeUsers = await db.select({ userId: userExtensions.userId })
+        .from(userExtensions)
+        .where(or(
+          eq(userExtensions.currentPlan, 'plan_free'),
+          eq(userExtensions.currentPlan, 'free'),
+          eq(userExtensions.planId, freePlan.id)
+        ));
 
-    return true;
+      console.log(`[Cron] Dynamically resetting credits to ${creditsToSet} for ${freeUsers.length} free users...`);
+
+      for (const user of freeUsers) {
+        await db.transaction(async (tx) => {
+          // 重置余额为计划额度
+          await tx.insert(userBalances)
+            .values({ balance: creditsToSet, updatedAt: now, userId: user.userId })
+            .onConflictDoUpdate({ set: { balance: creditsToSet, updatedAt: now }, target: userBalances.userId });
+
+          // 记录月度重置流水
+          await tx.insert(userTransactions).values({
+            amount: creditsToSet,
+            category: 'MONTHLY_RESET',
+            createdAt: now,
+            description: `Monthly Free Credit Reset to ${creditsToSet}`,
+            id: 'tx_reset_' + user.userId.slice(0, 8) + '_' + now.getTime(),
+            metadata: { planId: freePlan.id, planName: freePlan.name },
+            type: 'CREDIT_RESET',
+            updatedAt: now,
+            userId: user.userId,
+          } as any);
+        });
+      }
+
+      return { count: freeUsers.length, success: true };
+    } catch (error) {
+      console.error('Failed to reset free balances:', error);
+      return { success: false };
+    }
   }
 
-  // 更新用户套餐并赠送积分
-  async updateUserPlan(userId: string, planData: {
-    currentPlan: string;
-    features: any;
-    monthlyApiCallsLimit: number;
-    monthlyStorageLimit: number;
-    monthlyTokenLimit: number;
-    planExpiresAt?: Date;
-    planId?: string;
-  }) {
-    const { planId, ...rest } = planData;
+  /**
+   * 立即执行方案升级/变更 (立即生效)
+   */
+  async executeUpgrade(userId: string, targetPlanId: string, customCategory?: string) {
     const now = new Date();
-
     try {
       return await db.transaction(async (tx) => {
-        // 1. 更新扩展表
+        // 1. 获取目标计划
+        const planResult = await tx.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, targetPlanId)).limit(1);
+        const targetPlan = planResult[0];
+        if (!targetPlan) throw new Error('Target plan not found');
+
+        // 2. 计算过期时间 (默认 +1 个月/年)
+        const expiresAt = new Date(now);
+        if (targetPlan.interval === 'year') {
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        } else {
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
+        }
+
+        // 3. 更新 UserExtension (清除 nextPlanId)
         await tx.insert(userExtensions)
           .values({
-            ...rest,
-            createdAt: now,
+            currentPlan: targetPlan.slug,
+            features: targetPlan.features,
+            planExpiresAt: expiresAt,
+            planId: targetPlan.id,
+            nextPlanId: null,
             updatedAt: now,
             userId,
           })
           .onConflictDoUpdate({
             set: {
-              ...rest,
+              currentPlan: targetPlan.slug,
+              features: targetPlan.features,
+              planExpiresAt: expiresAt,
+              planId: targetPlan.id,
+              nextPlanId: null,
               updatedAt: now,
             },
             target: userExtensions.userId,
           });
 
-        // 2. 如果提供了 planId，赠送积分并记录流水
-        if (planId) {
-          const { subscriptionPlans } = await import('../db/subscription-schema');
+        // 4. 维护订阅历史 (关旧开新)
+        await tx.update(userSubscriptionHistory)
+          .set({ endedAt: now, isActive: false, status: 'upgraded' })
+          .where(and(eq(userSubscriptionHistory.userId, userId), eq(userSubscriptionHistory.isActive, true)));
 
-          const plan = await tx.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, planId)).limit(1);
+        await tx.insert(userSubscriptionHistory).values({
+          features: targetPlan.features || {},
+          isActive: true,
+          status: 'active',
+          autoRenew: true,
+          planId: targetPlan.id,
+          planName: targetPlan.name,
+          planType: targetPlan.type,
+          price: targetPlan.price,
+          slug: targetPlan.slug,
+          startedAt: now,
+          userId,
+        });
 
-          if (plan && plan.length > 0) {
-            const planDataRecord = plan[0] as any;
-            const creditsToGrant = planDataRecord.credits;
-            const storageToSet = planDataRecord.storageLimit;
+        // 5. 赠送积分 & 记录流水
+        const credits = parseFloat(targetPlan.credits || '0');
+        // 无论积分是否大于 0，方案变更都应该产生一条流水，记录账户重置
+        await tx.insert(userBalances)
+          .values({ balance: credits.toString(), updatedAt: now, userId })
+          .onConflictDoUpdate({ set: { balance: credits.toString(), updatedAt: now }, target: userBalances.userId });
 
-            // 更新用户配额限制
-            await tx.update(userExtensions)
-              .set({
-                monthlyStorageLimit: storageToSet,
-                monthlyTokenLimit: parseInt(creditsToGrant),
-                updatedAt: now
-              })
-              .where(eq(userExtensions.userId, userId));
+        await tx.insert(userTransactions).values({
+          amount: credits,
+          balanceAfter: credits.toString(),
+          category: customCategory || 'UPGRADE_GRANT',
+          createdAt: now,
+          description: `Plan Switch: ${targetPlan.name}`,
+          id: 'tx_pc_' + Math.random().toString(36).slice(2, 12),
+          metadata: { planId: targetPlan.id },
+          type: 'SUBSCRIPTION_GRANT',
+          updatedAt: now,
+          userId,
+        } as any);
 
-            if (parseFloat(creditsToGrant) > 0) {
-              const { userBalances, userTransactions } = await import('../db/credit-schema');
-
-              // 更新余额
-              await tx.insert(userBalances)
-                .values({
-                  balance: creditsToGrant,
-                  updatedAt: now,
-                  userId
-                })
-                .onConflictDoUpdate({
-                  set: {
-                    balance: creditsToGrant,
-                    updatedAt: now
-                  },
-                  target: userBalances.userId
-                });
-
-              // 记录交易流水
-              await tx.insert(userTransactions).values({
-                amount: creditsToGrant,
-                category: 'PLAN_RENEWAL',
-                createdAt: now,
-                description: `Plan Subscription Grant: ${planDataRecord.name}`,
-                id: 'tx_sub_' + Math.random().toString(36).slice(2, 12),
-                metadata: {
-                  credits: creditsToGrant,
-                  currency: planDataRecord.currency,
-                  expiresAt: planData.planExpiresAt,
-                  planId: planDataRecord.id,
-                  planName: planDataRecord.name,
-                  price: planDataRecord.price
-                },
-                type: 'SUBSCRIPTION_GRANT',
-                updatedAt: now,
-                userId,
-              } as any);
-
-              console.log(`[Atomic] Granted ${creditsToGrant} credits to user ${userId} for plan ${planDataRecord.name}`);
-            }
-          }
-        }
         return true;
       });
     } catch (error) {
-      console.error('Failed to update user plan atomically:', error);
+      console.error('Execute upgrade failed:', error);
       return false;
     }
   }
 
-  // 获取所有用户的用量统计（管理员用）
+  /**
+   * 预设方案变更 (降级或取消订阅 - 周期末生效)
+   */
+  async schedulePlanChange(userId: string, nextPlanId: string | null) {
+    try {
+      return await db.transaction(async (tx) => {
+        // 1. 更新用户扩展表的预设
+        await tx.update(userExtensions)
+          .set({ nextPlanId, updatedAt: new Date() })
+          .where(eq(userExtensions.userId, userId));
+
+        // 2. 同步更新当前活跃契约的状态
+        // 如果 nextPlanId 是免费方案或 null (取决于取消订阅的定义，通常设为 free 表示取消)，我们更新 autoRenew
+        const isCanceling = !nextPlanId || nextPlanId.includes('free'); // 这里简单判断，实际应取免费方案 ID
+
+        await tx.update(userSubscriptionHistory)
+          .set({
+            autoRenew: !isCanceling,
+            status: isCanceling ? 'canceled' : 'active'
+          })
+          .where(and(eq(userSubscriptionHistory.userId, userId), eq(userSubscriptionHistory.isActive, true)));
+
+        return true;
+      });
+    } catch (error) {
+      console.error('Schedule plan change failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 仿真处理到期逻辑 (周期末结算)
+   */
+  async processExpirations(userId: string) {
+    const now = new Date();
+    const userExt = await this.getUserExtension(userId);
+    if (!userExt) return false;
+
+    // 如果没到期，仿真时我们强制它到期，或者逻辑上判断
+    // 正常定时任务会判断 expiresAt < now
+
+    const nextId = userExt.nextPlanId;
+
+    if (!nextId) {
+      // 场景 A: 自动续费 (nextPlanId 为空)
+      // 实际上这里应该触发扣费，扣费成功后执行：
+      console.log(`[Lifecycle] Renewing current plan ${userExt.planId} for user ${userId}`);
+
+      const planResult = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, userExt.planId || '')).limit(1);
+      const plan = planResult[0];
+      if (plan) {
+        const nextExpires = new Date(userExt.planExpiresAt || now);
+        if (plan.interval === 'year') nextExpires.setFullYear(nextExpires.getFullYear() + 1);
+        else nextExpires.setMonth(nextExpires.getMonth() + 1);
+
+        await db.update(userExtensions)
+          .set({ planExpiresAt: nextExpires, updatedAt: now })
+          .where(eq(userExtensions.userId, userId));
+
+        // 发放新一月点数 (Transaction only, no new history)
+        const credits = parseFloat(plan.credits || '0');
+        await db.insert(userBalances)
+          .values({ balance: credits.toString(), updatedAt: now, userId })
+          .onConflictDoUpdate({ set: { balance: credits.toString(), updatedAt: now }, target: userBalances.userId });
+
+        await db.insert(userTransactions).values({
+          amount: credits,
+          balanceAfter: credits.toString(), // 续费后余额重置为套餐点数
+          category: 'RENEWAL_GRANT',
+          createdAt: now,
+          description: `Auto-renewal Success: ${plan.name}`,
+          id: 'tx_ren_' + Math.random().toString(36).slice(2, 12),
+          type: 'SUBSCRIPTION_GRANT',
+          updatedAt: now,
+          userId,
+        } as any);
+      }
+    } else {
+      // 场景 B: 执行预设变更 (降级或取消到 Free)
+      console.log(`[Lifecycle] Executing scheduled switch to ${nextId} for user ${userId}`);
+
+      // 先标记旧的为已过期
+      await db.update(userSubscriptionHistory)
+        .set({ endedAt: now, isActive: false, status: 'expired' })
+        .where(and(eq(userSubscriptionHistory.userId, userId), eq(userSubscriptionHistory.isActive, true)));
+
+      return await this.executeUpgrade(userId, nextId, 'DOWNGRADE_GRANT');
+    }
+
+    return true;
+  }
+
+  // 保留旧方法作为兼容层
+  async updateUserPlan(userId: string, planData: any) {
+    if (planData.planId) {
+      return this.executeUpgrade(userId, planData.planId);
+    }
+    return false;
+  }
+
+  // 管理员用：获取所有用户用量展示
   async getAllUsersUsage(limit: number = 20, offset: number = 0) {
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
     const monthStartStr = monthStart.toISOString();
 
-    // 查询用户及其用量统计
     const query = sql`
-      SELECT
-          u.id,
-          u.username,
-          u.full_name,
-          u.email,
-          u.created_at,
-          u.last_active_at,
-          ue.current_plan,
-          ue.monthly_token_limit,
-          ue.monthly_api_calls_limit,
-          ue.monthly_storage_limit,
-          ue.is_suspended,
-          COALESCE(msg_count, 0) as monthly_messages,
-          COALESCE(session_count, 0) as monthly_sessions,
-          COALESCE(file_count, 0) as monthly_files,
-          COALESCE(total_size, 0) as monthly_storage_used
+      SELECT 
+        u.id, 
+        u.username, 
+        u.full_name, 
+        u.email, 
+        u.created_at, 
+        u.last_active_at,
+        ue.current_plan as "planType",
+        ue.next_plan_id as "nextPlanId",
+        ue.plan_expires_at as "plan_expires_at",
+        ue.is_suspended,
+        ub.balance as credit_balance,
+        COALESCE(sp.name, 'Free Trial') as plan_name,
+        COALESCE(msg_count, 0) as monthly_messages,
+        COALESCE(session_count, 0) as monthly_sessions,
+        COALESCE(file_count, 0) as monthly_files,
+        COALESCE(total_size, 0) as monthly_storage_used
       FROM users u
       LEFT JOIN user_extensions ue ON u.id = ue.user_id
+      LEFT JOIN subscription_plans sp ON (ue.plan_id = sp.id OR ue.current_plan = sp.slug)
+      LEFT JOIN user_balances ub ON u.id = ub.user_id
       LEFT JOIN (
-          SELECT user_id, COUNT(*) as msg_count
-          FROM messages
-          WHERE created_at >= ${monthStartStr}
-          GROUP BY user_id
+        SELECT user_id, COUNT(*) as msg_count FROM messages WHERE created_at >= ${monthStartStr} GROUP BY user_id
       ) msg_stats ON u.id = msg_stats.user_id
       LEFT JOIN (
-          SELECT user_id, COUNT(*) as session_count
-          FROM sessions
-          WHERE created_at >= ${monthStartStr}
-          GROUP BY user_id
+        SELECT user_id, COUNT(*) as session_count FROM sessions WHERE created_at >= ${monthStartStr} GROUP BY user_id
       ) session_stats ON u.id = session_stats.user_id
       LEFT JOIN (
-          SELECT user_id, COUNT(*) as file_count, COALESCE(SUM(size), 0) as total_size
-          FROM files
-          WHERE created_at >= ${monthStartStr}
-          GROUP BY user_id
+        SELECT user_id, COUNT(*) as file_count, COALESCE(SUM(size), 0) as total_size FROM files WHERE created_at >= ${monthStartStr} GROUP BY user_id
       ) file_stats ON u.id = file_stats.user_id
       WHERE u.email != 'admin@system.local'
       ORDER BY u.created_at DESC
@@ -362,33 +557,28 @@ export class UsageService {
     `;
 
     const result = await db.execute(query);
-
-    // 计算总量
-    const totalQuery = sql`SELECT COUNT(*) as total FROM users WHERE email != 'admin@system.local'`;
-    const totalResult = await db.execute(totalQuery);
+    const totalResult = await db.execute(sql`SELECT COUNT(*) as total FROM users WHERE email != 'admin@system.local'`);
 
     return {
       page: Math.floor(offset / limit) + 1,
-      pageSize: limit,
       total: parseInt((totalResult[0] as any)?.total || '0'),
       users: result as any[]
     };
   }
+
   // 获取系统级用量统计
   async getSystemUsageStats(localDate: Date) {
-    // 确定查询的时间范围（当月 1 号到下月 1 号）
     const startOfPeriod = new Date(localDate.getFullYear(), localDate.getMonth(), 1);
     const endOfPeriod = new Date(localDate.getFullYear(), localDate.getMonth() + 1, 1);
     const startOfPeriodStr = startOfPeriod.toISOString();
 
-    // 1. 获取每日趋势 (按模型)
     const dailyTrend = await db.execute(sql`
       SELECT 
         TO_CHAR(m.created_at, 'YYYY-MM-DD') as date,
         m.model,
-        SUM((COALESCE(m.metadata->>'totalInputTokens', '0'))::int) as "totalInputTokens",
-        SUM((COALESCE(m.metadata->>'totalOutputTokens', '0'))::int) as "totalOutputTokens",
-        SUM((COALESCE(m.metadata->>'totalInputTokens', '0'))::int + (COALESCE(m.metadata->>'totalOutputTokens', '0'))::int) as "totalTokens"
+        SUM((COALESCE(m.metadata ->> 'totalInputTokens', '0'))::int) as "totalInputTokens",
+        SUM((COALESCE(m.metadata ->> 'totalOutputTokens', '0'))::int) as "totalOutputTokens",
+        SUM((COALESCE(m.metadata ->> 'totalInputTokens', '0'))::int + (COALESCE(m.metadata ->> 'totalOutputTokens', '0'))::int) as "totalTokens"
       FROM messages m
       WHERE m.role = 'assistant'
       AND m.created_at >= ${startOfPeriodStr}
@@ -398,127 +588,57 @@ export class UsageService {
       ORDER BY date ASC
     `);
 
-    // 2. 获取当月模型/供应商聚合统计 (包含成本估算)
     const aggregatedStats = await db.execute(sql`
-      SELECT
-        m.model,
-        m.provider,
-        SUM((COALESCE(m.metadata->>'totalInputTokens', '0'))::int) as "totalInputTokens",
-        SUM((COALESCE(m.metadata->>'totalOutputTokens', '0'))::int) as "totalOutputTokens",
-        SUM((COALESCE(m.metadata->>'totalInputTokens', '0'))::int + (COALESCE(m.metadata->>'totalOutputTokens', '0'))::int) as "totalTokens",
+      SELECT 
+        m.model, m.provider,
+        SUM((COALESCE(m.metadata ->> 'totalInputTokens', '0'))::int) as "totalInputTokens",
+        SUM((COALESCE(m.metadata ->> 'totalOutputTokens', '0'))::int) as "totalOutputTokens",
+        COUNT(*) as "requestCount",
         MAX(mp.input_price) as "inputPrice",
         MAX(mp.output_price) as "outputPrice",
-        MAX(mp.per_request_price) as "perRequestPrice",
-        COUNT(*) as "requestCount"
+        MAX(mp.per_request_price) as "perRequestPrice"
       FROM messages m
       LEFT JOIN model_pricings mp ON m.model = mp.model AND m.provider = mp.provider
       WHERE m.role = 'assistant'
       AND m.created_at >= ${startOfPeriodStr}
       AND m.created_at < ${endOfPeriod.toISOString()}
       GROUP BY m.model, m.provider
-      ORDER BY "totalTokens" DESC
     `);
 
-    // 3. 获取全系统文件存储统计
-    const storageStats = await db.execute(sql`
-      SELECT 
-          SUM(size) as "totalSize",
-        COUNT(*) as "fileCount"
-      FROM files
-    `);
-
-    // 4. 获取全系统向量存储统计
-    const vectorStats = await db.execute(sql`
-      SELECT COUNT(*) as "vectorCount" FROM embeddings
-    `);
-
-    // 5. 后处理：计算成本并生成 modelStats 和 providerStats
     let totalCost = 0;
-    let totalTokens = 0;
-    let totalRequests = 0;
+    const modelStatsMap = new Map<string, any>();
 
-    // 预处理每条记录的成本
-    const enrichedStats = (aggregatedStats as any[]).map(item => {
+    for (const item of (aggregatedStats as any[])) {
       const inputPrice = parseFloat(item.inputPrice || '0');
       const outputPrice = parseFloat(item.outputPrice || '0');
       const perRequestPrice = parseFloat(item.perRequestPrice || '0');
 
-      const inputCost = (item.totalInputTokens / 1_000_000) * inputPrice;
-      const outputCost = (item.totalOutputTokens / 1_000_000) * outputPrice;
-      const requestCost = item.requestCount * perRequestPrice;
-      const cost = inputCost + outputCost + requestCost;
+      const cost = (item.totalInputTokens / 1_000_000) * inputPrice +
+        (item.totalOutputTokens / 1_000_000) * outputPrice +
+        (item.requestCount * perRequestPrice);
 
       totalCost += cost;
-      totalTokens += parseInt(item.totalTokens);
-      totalRequests += parseInt(item.requestCount);
 
-      return {
-        ...item,
-        cost,
-      };
-    });
-
-    // 聚合 Model Stats
-    const modelStatsMap = new Map<string, any>();
-    for (const item of enrichedStats) {
       if (!modelStatsMap.has(item.model)) {
-        modelStatsMap.set(item.model, {
-          cost: 0,
-          model: item.model,
-          requestCount: 0,
-          totalInputTokens: 0,
-          totalOutputTokens: 0,
-          totalTokens: 0
-        });
+        modelStatsMap.set(item.model, { model: item.model, totalTokens: 0, cost: 0 });
       }
       const existing = modelStatsMap.get(item.model);
-      existing.totalInputTokens += parseInt(item.totalInputTokens);
-      existing.totalOutputTokens += parseInt(item.totalOutputTokens);
-      existing.totalTokens += parseInt(item.totalTokens);
-      existing.requestCount += parseInt(item.requestCount);
-      existing.cost += item.cost;
+      existing.totalTokens += (parseInt(item.totalInputTokens) + parseInt(item.totalOutputTokens));
+      existing.cost += cost;
     }
-    const modelStats = Array.from(modelStatsMap.values()).map(m => ({ ...m, cost: m.cost.toFixed(6) }));
 
-    // 聚合 Provider Stats
-    const providerStatsMap = new Map<string, any>();
-    for (const item of enrichedStats) {
-      const provider = item.provider || 'unknown';
-      if (!providerStatsMap.has(provider)) {
-        providerStatsMap.set(provider, {
-          cost: 0,
-          provider: provider,
-          requestCount: 0,
-          totalInputTokens: 0,
-          totalOutputTokens: 0,
-          totalTokens: 0
-        });
-      }
-      const existing = providerStatsMap.get(provider);
-      existing.totalInputTokens += parseInt(item.totalInputTokens);
-      existing.totalOutputTokens += parseInt(item.totalOutputTokens);
-      existing.totalTokens += parseInt(item.totalTokens);
-      existing.requestCount += parseInt(item.requestCount);
-      existing.cost += item.cost;
-    }
-    const providerStats = Array.from(providerStatsMap.values()).map(p => ({ ...p, cost: p.cost.toFixed(6) }));
-
-    // Calculate storage in MB or GB
-    const totalSizeBytes = parseInt((storageStats[0] as any)?.totalSize || '0');
-    // For display, return bytes, frontend can format
+    const storageStats = await db.execute(sql`SELECT SUM(size) as "totalSize", COUNT(*) as "fileCount" FROM files`);
+    const vectorStats = await db.execute(sql`SELECT COUNT(*) as "vectorCount" FROM embeddings`);
 
     return {
       dailyTrend: dailyTrend as any[],
-      modelStats: modelStats.sort((a, b) => b.totalTokens - a.totalTokens),
+      modelStats: Array.from(modelStatsMap.values()).map(m => ({ ...m, cost: m.cost.toFixed(4) })),
       overview: {
+        totalCost: totalCost.toFixed(2),
         fileCount: parseInt((storageStats[0] as any)?.fileCount || '0'),
-        requestCount: totalRequests,
-        totalCost: totalCost.toFixed(4),
-        totalStorageBytes: totalSizeBytes,
-        totalTokens,
+        totalStorageBytes: parseInt((storageStats[0] as any)?.totalSize || '0'),
         vectorCount: parseInt((vectorStats[0] as any)?.vectorCount || '0')
-      },
-      providerStats: providerStats.sort((a, b) => b.totalTokens - a.totalTokens)
+      }
     };
   }
 }
