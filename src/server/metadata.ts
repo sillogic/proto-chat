@@ -10,7 +10,7 @@ import { formatDescLength, formatTitleLength } from '@/utils/genOG';
 
 export class Meta {
   public generate({
-    description = 'Proto Chat - 为科研工作者打造的下一代 AI 交互平台，深度集成全球顶级 AI 大模型',
+    description = 'ProtoChat - 为科研工作者打造的下一代 AI 交互平台，深度集成全球顶级 AI 大模型',
     title,
     image = OG_URL,
     url,
@@ -122,7 +122,7 @@ export class Meta {
         },
       ],
       locale,
-      siteName: 'Proto Chat',
+      siteName: 'ProtoChat',
       title,
       type,
       url,

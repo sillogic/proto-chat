@@ -172,7 +172,7 @@ export const request: RequestConfig = {
   responseInterceptors: [
     (response) => {
       // 处理响应错误
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
         localStorage.removeItem('admin-token');
         localStorage.removeItem('admin-user');
         history.push('/user/login');

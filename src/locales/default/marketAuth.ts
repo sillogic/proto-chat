@@ -21,11 +21,12 @@ export default {
       successWithCountdown: '{{message}} 窗口将在 {{countdown}} 秒后自动关闭',
       successWithRedirect: '授权成功！正在跳转...',
     },
-    titles: {
-      error: '授权失败',
-      loading: 'Proto Chat Market 授权',
-      success: '授权成功',
-    },
+  },
+  result: {
+    authorized: 'ProtoChat 服务授权成功',
+    desc: '即将跳转到 ProtoChat Market...',
+    error: '授权失败',
+    errorDesc: '请重试或联系支持',
   },
   errors: {
     authorizationFailed: '授权失败，请重试。',

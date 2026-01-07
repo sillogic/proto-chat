@@ -48,6 +48,7 @@ const AiProvidersPage: React.FC = () => {
         ModelProvider.ZhiPu,
         ModelProvider.Google,
         ModelProvider.Anthropic,
+        ModelProvider.OpenRouter,
       ]
         .filter((id) => !providers.find((p) => p.id === (id as string)))
         .map((id) => ({ key: id as string, label: (id as string).toUpperCase() })),

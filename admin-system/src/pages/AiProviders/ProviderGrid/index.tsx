@@ -19,6 +19,7 @@ const ALL_TARGET_PROVIDERS = [
   { id: ModelProvider.ZhiPu, desc: '智谱 AI 提供多模态与语言模型的开放平台，支持广泛的 AI 应用场景。' },
   { id: ModelProvider.Google, desc: 'Google 的 Gemini 系列是其最先进的多模态模型，具有强大的理解和生成能力。' },
   { id: ModelProvider.Anthropic, desc: 'Anthropic 是一家专注于安全性和可解释性 AI 的公司，其 Claude 系列模型深受用户喜爱。' },
+  { id: ModelProvider.OpenRouter, desc: 'OpenRouter 是一个 AI 模型聚合平台，提供统一的 API 接口访问多个主流 AI 模型，包括 GPT、Claude、Gemini 等。' },
 ];
 
 const ProviderGrid: React.FC<ProviderGridProps> = ({ providers, onRefresh, onSelect }) => {

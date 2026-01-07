@@ -2,12 +2,12 @@
 // if you want to use it in the commercial usage
 // please contact us for more information: support@protochat.ai
 
-export const LOBE_CHAT_CLOUD = 'Proto Chat Cloud';
+export const LOBE_CHAT_CLOUD = 'ProtoChat Cloud';
 
-export const BRANDING_NAME = 'Proto Chat';
+export const BRANDING_NAME = 'ProtoChat';
 export const BRANDING_LOGO_URL = '/logo.png';
 
-export const ORG_NAME = 'Proto Chat';
+export const ORG_NAME = 'ProtoChat';
 
 export const BRANDING_URL = {
   help: 'https://protochat.ai/docs',

@@ -375,8 +375,8 @@ export default {
   },
   header: '欢迎使用',
   landing: {
-    enterButton: '进入 Proto Chat',
-    footer: 'Powered by Proto Chat',
+    enterButton: '进入 ProtoChat',
+    footer: 'Powered by ProtoChat',
     subtitle: '开启您的 AI 智能助理体验，一个现代化的 AI Agent Workspace',
   },
   pickAgent: '或从下列助手模板选择',
