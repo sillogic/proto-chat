@@ -660,18 +660,19 @@ const openrouterChatModels: AIChatModelCard[] = [
     releasedAt: '2025-01-20',
     type: 'chat',
   },
-  {
-    abilities: {
-      reasoning: true,
-    },
-    contextWindowTokens: 163_840,
-    description:
-      'DeepSeek-R1 在仅有极少标注数据的情况下，极大提升了模型推理能力。在输出最终回答之前，模型会先输出一段思维链内容，以提升最终答案的准确性。',
-    displayName: 'DeepSeek R1 (Free)',
-    id: 'deepseek/deepseek-r1:free',
-    releasedAt: '2025-01-20',
-    type: 'chat',
-  },
+  // Note: deepseek/deepseek-r1:free has been removed from OpenRouter
+  // {
+  //   abilities: {
+  //     reasoning: true,
+  //   },
+  //   contextWindowTokens: 163_840,
+  //   description:
+  //     'DeepSeek-R1 在仅有极少标注数据的情况下，极大提升了模型推理能力。在输出最终回答之前，模型会先输出一段思维链内容，以提升最终答案的准确性。',
+  //   displayName: 'DeepSeek R1 (Free)',
+  //   id: 'deepseek/deepseek-r1:free',
+  //   releasedAt: '2025-01-20',
+  //   type: 'chat',
+  // },
   {
     contextWindowTokens: 163_840,
     description:

@@ -13,13 +13,13 @@ const router: Router = express.Router();
 
 const upsertProviderSchema = z.object({
     config: z.record(z.any()).optional(),
-    description: z.string().optional(),
+    description: z.string().nullable().optional(),
     enabled: z.boolean().default(true),
     fetchOnClient: z.boolean().default(false),
     id: z.string(),
     keyVaults: z.record(z.any()).optional(),
-    logo: z.string().optional(),
-    name: z.string().optional(),
+    logo: z.string().nullable().optional(),
+    name: z.string().nullable().optional(),
     settings: z.record(z.any()).optional(),
 });
 
@@ -97,11 +97,11 @@ router.post('/', authenticateToken, requirePermission('system.admin'), async (re
             updatedAt: new Date(),
         };
 
-        if (name !== undefined) values.name = name;
+        if (name !== undefined && name !== null) values.name = name;
         if (enabled !== undefined) values.enabled = enabled;
         if (fetchOnClient !== undefined) values.fetchOnClient = fetchOnClient;
-        if (logo !== undefined) values.logo = logo;
-        if (description !== undefined) values.description = description;
+        if (logo !== undefined && logo !== null) values.logo = logo;
+        if (description !== undefined && description !== null) values.description = description;
 
         if (keyVaults !== undefined) {
             const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
