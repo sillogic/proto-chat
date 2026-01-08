@@ -4,10 +4,12 @@ import { Button } from 'antd';
 import { createStyles } from 'antd-style';
 import { ChevronRight } from 'lucide-react';
 import { memo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Center, Flexbox } from 'react-layout-kit';
+import { useNavigate } from 'react-router-dom';
 
 import { ProductLogo } from '@/components/Branding';
+import { useUserStore } from '@/store/user';
+import { authSelectors } from '@/store/user/slices/auth/selectors';
 
 const useStyles = createStyles(({ css, token }) => ({
   container: css`
@@ -101,9 +103,15 @@ const useStyles = createStyles(({ css, token }) => ({
 const WelcomePage = memo(() => {
   const { styles } = useStyles();
   const navigate = useNavigate();
+  const isLogin = useUserStore((s) => authSelectors.isLogin(s));
+  const openLogin = useUserStore((s) => s.openLogin);
 
   const handleEnter = () => {
-    navigate('/chat');
+    if (isLogin) {
+      navigate('/chat');
+    } else {
+      openLogin();
+    }
   };
 
   return (
