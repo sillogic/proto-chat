@@ -1,14 +1,17 @@
 'use client';
 
 import { createStyles } from 'antd-style';
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { Flexbox } from 'react-layout-kit';
+import { Outlet, useNavigate } from 'react-router-dom';
 
 import { withSuspense } from '@/components/withSuspense';
+import { enableAuth } from '@/const/auth';
 import { useShowMobileWorkspace } from '@/hooks/useShowMobileWorkspace';
+import { useUserStore } from '@/store/user';
+import { authSelectors } from '@/store/user/selectors';
 
 import SessionPanelContent from '../components/SessionPanel';
-import { Outlet } from 'react-router-dom';
 
 const useStyles = createStyles(({ css, token }) => ({
   main: css`
@@ -18,9 +21,31 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 }));
 
-const Layout = memo(( ) => {
+const Layout = memo(() => {
   const showMobileWorkspace = useShowMobileWorkspace();
   const { styles } = useStyles();
+  const navigate = useNavigate();
+  const [isLogin, isLoaded] = useUserStore((s) => [
+    authSelectors.isLogin(s),
+    authSelectors.isLoaded(s),
+  ]);
+
+  // Redirect to signin page if not logged in
+  useEffect(() => {
+    // Wait for auth state to be loaded
+    if (!isLoaded) return;
+
+    // Redirect to signin if auth is enabled and user is not logged in
+    if (enableAuth && !isLogin) {
+      const currentUrl = window.location.href;
+      window.location.href = `/signin?callbackUrl=${encodeURIComponent(currentUrl)}`;
+    }
+  }, [isLoaded, isLogin, navigate]);
+
+  // Don't render content while checking auth or if not logged in
+  if (enableAuth && (!isLoaded || !isLogin)) {
+    return null;
+  }
 
   return (
     <>
