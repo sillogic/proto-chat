@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { account, session } from '@/database/schemas/betterAuth';
 import { users } from '@/database/schemas/user';
+import { getRedisConfig } from '@/envs/redis';
+import { initializeRedis, isRedisEnabled } from '@/libs/redis';
 import { CasdoorClient } from '@/server/modules/Casdoor';
 import { createSignedSessionCookie } from '@/server/modules/Casdoor/cookie';
 import type { CasdoorLoginRequest, CasdoorLoginResponse } from '@/server/modules/Casdoor/types';
@@ -12,6 +14,9 @@ import { UserService } from '@/server/services/user';
 // Session configuration
 const SESSION_EXPIRES_IN_DAYS = 7;
 const SESSION_TOKEN_LENGTH = 32;
+
+// Better Auth secondaryStorage key prefix (must match config.ts)
+const BETTER_AUTH_KEY_PREFIX = 'better-auth:';
 
 /**
  * Generate a secure session token
@@ -25,6 +30,80 @@ const getSessionExpiresAt = () => {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + SESSION_EXPIRES_IN_DAYS);
   return expiresAt;
+};
+
+/**
+ * Sync session to Redis secondaryStorage
+ * This ensures Better Auth can find the session when validating
+ */
+const syncSessionToRedis = async (params: {
+  expiresAt: Date;
+  sessionData: {
+    createdAt: Date;
+    expiresAt: Date;
+    id: string;
+    ipAddress: string | null;
+    token: string;
+    updatedAt: Date;
+    userAgent: string | null;
+    userId: string;
+  };
+  userData: {
+    avatar: string | null;
+    email: string;
+    emailVerified: boolean;
+    fullName: string;
+    id: string;
+    username: string | null;
+  };
+}) => {
+  const redisConfig = getRedisConfig();
+  if (!isRedisEnabled(redisConfig)) return;
+
+  try {
+    const redisClient = await initializeRedis(redisConfig);
+    if (!redisClient) return;
+
+    const { sessionData, userData, expiresAt } = params;
+
+    // Calculate TTL in seconds
+    const ttl = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+    if (ttl <= 0) return;
+
+    // Build session key (Better Auth format: session.{token})
+    const sessionKey = `${BETTER_AUTH_KEY_PREFIX}session.${sessionData.token}`;
+
+    // Build session value (Better Auth format: {session, user})
+    const sessionValue = JSON.stringify({
+      session: {
+        createdAt: sessionData.createdAt.toISOString(),
+        expiresAt: sessionData.expiresAt.toISOString(),
+        id: sessionData.id,
+        ipAddress: sessionData.ipAddress,
+        token: sessionData.token,
+        updatedAt: sessionData.updatedAt.toISOString(),
+        userAgent: sessionData.userAgent,
+        userId: sessionData.userId,
+      },
+      user: {
+        createdAt: userData.email, // BetterAuth maps email to createdAt in some cases
+        email: userData.email,
+        emailVerified: userData.emailVerified,
+        id: userData.id,
+        image: userData.avatar,
+        name: userData.fullName,
+        username: userData.username,
+      },
+    });
+
+    // Store session in Redis with TTL
+    await redisClient.set(sessionKey, sessionValue, { ex: ttl });
+
+    console.log('[Casdoor] Session synced to Redis:', sessionData.id);
+  } catch (error) {
+    // Log but don't fail the login - database session is still valid
+    console.error('[Casdoor] Failed to sync session to Redis:', error);
+  }
 };
 
 /**
@@ -183,16 +262,41 @@ export async function POST(req: NextRequest) {
     const sessionToken = generateSessionToken();
     const sessionExpiresAt = getSessionExpiresAt();
     const sessionId = createNanoId(12)();
+    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null;
+    const userAgent = req.headers.get('user-agent') || null;
 
     await serverDB.insert(session).values({
       createdAt: now,
       expiresAt: sessionExpiresAt,
       id: sessionId,
-      ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null,
+      ipAddress,
       token: sessionToken,
       updatedAt: now,
-      userAgent: req.headers.get('user-agent') || null,
+      userAgent,
       userId: existingUser.id,
+    });
+
+    // Step 5.1: Sync session to Redis for Better Auth secondaryStorage
+    await syncSessionToRedis({
+      expiresAt: sessionExpiresAt,
+      sessionData: {
+        createdAt: now,
+        expiresAt: sessionExpiresAt,
+        id: sessionId,
+        ipAddress,
+        token: sessionToken,
+        updatedAt: now,
+        userAgent,
+        userId: existingUser.id,
+      },
+      userData: {
+        avatar: userInfo.avatar || userInfo.permanentAvatar || null,
+        email,
+        emailVerified: userInfo.email_verified ?? false,
+        fullName: displayName,
+        id: existingUser.id,
+        username: userInfo.preferred_username || userInfo.name || null,
+      },
     });
 
     // Get callback URL from query params or default to '/'
