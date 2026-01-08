@@ -121,7 +121,7 @@ const MarketAuthCallbackPage = () => {
     }
   };
 
-  const getTitle = () => {
+  const getTitle = (): string => {
     switch (status) {
       case 'loading': {
         return t('callback.titles.loading');
