@@ -10,6 +10,7 @@ import { CasdoorClient } from '@/server/modules/Casdoor';
 import { createSignedSessionCookie } from '@/server/modules/Casdoor/cookie';
 import type { CasdoorLoginRequest, CasdoorLoginResponse } from '@/server/modules/Casdoor/types';
 import { UserService } from '@/server/services/user';
+import { generateDefaultAvatar, isValidAvatar } from '@/server/utils/avatar';
 
 // Session configuration
 const SESSION_EXPIRES_IN_DAYS = 7;
@@ -189,8 +190,13 @@ export async function POST(req: NextRequest) {
     if (!existingUser) {
       // Create new user
       const userId = idGenerator('user', 32 - 'user_'.length);
+
+      // Use Casdoor avatar if available, otherwise generate a default one
+      const casdoorAvatar = userInfo.avatar || userInfo.permanentAvatar;
+      const avatar = isValidAvatar(casdoorAvatar) ? casdoorAvatar : generateDefaultAvatar(userId);
+
       await serverDB.insert(users).values({
-        avatar: userInfo.avatar || userInfo.permanentAvatar,
+        avatar,
         createdAt: now,
         email,
         emailVerified: userInfo.email_verified ?? false,
@@ -210,11 +216,12 @@ export async function POST(req: NextRequest) {
 
       existingUser = { id: userId };
     } else {
-      // Update existing user info
+      // Update existing user info (only update avatar if Casdoor provides one)
+      const casdoorAvatar = userInfo.avatar || userInfo.permanentAvatar;
       await serverDB
         .update(users)
         .set({
-          avatar: userInfo.avatar || userInfo.permanentAvatar,
+          ...(isValidAvatar(casdoorAvatar) && { avatar: casdoorAvatar }),
           emailVerified: userInfo.email_verified ?? false,
           fullName: displayName,
           updatedAt: now,

@@ -8,6 +8,7 @@ import { CasdoorClient } from '@/server/modules/Casdoor';
 import { createSignedSessionCookie } from '@/server/modules/Casdoor/cookie';
 import type { CasdoorSignupRequest, CasdoorSignupResponse } from '@/server/modules/Casdoor/types';
 import { UserService } from '@/server/services/user';
+import { generateDefaultAvatar, isValidAvatar } from '@/server/utils/avatar';
 
 // Session configuration
 const SESSION_EXPIRES_IN_DAYS = 7;
@@ -193,8 +194,12 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const userId = idGenerator('user', 32 - 'user_'.length);
 
+    // Use Casdoor avatar if available, otherwise generate a default one
+    const casdoorAvatar = userInfo.avatar || userInfo.permanentAvatar;
+    const avatar = isValidAvatar(casdoorAvatar) ? casdoorAvatar : generateDefaultAvatar(userId);
+
     await serverDB.insert(users).values({
-      avatar: userInfo.avatar || userInfo.permanentAvatar,
+      avatar,
       createdAt: now,
       email: normalizedEmail,
       emailVerified: userInfo.email_verified ?? false,
