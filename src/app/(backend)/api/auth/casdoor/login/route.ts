@@ -7,7 +7,7 @@ import { users } from '@/database/schemas/user';
 import { getRedisConfig } from '@/envs/redis';
 import { initializeRedis, isRedisEnabled } from '@/libs/redis';
 import { CasdoorClient } from '@/server/modules/Casdoor';
-import { createSignedSessionCookie } from '@/server/modules/Casdoor/cookie';
+import { createSignedSessionCookies } from '@/server/modules/Casdoor/cookie';
 import type { CasdoorLoginRequest, CasdoorLoginResponse } from '@/server/modules/Casdoor/types';
 import { UserService } from '@/server/services/user';
 import { generateDefaultAvatar, isValidAvatar } from '@/server/utils/avatar';
@@ -99,8 +99,6 @@ const syncSessionToRedis = async (params: {
 
     // Store session in Redis with TTL
     await redisClient.set(sessionKey, sessionValue, { ex: ttl });
-
-    console.log('[Casdoor] Session synced to Redis:', sessionData.id);
   } catch (error) {
     // Log but don't fail the login - database session is still valid
     console.error('[Casdoor] Failed to sync session to Redis:', error);
@@ -309,18 +307,44 @@ export async function POST(req: NextRequest) {
     // Get callback URL from query params or default to '/'
     const callbackUrl = req.nextUrl.searchParams.get('callbackUrl') || '/';
 
-    // Step 6: Create response with signed session cookie
+    // Step 6: Create response with signed session cookies
     const response = NextResponse.json({
       callbackUrl,
       success: true,
     } satisfies CasdoorLoginResponse);
 
-    // Set signed session cookie (Better Auth uses HMAC-SHA256 signed cookies)
-    const signedCookie = await createSignedSessionCookie({
+    // Set signed session cookies (Better Auth requires both session_token and session_data for cookieCache)
+    const signedCookies = await createSignedSessionCookies({
       expiresAt: sessionExpiresAt,
+      sessionData: {
+        session: {
+          createdAt: now,
+          expiresAt: sessionExpiresAt,
+          id: sessionId,
+          ipAddress,
+          token: sessionToken,
+          updatedAt: now,
+          userAgent,
+          userId: existingUser.id,
+        },
+        user: {
+          avatar: userInfo.avatar || userInfo.permanentAvatar || null,
+          createdAt: now,
+          email,
+          emailVerified: userInfo.email_verified ?? false,
+          fullName: displayName,
+          id: existingUser.id,
+          updatedAt: now,
+          username: userInfo.preferred_username || userInfo.name || null,
+        },
+      },
       sessionToken,
     });
-    response.headers.append('Set-Cookie', signedCookie);
+
+    // Append all session cookies to response
+    for (const cookie of signedCookies) {
+      response.headers.append('Set-Cookie', cookie);
+    }
 
     return response;
   } catch (error) {
