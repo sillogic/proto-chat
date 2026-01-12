@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 import {
   LobeChatDatabase,
@@ -9,18 +9,20 @@ import {
   protochatUsageLogs,
 } from '@lobechat/database';
 
+import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+
 /**
  * ProtoChat模型映射信息
  */
 export interface ProtoChatModelMapping {
-  /** 原始模型ID，如 'openrouter::openai/gpt-4o' */
-  originalId: string;
-  /** 原始供应商ID，如 'openrouter' */
-  originalProvider: string;
   /** 底层供应商的API Key */
   apiKey: string;
   /** 底层供应商的Base URL */
   baseUrl: string;
+  /** 原始模型ID，如 'openrouter::openai/gpt-4o' */
+  originalId: string;
+  /** 原始供应商ID，如 'openrouter' */
+  originalProvider: string;
   /** 模型类型: 'chat' | 'image' | 'embedding' */
   type: string;
 }
@@ -29,12 +31,12 @@ export interface ProtoChatModelMapping {
  * ProtoChat定价信息
  */
 export interface ProtoChatPricing {
+  /** 是否免费 */
+  isFree: boolean;
   /** 用户价格 - 输入（积分/百万tokens） */
   userInputPrice: number;
   /** 用户价格 - 输出（积分/百万tokens） */
   userOutputPrice: number;
-  /** 是否免费 */
-  isFree: boolean;
 }
 
 /**
@@ -88,11 +90,57 @@ export class ProtoChatService {
       throw new Error(`ProtoChat provider is disabled: ${modelData.originalProvider}`);
     }
 
+    // 解密API Key
+    let keyVaults: any = {};
+
+    if (providerData.apiKey) {
+      try {
+        const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+        const { wasAuthentic, plaintext } = await gateKeeper.decrypt(providerData.apiKey);
+
+        if (wasAuthentic && plaintext) {
+          try {
+            keyVaults = JSON.parse(plaintext);
+          } catch (e) {
+            console.error(
+              `[ProtoChat] Failed to parse keyVaults JSON for ${modelData.originalProvider}:`,
+              e,
+            );
+          }
+        } else if (!wasAuthentic) {
+          console.error(
+            `[ProtoChat] Decryption authentication failed for ${modelData.originalProvider}. This usually means the encryption key is different from the one used to encrypt.`,
+          );
+        }
+      } catch (error) {
+        console.error(
+          `[ProtoChat] Error during decryption for ${modelData.originalProvider}:`,
+          error,
+        );
+      }
+    }
+
+    const apiKey = keyVaults.apiKey || '';
+    let baseUrl = providerData.baseUrl || '';
+
+    // 优先使用 keyVaults 中的 baseUrl 或 proxyUrl
+    if (keyVaults.baseURL) {
+      baseUrl = keyVaults.baseURL;
+    } else if (keyVaults.proxyUrl) {
+      baseUrl = keyVaults.proxyUrl;
+    } else if (keyVaults.baseUrl) {
+      baseUrl = keyVaults.baseUrl;
+    }
+
+    if (!apiKey) {
+      throw new Error(`No API key found for provider ${modelData.originalProvider}`);
+    }
+
     return {
+      apiKey,
+      baseUrl,
       originalId: modelData.originalId,
       originalProvider: modelData.originalProvider,
-      apiKey: providerData.apiKey || '',
-      baseUrl: providerData.baseUrl || '',
       type: modelData.type,
     };
   }
@@ -103,7 +151,7 @@ export class ProtoChatService {
    */
   convertModelId(originalId: string): string {
     const parts = originalId.split('::');
-    return parts[parts.length - 1];
+    return parts.at(-1) || originalId;
   }
 
   /**
@@ -124,9 +172,9 @@ export class ProtoChatService {
     const pricingData = pricing[0];
 
     return {
+      isFree: pricingData.isFree || false,
       userInputPrice: Number(pricingData.userInputPrice),
       userOutputPrice: Number(pricingData.userOutputPrice),
-      isFree: pricingData.isFree || false,
     };
   }
 
@@ -141,7 +189,7 @@ export class ProtoChatService {
       .limit(1);
 
     if (!setting.length) {
-      return 1.0; // 默认系数
+      return 1; // 默认系数
     }
 
     return Number(setting[0].value);
@@ -182,25 +230,25 @@ export class ProtoChatService {
    * 记录使用日志
    */
   async logUsage(params: {
-    userId: string;
+    costPrice?: number;
+    inputTokens: number;
     modelId: string;
     originalProvider: string;
-    inputTokens: number;
     outputTokens: number;
-    costPrice?: number;
-    userPrice?: number;
     requestId?: string;
+    userId: string;
+    userPrice?: number;
   }): Promise<void> {
     await this.db.insert(protochatUsageLogs).values({
-      userId: params.userId,
+      costPrice: params.costPrice?.toString(),
+      inputTokens: params.inputTokens,
       modelId: params.modelId,
       originalProvider: params.originalProvider,
-      inputTokens: params.inputTokens,
       outputTokens: params.outputTokens,
-      totalTokens: params.inputTokens + params.outputTokens,
-      costPrice: params.costPrice?.toString(),
-      userPrice: params.userPrice?.toString(),
       requestId: params.requestId,
+      totalTokens: params.inputTokens + params.outputTokens,
+      userId: params.userId,
+      userPrice: params.userPrice?.toString(),
     });
   }
 
@@ -210,22 +258,22 @@ export class ProtoChatService {
    */
   async getEnabledModels(): Promise<
     Array<{
-      id: string;
-      displayName: string;
-      type: string;
       capabilities: Record<string, boolean> | null;
       contextTokens: number | null;
+      displayName: string;
+      id: string;
       maxOutput: number | null;
+      type: string;
     }>
   > {
     const models = await this.db
       .select({
-        id: protochatModels.id,
-        displayName: protochatModels.displayName,
-        type: protochatModels.type,
         capabilities: protochatModels.capabilities,
         contextTokens: protochatModels.contextTokens,
+        displayName: protochatModels.displayName,
+        id: protochatModels.id,
         maxOutput: protochatModels.maxOutput,
+        type: protochatModels.type,
       })
       .from(protochatModels)
       .where(eq(protochatModels.enabled, true))
@@ -244,16 +292,16 @@ export class ProtoChatService {
     Array<{
       id: string;
       name: string;
-      type: string;
       priority: number | null;
+      type: string;
     }>
   > {
     const providers = await this.db
       .select({
         id: protochatProviders.id,
         name: protochatProviders.name,
-        type: protochatProviders.type,
         priority: protochatProviders.priority,
+        type: protochatProviders.type,
       })
       .from(protochatProviders)
       .where(eq(protochatProviders.enabled, true))

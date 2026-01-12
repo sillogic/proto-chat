@@ -63,7 +63,6 @@ router.get('/ai-providers', authenticateToken, requirePermission('system.admin')
                     baseUrl: p.baseUrl,
                     pricingSyncStrategy: p.pricingSyncStrategy,
                     pricingApiUrl: p.pricingApiUrl,
-                    enabledModels: (p.settings as any)?.enabledModels || [],
                 },
                 config: {},
                 isGlobal: true, // ProtoChat providers are treated as global
@@ -110,11 +109,8 @@ router.post('/ai-providers', authenticateToken, requirePermission('system.admin'
         const pricingSyncStrategy = settings?.pricingSyncStrategy || 'model_bank';
         const pricingApiUrl = settings?.pricingApiUrl || null;
 
-        // 对 enabledModels 去重
+        // 保留settings中的其他字段（如lastSyncedAt）
         const processedSettings = settings ? { ...settings } : {};
-        if (processedSettings.enabledModels && Array.isArray(processedSettings.enabledModels)) {
-            processedSettings.enabledModels = Array.from(new Set(processedSettings.enabledModels));
-        }
 
         const providerData: any = {
             id,
@@ -1179,16 +1175,14 @@ async function syncModelToDatabase(
             set: modelRecord,
         });
 
-    // 计算用户价格
-    const userInputPrice = modelData.pricing.inputPrice * multiplier;
-    const userOutputPrice = modelData.pricing.outputPrice * multiplier;
-
+    // ProtoChat子供应商同步：存储美元价格（不转换成积分）
+    // 积分价格由模型价格页面同步时计算
     const pricingRecord = {
         modelId: modelData.id,
         costInputPrice: modelData.pricing.inputPrice.toFixed(4),
         costOutputPrice: modelData.pricing.outputPrice.toFixed(4),
-        userInputPrice: userInputPrice.toFixed(4),
-        userOutputPrice: userOutputPrice.toFixed(4),
+        userInputPrice: (modelData.pricing.inputPrice * multiplier).toFixed(4),
+        userOutputPrice: (modelData.pricing.outputPrice * multiplier).toFixed(4),
         currency: modelData.pricing.currency,
         priceSource: 'api',
         isFree: modelData.pricing.isFree,

@@ -76,14 +76,9 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
   }, [id, dbModels]);
 
   const enabledModels = useMemo(() => {
-    // If settings.enabledModels exists, use it. Otherwise use defaults from model-bank
-    if (config?.settings?.enabledModels) {
-      const list = config.settings.enabledModels as string[];
-      // 去重保护
-      return Array.from(new Set(list));
-    }
+    // 统一使用数据库中的 enabled 字段
     return models.filter((m: any) => m.enabled).map((m: any) => m.id);
-  }, [config?.settings?.enabledModels, models]);
+  }, [models]);
 
   const filteredModels = useMemo(() => {
     let filtered = models;
@@ -113,30 +108,17 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
   }, [filteredModels, enabledModels]);
 
   const handleToggle = async (modelId: string, enabled: boolean) => {
-    let nextEnabledModels = [...enabledModels];
-    if (enabled) {
-      if (!nextEnabledModels.includes(modelId)) {
-        nextEnabledModels.push(modelId);
-      }
-    } else {
-      nextEnabledModels = nextEnabledModels.filter(innerId => innerId !== modelId);
-    }
-
     try {
-      const res = await request<{ success: boolean }>(`${apiPrefix}/ai-providers`, {
-        method: 'POST',
-        data: {
-          id,
-          enabled: config?.enabled ?? true, // 必须传递enabled字段
-          // 保留原有的 keyVaults，避免清空 API Key
-          keyVaults: config?.keyVaults || {},
-          settings: {
-            ...config?.settings,
-            enabledModels: nextEnabledModels,
-          },
-        },
-      });
+      // 调用正确的API更新数据库中的 protochat_models.enabled 字段
+      // 需要对modelId进行URL编码，因为包含特殊字符如 :: 和 :
+      const res = await request<{ success: boolean; data?: { enabled: boolean } }>(
+        `${apiPrefix}/models/${encodeURIComponent(modelId)}/toggle`,
+        {
+          method: 'PUT',
+        }
+      );
       if (res.success) {
+        message.success(`模型已${enabled ? '启用' : '禁用'}`);
         onRefresh();
       }
     } catch (e) {

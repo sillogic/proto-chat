@@ -31,9 +31,12 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
     const fetchModels = async () => {
       setLoading(true);
       try {
-        const res = await request<{ success: boolean; data: any[] }>(
-          `/api/admin/ai-providers/models?provider=${id}`
-        );
+        // ProtoChat使用专用的API查询所有子供应商的模型（不传provider参数）
+        const apiPath = id === 'protochat'
+          ? `/api/admin/protochat/models`
+          : `/api/admin/ai-providers/models?provider=${id}`;
+
+        const res = await request<{ success: boolean; data: any[] }>(apiPath);
         if (res.success && res.data) {
           setDbModels(res.data);
         } else {
@@ -73,14 +76,9 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
   }, [id, dbModels]);
 
   const enabledModels = useMemo(() => {
-    // If settings.enabledModels exists, use it. Otherwise use defaults from model-bank
-    if (config?.settings?.enabledModels) {
-      const list = config.settings.enabledModels as string[];
-      // 去重保护
-      return Array.from(new Set(list));
-    }
+    // 统一使用数据库中的 enabled 字段
     return models.filter((m: any) => m.enabled).map((m: any) => m.id);
-  }, [config?.settings?.enabledModels, models]);
+  }, [models]);
 
   const filteredModels = useMemo(() => {
     let filtered = models;
@@ -110,28 +108,42 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
   }, [filteredModels, enabledModels]);
 
   const handleToggle = async (modelId: string, enabled: boolean) => {
-    let nextEnabledModels = [...enabledModels];
-    if (enabled) {
-      if (!nextEnabledModels.includes(modelId)) {
-        nextEnabledModels.push(modelId);
-      }
-    } else {
-      nextEnabledModels = nextEnabledModels.filter(innerId => innerId !== modelId);
-    }
-
     try {
-      const res = await upsertGlobalAiProvider({
-        id,
-        enabled: config?.enabled ?? true, // 必须传递enabled字段
-        // 保留原有的 keyVaults，避免清空 API Key
-        keyVaults: config?.keyVaults || {},
-        settings: {
-          ...config?.settings,
-          enabledModels: nextEnabledModels,
+      // ProtoChat使用专用的toggle API直接更新数据库
+      if (id === 'protochat') {
+        const res = await request<{ success: boolean; data?: { enabled: boolean } }>(
+          `/api/admin/protochat/models/${modelId}/toggle`,
+          {
+            method: 'PUT',
+          }
+        );
+        if (res.success) {
+          message.success(`模型已${enabled ? '启用' : '禁用'}`);
+          onRefresh();
         }
-      });
-      if (res.success) {
-        onRefresh();
+      } else {
+        // 其他供应商使用原有逻辑（settings.enabledModels）
+        let nextEnabledModels = [...enabledModels];
+        if (enabled) {
+          if (!nextEnabledModels.includes(modelId)) {
+            nextEnabledModels.push(modelId);
+          }
+        } else {
+          nextEnabledModels = nextEnabledModels.filter(innerId => innerId !== modelId);
+        }
+
+        const res = await upsertGlobalAiProvider({
+          id,
+          enabled: config?.enabled ?? true,
+          keyVaults: config?.keyVaults || {},
+          settings: {
+            ...config?.settings,
+            enabledModels: nextEnabledModels,
+          }
+        });
+        if (res.success) {
+          onRefresh();
+        }
       }
     } catch (e) {
       message.error('更新模型状态失败');

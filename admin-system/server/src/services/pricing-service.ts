@@ -210,12 +210,18 @@ export class PricingService {
 
                 const pricing = pricingResults[0];
 
-                // Use the already calculated prices from the protochatModelPricing table
-                // These are already in credits
-                const costInputPrice = parseFloat(pricing.costInputPrice);
-                const costOutputPrice = parseFloat(pricing.costOutputPrice);
-                const userInputPrice = parseFloat(pricing.userInputPrice);
-                const userOutputPrice = parseFloat(pricing.userOutputPrice);
+                // ProtoChat pricing table stores USD prices, need to convert to credits
+                // $0.10/M × 500,000 = 50,000 积分/M
+                const costInputPriceUSD = parseFloat(pricing.costInputPrice);
+                const costOutputPriceUSD = parseFloat(pricing.costOutputPrice);
+                const userInputPriceUSD = parseFloat(pricing.userInputPrice);
+                const userOutputPriceUSD = parseFloat(pricing.userOutputPrice);
+
+                // Convert to credits
+                const costInputPrice = Math.ceil(costInputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
+                const costOutputPrice = Math.ceil(costOutputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
+                const userInputPrice = Math.ceil(userInputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
+                const userOutputPrice = Math.ceil(userOutputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
 
                 pricingMap.set(key, {
                     id: idGenerator('mp'),
@@ -234,48 +240,9 @@ export class PricingService {
             }
         }
 
-        // Sync aggregated enabled models to aiProviders table
-        await this.syncProtoChatToAiProviders(Array.from(allEnabledModels));
-    }
-
-    // Sync ProtoChat enabled models to aiProviders table
-    private async syncProtoChatToAiProviders(enabledModels: string[]) {
-        // Check if ProtoChat exists in aiProviders
-        const existing = await db
-            .select()
-            .from(aiProviders)
-            .where(eq(aiProviders.id, 'protochat'))
-            .limit(1);
-
-        const providerData = {
-            id: 'protochat',
-            name: 'ProtoChat',
-            enabled: true,
-            isGlobal: true,
-            fetchOnClient: false,
-            keyVaults: null,
-            settings: {
-                enabledModels,
-            },
-            config: {},
-            updatedAt: new Date(),
-        };
-
-        if (existing.length > 0) {
-            // Update
-            await db
-                .update(aiProviders)
-                .set(providerData)
-                .where(eq(aiProviders.id, 'protochat'));
-        } else {
-            // Insert
-            await db.insert(aiProviders).values({
-                ...providerData,
-                createdAt: new Date(),
-            } as any);
-        }
-
-        console.log(`[ProtoChat Sync] Synced ${enabledModels.length} models to aiProviders`);
+        // Note: 不再需要同步到 aiProviders 表的 settings.enabledModels
+        // 主项目直接从 protochat_models.enabled 字段查询
+        console.log(`[ProtoChat Pricing] Updated pricing for ${allEnabledModels.size} enabled models`);
     }
 }
 

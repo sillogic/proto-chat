@@ -211,15 +211,16 @@ export const imageRouter = router({
 
     try {
       const imageGenerationPromise = async (signal: AbortSignal) => {
-        log('Initializing agent runtime for provider: %s', provider);
+        log('Initializing agent runtime for provider: %s, model: %s', provider, model);
 
-        const agentRuntime = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload);
+        const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload, { model });
+        const modelId = actualModel || model;
 
         // Check if operation has been cancelled
         checkAbortSignal(signal);
-        log('Agent runtime initialized, calling createImage');
+        log('Agent runtime initialized, calling createImage with model: %s', modelId);
         const response = await agentRuntime.createImage!({
-          model,
+          model: modelId,
           params: params as unknown as RuntimeImageGenParams,
         });
 

@@ -252,31 +252,46 @@ export class MessageService {
 
   /**
    * Check if user has configured their own API key for a provider
+   *
+   * Billing logic:
+   * - Only global providers (ProtoChat) are billable
+   * - If user configured their own API key, they use their own service and won't be charged
+   *
    * @param provider - Provider ID
-   * @returns true if user has their own config, false if using global config
+   * @returns true if user is using their own API key (no charge), false if using global provider (will charge)
    */
   private async isUserUsingOwnConfig(provider: string): Promise<boolean> {
     try {
+      // Check if user has a personal configuration for this provider
       const userConfig = await this.db.query.aiProviders.findFirst({
-        where: and(eq(aiProviders.userId, this.userId), eq(aiProviders.id, provider)),
+        where: and(
+          eq(aiProviders.userId, this.userId),
+          eq(aiProviders.id, provider),
+          eq(aiProviders.isGlobal, false) // Only check user's personal providers (not global)
+        ),
       });
 
       if (!userConfig) {
-        return false; // No user config, using global
+        // No user config found, user is using global provider (ProtoChat)
+        return false;
       }
 
-      // Check if user has configured an API key
+      // User has a personal provider config, check if they provided an API key
       if (userConfig.keyVaults) {
         const keyVaults = safeParseJSON<{ apiKey?: string }>(userConfig.keyVaults);
         if (keyVaults?.apiKey) {
-          return true; // User has their own API key
+          // User provided their own API key, don't charge
+          return true;
         }
       }
 
-      return false; // User config exists but no API key
+      // User config exists but no API key provided
+      // This shouldn't happen in normal flow, but treat as user config
+      console.warn(`[MessageService] User ${this.userId} has provider ${provider} config without API key`);
+      return false;
     } catch (error) {
       console.error('[MessageService] Failed to check user config:', error);
-      return false; // Default to global config on error
+      return false; // On error, default to billing (safer)
     }
   }
 }

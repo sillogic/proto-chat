@@ -91,12 +91,13 @@ export const fileRouter = router({
             await pMap(
               requestArray,
               async (chunks) => {
-                const agentRuntime = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload);
+                const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload, { model });
+                const modelId = actualModel || model;
 
                 const embeddings = await agentRuntime.embeddings({
                   dimensions: 1024,
                   input: chunks.map((c) => c.text),
-                  model,
+                  model: modelId,
                 });
 
                 const items: NewEmbeddingsItem[] =

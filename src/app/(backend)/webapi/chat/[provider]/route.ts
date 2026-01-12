@@ -16,29 +16,39 @@ export const maxDuration = 300;
 export const POST = checkAuth(async (req: Request, { params, jwtPayload, createRuntime }) => {
   const provider = (await params)!.provider!;
 
-  // ============  1. init services  ============ //
+  // ============  1. Read request data first  ============ //
+  // ProtoChat needs model ID to determine the actual provider
+  const data = (await req.json()) as ChatStreamPayload;
+
+  // ============  2. Init services with model info  ============ //
 
   try {
     let modelRuntime: ModelRuntime;
+    let actualModel: string | undefined;
+
     if (createRuntime) {
       modelRuntime = createRuntime(jwtPayload);
     } else {
-      modelRuntime = await initModelRuntimeWithUserPayload(provider, jwtPayload);
+      // Pass model info to runtime initialization for ProtoChat routing
+      const result = await initModelRuntimeWithUserPayload(provider, jwtPayload, { model: data.model });
+      modelRuntime = result.runtime;
+      actualModel = result.actualModel;
     }
 
-    // ============  2. create chat completion   ============ //
+    // ============  3. Create chat completion  ============ //
 
-    const data = (await req.json()) as ChatStreamPayload;
+    // For ProtoChat, replace model ID with the actual underlying model ID
+    const requestData = actualModel ? { ...data, model: actualModel } : data;
 
     const tracePayload = getTracePayload(req);
 
     let traceOptions = {};
     // If user enable trace
     if (tracePayload?.enabled) {
-      traceOptions = createTraceOptions(data, { provider, trace: tracePayload });
+      traceOptions = createTraceOptions(requestData, { provider, trace: tracePayload });
     }
 
-    return await modelRuntime.chat(data, {
+    return await modelRuntime.chat(requestData, {
       user: jwtPayload.userId,
       ...traceOptions,
       signal: req.signal,

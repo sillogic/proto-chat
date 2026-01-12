@@ -19,9 +19,9 @@ import { merge, mergeArrayById } from '@/utils/merge';
 
 import { AiModelModel } from '../../models/aiModel';
 import { AiProviderModel } from '../../models/aiProvider';
-import { protochatModels } from '../../schemas/protochat';
+import { protochatModels, protochatProviders } from '../../schemas/protochat';
 import { LobeChatDatabase } from '../../type';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 type DecryptUserKeyVaults = (encryptKeyVaultsStr: string | null) => Promise<any>;
 
@@ -337,13 +337,32 @@ export class AiInfraRepos {
   /**
    * Fetch ProtoChat models from database
    * ProtoChat is a wrapper provider that gets its model list from the database
+   * Only returns models from enabled providers
    */
   private fetchProtoChatModels = async (): Promise<AiProviderModelListItem[]> => {
     try {
+      // Query models with JOIN to check if the provider is also enabled
       const models = await this.db
-        .select()
+        .select({
+          id: protochatModels.id,
+          displayName: protochatModels.displayName,
+          type: protochatModels.type,
+          capabilities: protochatModels.capabilities,
+          contextTokens: protochatModels.contextTokens,
+          maxOutput: protochatModels.maxOutput,
+          settings: protochatModels.settings,
+        })
         .from(protochatModels)
-        .where(eq(protochatModels.enabled, true));
+        .innerJoin(
+          protochatProviders,
+          eq(protochatModels.originalProvider, protochatProviders.id),
+        )
+        .where(
+          and(
+            eq(protochatModels.enabled, true),
+            eq(protochatProviders.enabled, true), // ✅ 只返回启用的子供应商的模型
+          ),
+        );
 
       return models.map((m) => ({
         abilities: (m.capabilities as Record<string, boolean>) || {},

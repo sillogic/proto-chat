@@ -9,7 +9,7 @@ export const POST = checkAuth(async (req, { params, jwtPayload }) => {
   const provider = (await params)!.provider!;
 
   try {
-    const agentRuntime = await initModelRuntimeWithUserPayload(provider, jwtPayload);
+    const { runtime: agentRuntime } = await initModelRuntimeWithUserPayload(provider, jwtPayload);
 
     const data = (await req.json()) as PullModelParams;
 

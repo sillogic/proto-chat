@@ -15,9 +15,9 @@ interface ProtoChatProvider {
     proxyUrl?: string;
   };
   settings?: {
-    enabledModels?: string[];
     baseUrl?: string;
     pricingSyncStrategy?: string;
+    lastSyncedAt?: string;
   };
 }
 

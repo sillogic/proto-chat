@@ -237,12 +237,13 @@ export const chunkRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { model, provider } =
         getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
-      const agentRuntime = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload);
+      const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload, { model });
+      const modelId = actualModel || model;
 
       const embeddings = await agentRuntime.embeddings({
         dimensions: 1024,
         input: input.query,
-        model,
+        model: modelId,
       });
 
       return ctx.chunkModel.semanticSearch({
@@ -265,10 +266,12 @@ export const chunkRouter = router({
           KeyVaultsGateKeeper.getUserKeyVaults,
         );
 
-        const modelRuntime = await initModelRuntimeWithUserPayload(
+        const { runtime: modelRuntime, actualModel } = await initModelRuntimeWithUserPayload(
           provider,
           providerDetail.keyVaults || {},
+          { model },
         );
+        const modelId = actualModel || model;
 
         // slice content to make sure in the context window limit
         const query = input.query.length > 8000 ? input.query.slice(0, 8000) : input.query;
@@ -276,7 +279,7 @@ export const chunkRouter = router({
         const embeddings = await modelRuntime.embeddings({
           dimensions: 1024,
           input: query,
-          model,
+          model: modelId,
         });
 
         embedding = embeddings![0];

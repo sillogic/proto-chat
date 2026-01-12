@@ -226,16 +226,16 @@ const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = 
   const runtimeParams = {
     apiKey: mapping.apiKey,
     baseURL: mapping.baseUrl,
-    ...params,
-    model: actualModelId, // 使用实际的模型ID
   };
 
-  console.log(
-    `[ProtoChat] Routing model ${modelId} to ${runtimeProvider}::${actualModelId}`,
-  );
-
   // 6. 使用底层供应商初始化Runtime
-  return ModelRuntime.initializeWithProvider(runtimeProvider, runtimeParams);
+  const runtime = await ModelRuntime.initializeWithProvider(runtimeProvider, runtimeParams);
+
+  // 7. 返回runtime和转换后的模型ID（调用者需要在调用chat()时使用actualModel）
+  return {
+    actualModel: actualModelId,
+    runtime,
+  };
 };
 
 /**
@@ -243,13 +243,13 @@ const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = 
  * @param provider - The provider name.
  * @param payload - The JWT payload.
  * @param params
- * @returns A promise that resolves when the agent runtime is initialized.
+ * @returns 包含runtime的对象，对于ProtoChat还包含actualModel
  */
 export const initModelRuntimeWithUserPayload = async (
   provider: string,
   payload: ClientSecretPayload,
   params: any = {},
-) => {
+): Promise<{ actualModel?: string, runtime: ModelRuntime; }> => {
   // 特殊处理ProtoChat供应商
   if (ProtoChatService.isProtoChatProvider(provider)) {
     return await initProtoChatRuntime(payload, params);
@@ -257,15 +257,17 @@ export const initModelRuntimeWithUserPayload = async (
 
   const runtimeProvider = payload.runtimeProvider ?? provider;
 
+  let runtime: ModelRuntime;
+
   if (runtimeProvider === ModelProvider.VertexAI) {
     const vertexOptions = buildVertexOptions(payload, params);
-    const runtime = LobeVertexAI.initFromVertexAI(vertexOptions);
-
-    return new ModelRuntime(runtime);
+    runtime = new ModelRuntime(LobeVertexAI.initFromVertexAI(vertexOptions));
+  } else {
+    runtime = await ModelRuntime.initializeWithProvider(runtimeProvider, {
+      ...(await getParamsFromPayload(runtimeProvider, payload)),
+      ...params,
+    });
   }
 
-  return ModelRuntime.initializeWithProvider(runtimeProvider, {
-    ...(await getParamsFromPayload(runtimeProvider, payload)),
-    ...params,
-  });
+  return { runtime };
 };

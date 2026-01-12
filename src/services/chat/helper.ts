@@ -34,6 +34,9 @@ export const isEnableFetchOnClient = (provider: string) => {
 };
 
 export const resolveRuntimeProvider = (provider: string) => {
+  // Special handling for ProtoChat - it's a wrapper provider
+  if (provider === 'protochat') return provider;
+
   const isBuiltin = Object.values(ModelProvider).includes(provider as any);
   if (isBuiltin) return provider;
 
