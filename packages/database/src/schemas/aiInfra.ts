@@ -44,11 +44,16 @@ export const aiProviders = pgTable(
       .$defaultFn(() => ({}))
       .$type<AiProviderConfig>(),
 
+    // 定价同步配置
+    pricingSyncStrategy: varchar('pricing_sync_strategy', { length: 50 }),
+    pricingApiUrl: varchar('pricing_api_url', { length: 500 }),
+
     ...timestamps,
   },
   (table) => [
     primaryKey({ columns: [table.id, table.userId] }),
     index('ai_providers_user_id_idx').on(table.userId),
+    index('ai_providers_pricing_sync_strategy_idx').on(table.pricingSyncStrategy),
   ],
 );
 

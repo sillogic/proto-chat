@@ -54,5 +54,7 @@ export default {
   'menu.subscriptionRecords': '订阅记录',
   'menu.modelPricing': '模型价格',
   'menu.apiKeys': '模型供应商配置',
+  'menu.aiProviders': 'AI服务商',
   'menu.usageStatistics': '用量统计',
+  'menu.protochat': 'ProtoChat子供应商配置',
 };

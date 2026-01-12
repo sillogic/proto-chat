@@ -4,7 +4,7 @@ import { request } from '@umijs/max';
 import { Flexbox } from 'react-layout-kit';
 import { Typography, Tabs, Badge, Empty, message, Card, Button, Popconfirm, Input } from 'antd';
 import { CloudSyncOutlined, SearchOutlined } from '@ant-design/icons';
-import { AiProviderConfig, upsertGlobalAiProvider } from '@/services/ai-provider';
+import type { AiProviderConfig } from '@/services/ai-provider';
 import ModelItem from './ModelItem';
 import { LucideMessageSquare, LucideImage, LucideType, LucideMic, LucideScanEye, LucideRefreshCcw } from 'lucide-react';
 
@@ -14,13 +14,14 @@ interface ModelListProps {
   id: string;
   config?: AiProviderConfig;
   onRefresh: () => void;
+  apiPrefix?: string;
   onSync?: () => void;
   syncing?: boolean;
   lastSyncTime?: string;
   formatLastSync?: (time: string) => string;
 }
 
-const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, syncing, lastSyncTime, formatLastSync }) => {
+const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix = '/api/admin', onSync, syncing, lastSyncTime, formatLastSync }) => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [dbModels, setDbModels] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,15 +33,17 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
       setLoading(true);
       try {
         const res = await request<{ success: boolean; data: any[] }>(
-          `/api/admin/ai-providers/models?provider=${id}`
+          `${apiPrefix}/models?provider=${id}`
         );
         if (res.success && res.data) {
           setDbModels(res.data);
         } else {
+          // 数据库中没有数据，设置为空数组
           setDbModels([]);
         }
       } catch (error) {
         console.error('Failed to fetch models from DB:', error);
+        // 出错时设置为空数组，将使用fallback
         setDbModels([]);
       } finally {
         setLoading(false);
@@ -48,7 +51,7 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
     };
 
     fetchModels();
-  }, [id, config]); // 添加 config 作为依赖，同步后会触发 onRefresh，config 会更新
+  }, [id, apiPrefix, config]); // 添加 config 作为依赖，同步后会触发 onRefresh，config 会更新
 
   const models = useMemo(() => {
     // 如果还在加载中，返回空数组
@@ -120,15 +123,18 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
     }
 
     try {
-      const res = await upsertGlobalAiProvider({
-        id,
-        enabled: config?.enabled ?? true, // 必须传递enabled字段
-        // 保留原有的 keyVaults，避免清空 API Key
-        keyVaults: config?.keyVaults || {},
-        settings: {
-          ...config?.settings,
-          enabledModels: nextEnabledModels,
-        }
+      const res = await request<{ success: boolean }>(`${apiPrefix}/ai-providers`, {
+        method: 'POST',
+        data: {
+          id,
+          enabled: config?.enabled ?? true, // 必须传递enabled字段
+          // 保留原有的 keyVaults，避免清空 API Key
+          keyVaults: config?.keyVaults || {},
+          settings: {
+            ...config?.settings,
+            enabledModels: nextEnabledModels,
+          },
+        },
       });
       if (res.success) {
         onRefresh();
@@ -156,32 +162,34 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
           共 {models.length} 个模型可用
         </Text>
       </Flexbox>
-      {onSync && (
-        <Flexbox horizontal align="center" gap={12}>
-          <Input
-            placeholder="搜索模型名称或ID"
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            allowClear
-            style={{ width: 200 }}
-          />
-          {lastSyncTime && formatLastSync && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              上次同步: {formatLastSync(lastSyncTime)}
-            </Text>
-          )}
-          <Popconfirm
-            title={`确定要同步 ${id} 的最新模型列表吗？`}
-            description="这将更新模型信息和定价"
-            onConfirm={onSync}
-          >
-            <Button icon={<CloudSyncOutlined />} size="small" type="primary" loading={syncing}>
-              同步最新模型列表
-            </Button>
-          </Popconfirm>
-        </Flexbox>
-      )}
+      <Flexbox horizontal align="center" gap={12}>
+        <Input
+          placeholder="搜索模型名称或ID"
+          prefix={<SearchOutlined />}
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          allowClear
+          style={{ width: 200 }}
+        />
+        {onSync && (
+          <>
+            {lastSyncTime && formatLastSync && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                上次同步: {formatLastSync(lastSyncTime)}
+              </Text>
+            )}
+            <Popconfirm
+              title={`确定要同步 ${id} 的最新模型列表吗？`}
+              description="这将更新模型信息和定价"
+              onConfirm={onSync}
+            >
+              <Button icon={<CloudSyncOutlined />} size="small" type="primary" loading={syncing}>
+                同步最新模型列表
+              </Button>
+            </Popconfirm>
+          </>
+        )}
+      </Flexbox>
     </Flexbox>
   );
 

@@ -2,14 +2,22 @@ import { PageContainer } from '@ant-design/pro-components';
 import { Layout, Menu, theme } from 'antd';
 import { ModelProvider } from 'model-bank';
 import React, { useState, useEffect } from 'react';
-import { getGlobalAiProviders, AiProviderConfig } from '@/services/ai-provider';
+import { request } from '@umijs/max';
+import type { AiProviderConfig } from '@/services/ai-provider';
 
 import ProviderGrid from './ProviderGrid';
 import ProviderDetail from './Detail';
 
 const { Sider, Content } = Layout;
 
-const AiProvidersPage: React.FC = () => {
+// ProtoChat-specific API calls
+const getProtoChatAiProviders = () => {
+  return request<{ data: AiProviderConfig[]; success: boolean }>('/api/admin/protochat/ai-providers', {
+    method: 'GET',
+  });
+};
+
+const ProtoChatProvidersPage: React.FC = () => {
   const { token } = theme.useToken();
   const [selectedProvider, setSelectedProvider] = useState<string>('all');
   const [providers, setProviders] = useState<AiProviderConfig[]>([]);
@@ -18,7 +26,7 @@ const AiProvidersPage: React.FC = () => {
   const fetchProviders = async () => {
     setLoading(true);
     try {
-      const res = await getGlobalAiProviders();
+      const res = await getProtoChatAiProviders();
       if (res.success) {
         setProviders(res.data);
       }
@@ -36,11 +44,10 @@ const AiProvidersPage: React.FC = () => {
     // 数据库中存在但未启用的
     ...providers.filter((p) => !p.enabled).map((p) => ({
       id: p.id,
-      label: p.name || (p.id === 'protochat' ? 'ProtoChat' : p.id.toUpperCase()),
+      label: p.name || p.id.toUpperCase(),
     })),
     // 预定义但不在数据库中的（全新的供应商）
     ...[
-      'protochat',
       ModelProvider.OpenAI,
       ModelProvider.DeepSeek,
       ModelProvider.ZhiPu,
@@ -51,7 +58,7 @@ const AiProvidersPage: React.FC = () => {
       .filter((id) => !providers.find((p) => p.id === (id as string)))
       .map((id) => ({
         id: id as string,
-        label: id === 'protochat' ? 'ProtoChat' : (id as string).toUpperCase(),
+        label: (id as string).toUpperCase(),
       })),
   ];
 
@@ -61,12 +68,12 @@ const AiProvidersPage: React.FC = () => {
     {
       children: providers
         .filter((p) => p.enabled)
-        .map((p) => ({ key: p.id, label: p.name || (p.id === 'protochat' ? 'ProtoChat' : p.id.toUpperCase()) })),
+        .map((p) => ({ key: p.id, label: p.name || p.id.toUpperCase() })),
       label: '已启用',
       type: 'group',
     },
     {
-      children: disabledProviders.map((item) => ({ key: item.id, label: item.label })),
+      children: disabledProviders.map((p) => ({ key: p.id, label: p.label })),
       label: '未启用',
       type: 'group',
     },
@@ -76,7 +83,7 @@ const AiProvidersPage: React.FC = () => {
     <PageContainer
       header={{
         breadcrumb: {},
-        title: 'AI 服务商设置',
+        title: 'ProtoChat AI 服务商设置',
       }}
     >
       <Layout style={{ background: token.colorBgContainer, borderRadius: token.borderRadiusLG, overflow: 'hidden' }}>
@@ -91,12 +98,18 @@ const AiProvidersPage: React.FC = () => {
         </Sider>
         <Content style={{ background: token.colorBgContainer, minHeight: '600px', padding: '24px' }}>
           {selectedProvider === 'all' ? (
-            <ProviderGrid onRefresh={fetchProviders} onSelect={setSelectedProvider} providers={providers} />
+            <ProviderGrid
+              apiPrefix="/api/admin/protochat"
+              onRefresh={fetchProviders}
+              onSelect={setSelectedProvider}
+              providers={providers}
+            />
           ) : (
-            <ProviderDetail 
-              config={providers.find(p => p.id === selectedProvider)} 
-              id={selectedProvider} 
-              onRefresh={fetchProviders} 
+            <ProviderDetail
+              apiPrefix="/api/admin/protochat"
+              config={providers.find(p => p.id === selectedProvider)}
+              id={selectedProvider}
+              onRefresh={fetchProviders}
             />
           )}
         </Content>
@@ -105,4 +118,4 @@ const AiProvidersPage: React.FC = () => {
   );
 };
 
-export default AiProvidersPage;
+export default ProtoChatProvidersPage;

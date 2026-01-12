@@ -82,6 +82,12 @@ export default [
     component: './UsageStatistics',
   },
   {
+    path: '/protochat',
+    name: 'protochat',
+    icon: 'ThunderboltOutlined',
+    component: './ProtoChat/Providers',
+  },
+  {
     path: '/',
     redirect: '/dashboard',
   },

@@ -24,6 +24,7 @@ export interface ModelPricing {
     id: string;
     model: string;
     provider: string;
+    subProvider?: string | null; // 子供应商（仅 ProtoChat 使用）
     inputPrice: number | string;
     outputPrice: number | string;
     memo?: string;

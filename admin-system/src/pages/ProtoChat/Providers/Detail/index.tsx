@@ -1,14 +1,13 @@
 import { ActionIcon } from '@lobehub/ui';
-import { Button, Card, Divider, Form, Input, message, Switch, Typography, Space, Alert, Modal, Descriptions } from 'antd';
-import { LucideShieldCheck, LucideRefreshCcw, LucideSettings } from 'lucide-react';
-import { useNavigate, request } from '@umijs/max';
+import { Button, Card, Divider, Form, Input, message, Switch, Typography, Space, Modal, Descriptions } from 'antd';
+// import { TestTube2, CloudSync } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { request } from '@umijs/max';
 import { Flexbox } from 'react-layout-kit';
-import { AiProviderConfig, upsertGlobalAiProvider, checkAiProvider } from '@/services/ai-provider';
+import type { AiProviderConfig } from '@/services/ai-provider';
 
 import Checker from './Checker';
 import ModelList from './ModelList';
-import ProtoChatModelList from './ProtoChatModelList';
 
 const { Title, Text } = Typography;
 
@@ -16,15 +15,14 @@ interface ProviderDetailProps {
   id: string;
   config?: AiProviderConfig;
   onRefresh: () => void;
+  apiPrefix?: string; // e.g., "/api/admin/protochat"
 }
 
-const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }) => {
-  const navigate = useNavigate();
+const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh, apiPrefix = '/api/admin' }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const isProtoChat = id === 'protochat';
 
   // 格式化上次同步时间
   const formatLastSync = (isoString?: string): string => {
@@ -66,14 +64,14 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }
         name: config.name,
         enabled: config.enabled,
         apiKey: config.keyVaults?.apiKey,
-        proxyUrl: config.keyVaults?.proxyUrl,
+        proxyUrl: config.keyVaults?.proxyUrl || config.settings?.baseUrl,
         pricingApiUrl: config.settings?.pricingApiUrl || '',
       });
     } else {
       form.resetFields();
       form.setFieldsValue({ enabled: true });
     }
-  }, [config, id]);
+  }, [config, id, form]);
 
   const handleTestApi = async () => {
     const apiUrl = form.getFieldValue('pricingApiUrl');
@@ -85,7 +83,7 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }
     setTesting(true);
     try {
       const res = await request<{ success: boolean; data: any; message: string }>(
-        `/api/admin/ai-providers/${id}/test-api`,
+        `${apiPrefix}/providers/${id}/test-api`,
         {
           method: 'POST',
           data: { apiUrl },
@@ -127,7 +125,7 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }
         setSyncing(true);
         try {
           const res = await request<{ success: boolean; message: string; data: any }>(
-            `/api/admin/ai-providers/${id}/sync`,
+            `${apiPrefix}/providers/${id}/sync`,
             {
               method: 'POST',
             }
@@ -151,17 +149,21 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
-      const res = await upsertGlobalAiProvider({
-        id,
-        name: values.name || (isProtoChat ? 'ProtoChat' : undefined),
-        enabled: values.enabled,
-        keyVaults: isProtoChat ? {} : {
-          apiKey: values.apiKey,
-          proxyUrl: values.proxyUrl,
-        },
-        settings: isProtoChat ? config?.settings : {
-          ...config?.settings,
-          pricingApiUrl: values.pricingApiUrl,
+      const res = await request<{ success: boolean }>(`${apiPrefix}/ai-providers`, {
+        method: 'POST',
+        data: {
+          id,
+          name: values.name,
+          enabled: values.enabled,
+          keyVaults: {
+            apiKey: values.apiKey,
+          },
+          settings: {
+            // 保留原有的 settings，特别是 enabledModels
+            ...config?.settings,
+            baseUrl: values.proxyUrl,
+            pricingApiUrl: values.pricingApiUrl,
+          },
         },
       });
       if (res.success) {
@@ -173,61 +175,15 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }
     }
   };
 
-  // ProtoChat 特殊渲染
-  if (isProtoChat) {
-    return (
-      <Flexbox gap={24}>
-        <Flexbox horizontal align="center" justify="space-between">
-          <Title level={3} style={{ margin: 0 }}>ProtoChat</Title>
-          <Space>
-            <Text type="secondary">启用服务商</Text>
-            <Switch
-              checked={config?.enabled}
-              onChange={async (checked) => {
-                const res = await upsertGlobalAiProvider({ id, enabled: checked });
-                if (res.success) {
-                  message.success(`${checked ? '启用' : '禁用'}成功`);
-                  onRefresh();
-                }
-              }}
-            />
-          </Space>
-        </Flexbox>
-
-        <Alert
-          message="ProtoChat 统一计费网关"
-          description={
-            <Flexbox gap={8}>
-              <Text>ProtoChat 聚合了多个底层供应商（如 OpenRouter、DeepSeek 等），为用户提供统一的积分计费服务。</Text>
-              <Button
-                type="link"
-                icon={<LucideSettings size={14} />}
-                onClick={() => navigate('/protochat/providers')}
-                style={{ paddingLeft: 0 }}
-              >
-                前往 ProtoChat 管理后台配置底层供应商和模型
-              </Button>
-            </Flexbox>
-          }
-          type="info"
-          showIcon
-        />
-
-        <ProtoChatModelList onRefresh={onRefresh} />
-      </Flexbox>
-    );
-  }
-
-  // 普通供应商渲染
   return (
     <Flexbox gap={24}>
       <Flexbox horizontal align="center" justify="space-between">
         <Title level={3} style={{ margin: 0 }}>{id.toUpperCase()}</Title>
         <Space>
            <Text type="secondary">启用服务商</Text>
-           <Switch
-             checked={config?.enabled}
-             onChange={(checked) => onFinish({ ...form.getFieldsValue(), enabled: checked })}
+           <Switch 
+             checked={config?.enabled} 
+             onChange={(checked) => onFinish({ ...form.getFieldsValue(), enabled: checked })} 
            />
         </Space>
       </Flexbox>
@@ -273,18 +229,21 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }
       </Card>
 
       <Card title="连通性检查" variant="outlined">
-        <Checker id={id} config={config} />
+        <Checker id={id} config={config} apiPrefix={apiPrefix} />
       </Card>
 
-      <ModelList
-        id={id}
-        config={config}
-        onRefresh={onRefresh}
-        onSync={handleSync}
-        syncing={syncing}
-        lastSyncTime={lastSyncTime}
-        formatLastSync={formatLastSync}
-      />
+      <Card title="模型管理" variant="outlined">
+        <ModelList
+          id={id}
+          config={config}
+          onRefresh={onRefresh}
+          apiPrefix={apiPrefix}
+          onSync={handleSync}
+          syncing={syncing}
+          lastSyncTime={lastSyncTime}
+          formatLastSync={formatLastSync}
+        />
+      </Card>
     </Flexbox>
   );
 };
