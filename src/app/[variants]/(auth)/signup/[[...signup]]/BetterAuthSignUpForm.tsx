@@ -109,7 +109,7 @@ export default function BetterAuthSignUpForm() {
           return;
         }
 
-        router.push(data.callbackUrl || callbackUrl);
+        window.location.href = data.callbackUrl || callbackUrl;
         return;
       }
 
@@ -154,7 +154,7 @@ export default function BetterAuthSignUpForm() {
       } else {
         // Email verification not required, user is already logged in (autoSignIn: true)
         // Redirect to callback URL or home
-        router.push(callbackUrl);
+        window.location.href = callbackUrl;
       }
     } catch {
       message.error(t('betterAuth.signup.error'));

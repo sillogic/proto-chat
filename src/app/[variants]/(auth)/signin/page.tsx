@@ -314,7 +314,7 @@ export default function SignInPage() {
           return;
         }
 
-        router.push(data.callbackUrl || callbackUrl);
+        window.location.href = data.callbackUrl || callbackUrl;
         return;
       }
 
@@ -338,7 +338,7 @@ export default function SignInPage() {
             }
           },
           onSuccess: () => {
-            router.push(callbackUrl);
+            window.location.href = callbackUrl;
           },
         },
       );
