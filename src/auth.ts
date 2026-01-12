@@ -6,6 +6,7 @@ import { emailHarmony } from 'better-auth-harmony';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { betterAuth } from 'better-auth/minimal';
 import { admin, emailOTP, genericOAuth, magicLink } from 'better-auth/plugins';
+import { eq } from 'drizzle-orm';
 
 import { account, session, verification } from '@/database/schemas/betterAuth';
 import { users } from '@/database/schemas/user';
@@ -21,6 +22,7 @@ import { createSecondaryStorage, getTrustedOrigins } from '@/libs/better-auth/ut
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
 import { EmailService } from '@/server/services/email';
 import { UserService } from '@/server/services/user';
+import { generateDefaultAvatar, isValidAvatar } from '@/server/utils/avatar';
 
 // Email verification link expiration time (in seconds)
 // Default is 1 hour (3600 seconds) as per Better Auth documentation
@@ -141,6 +143,15 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
+          // Assign default avatar if user doesn't have one
+          if (!isValidAvatar(user.image)) {
+            const defaultAvatar = generateDefaultAvatar(user.id);
+            await serverDB
+              .update(users)
+              .set({ avatar: defaultAvatar })
+              .where(eq(users.id, user.id));
+          }
+
           const userService = new UserService(serverDB);
           await userService.initUser({
             email: user.email,
@@ -226,29 +237,29 @@ export const auth = betterAuth({
     }),
     ...(genericOAuthProviders.length > 0
       ? [
-        genericOAuth({
-          config: genericOAuthProviders,
-        }),
-      ]
+          genericOAuth({
+            config: genericOAuthProviders,
+          }),
+        ]
       : []),
     ...(enableMagicLink
       ? [
-        magicLink({
-          expiresIn: MAGIC_LINK_EXPIRES_IN,
-          sendMagicLink: async ({ email, url }) => {
-            const template = getMagicLinkEmailTemplate({
-              expiresInSeconds: MAGIC_LINK_EXPIRES_IN,
-              url,
-            });
+          magicLink({
+            expiresIn: MAGIC_LINK_EXPIRES_IN,
+            sendMagicLink: async ({ email, url }) => {
+              const template = getMagicLinkEmailTemplate({
+                expiresInSeconds: MAGIC_LINK_EXPIRES_IN,
+                url,
+              });
 
-            const emailService = new EmailService();
-            await emailService.sendMail({
-              to: email,
-              ...template,
-            });
-          },
-        }),
-      ]
+              const emailService = new EmailService();
+              await emailService.sendMail({
+                to: email,
+                ...template,
+              });
+            },
+          }),
+        ]
       : []),
   ],
 });

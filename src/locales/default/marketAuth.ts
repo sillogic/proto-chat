@@ -21,12 +21,11 @@ export default {
       successWithCountdown: '{{message}} 窗口将在 {{countdown}} 秒后自动关闭',
       successWithRedirect: '授权成功！正在跳转...',
     },
-  },
-  result: {
-    authorized: 'ProtoChat 服务授权成功',
-    desc: '即将跳转到 ProtoChat Market...',
-    error: '授权失败',
-    errorDesc: '请重试或联系支持',
+    titles: {
+      error: '授权失败',
+      loading: '正在处理',
+      success: '授权成功',
+    },
   },
   errors: {
     authorizationFailed: '授权失败，请重试。',
@@ -52,5 +51,11 @@ export default {
       submit: '授权成功！现在可以发布助手了。',
       upload: '授权成功！现在可以发布新版本了。',
     },
+  },
+  result: {
+    authorized: 'ProtoChat 服务授权成功',
+    desc: '即将跳转到 ProtoChat Market...',
+    error: '授权失败',
+    errorDesc: '请重试或联系支持',
   },
 };
