@@ -93,13 +93,18 @@ export default [
     icon: 'SettingOutlined',
     routes: [
       {
+        path: '/system-config/default-model',
+        name: 'defaultModel',
+        component: './SystemConfig/DefaultModel',
+      },
+      {
         path: '/system-config/embedding',
         name: 'embedding',
         component: './SystemConfig/Embedding',
       },
       {
         path: '/system-config',
-        redirect: '/system-config/embedding',
+        redirect: '/system-config/default-model',
       },
     ],
   },

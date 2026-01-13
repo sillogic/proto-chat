@@ -7,6 +7,6 @@ export interface LobeAgentTTSConfig {
   voice: {
     edge?: string;
     microsoft?: string;
-    openai: string;
+    openai?: string;
   };
 }

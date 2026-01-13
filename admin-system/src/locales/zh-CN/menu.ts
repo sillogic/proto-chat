@@ -58,5 +58,6 @@ export default {
   'menu.usageStatistics': '用量统计',
   'menu.protochat': 'ProtoChat子供应商配置',
   'menu.systemConfig': '系统配置',
+  'menu.systemConfig.defaultModel': '默认模型配置',
   'menu.systemConfig.embedding': 'Embedding配置',
 };

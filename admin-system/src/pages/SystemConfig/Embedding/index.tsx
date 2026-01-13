@@ -262,8 +262,8 @@ const EmbeddingConfigPage: React.FC = () => {
     }
   };
 
-  // 计算预估积分消耗
-  const estimatedCredits = useMemo(() => {
+  // 计算预估美元成本
+  const estimatedCost = useMemo(() => {
     if (!selectedModel) return null;
 
     const model = models.find((m) => m.modelId === selectedModel);
@@ -274,16 +274,13 @@ const EmbeddingConfigPage: React.FC = () => {
     const chunksPerBatch = 1000;
     const totalTokens = avgChunkTokens * chunksPerBatch;
 
-    // 计算成本（积分）
+    // 计算成本（美元）
     const costUSD = (totalTokens / 1_000_000) * model.inputPrice;
 
-    // 转换为积分（假设1 USD = 10000积分）
-    const credits = Math.ceil(costUSD * 10000);
-
     return {
-      credits,
+      costUSD,
       model,
-      perChunk: credits / chunksPerBatch,
+      perChunkUSD: costUSD / chunksPerBatch,
     };
   }, [selectedModel, models]);
 
@@ -482,7 +479,7 @@ const EmbeddingConfigPage: React.FC = () => {
               </Form>
 
               {/* 预估成本 */}
-              {estimatedCredits && (
+              {estimatedCost && (
                 <Alert
                   type="info"
                   showIcon
@@ -493,23 +490,23 @@ const EmbeddingConfigPage: React.FC = () => {
                         <Col span={8}>
                           <Statistic
                             title="每1000个chunks"
-                            value={estimatedCredits.credits}
-                            suffix="积分"
-                            precision={2}
+                            value={estimatedCost.costUSD}
+                            prefix="$"
+                            precision={6}
                           />
                         </Col>
                         <Col span={8}>
                           <Statistic
                             title="每个chunk"
-                            value={estimatedCredits.perChunk}
-                            suffix="积分"
-                            precision={4}
+                            value={estimatedCost.perChunkUSD}
+                            prefix="$"
+                            precision={8}
                           />
                         </Col>
                         <Col span={8}>
                           <Statistic
                             title="模型价格"
-                            value={estimatedCredits.model.inputPrice || 0}
+                            value={estimatedCost.model.inputPrice || 0}
                             prefix="$"
                             suffix="/M tokens"
                             precision={8}

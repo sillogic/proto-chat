@@ -32,7 +32,6 @@ export class UserService {
   }
 
   async initUser(user: CreatedUser) {
-    const now = new Date();
 
     // Step 1: Create inbox for user
     const agentService = new AgentService(this.db, user.id);
@@ -62,7 +61,7 @@ export class UserService {
         })
         .onConflictDoNothing();
 
-      pino.info({ userId: user.id, plan: freePlan.slug }, 'User subscription plan initialized');
+      pino.info({ plan: freePlan.slug, userId: user.id }, 'User subscription plan initialized');
     }
 
     // Step 3: Initialize user credits balance
@@ -90,7 +89,7 @@ export class UserService {
       });
 
       pino.info(
-        { userId: user.id, credits: initialCredits },
+        { credits: initialCredits, userId: user.id },
         'User credits balance initialized',
       );
     }

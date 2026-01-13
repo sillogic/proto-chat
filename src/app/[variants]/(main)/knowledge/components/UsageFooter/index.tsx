@@ -22,8 +22,8 @@ const useStyles = createStyles(({ css, token }) => ({
   value: css`
     font-size: 12px;
     font-weight: 500;
-    color: ${token.colorText};
     font-variant-numeric: tabular-nums;
+    color: ${token.colorText};
   `,
 }));
 

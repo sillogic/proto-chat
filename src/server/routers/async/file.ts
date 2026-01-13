@@ -187,15 +187,15 @@ export const fileRouter = router({
               }
 
               await ctx.embeddingUsageLogModel.create({
-                userId: ctx.userId,
-                modelId: model,
-                providerId: provider,
-                inputTokens: totalInputTokens,
-                totalTokens: totalTokens,
-                costPrice: costPrice,
-                operationType: 'file_embedding',
-                fileId: input.fileId,
                 chunkCount: chunks.length,
+                costPrice: costPrice,
+                fileId: input.fileId,
+                inputTokens: totalInputTokens,
+                modelId: model,
+                operationType: 'file_embedding',
+                providerId: provider,
+                totalTokens: totalTokens,
+                userId: ctx.userId,
               });
 
               console.log(`[Embedding] Logged usage: ${chunks.length} chunks, ${totalInputTokens} tokens, cost: $${costPrice || 'unknown'}`);
