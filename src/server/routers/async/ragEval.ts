@@ -51,12 +51,15 @@ export const ragEvalRouter = router({
 
       const now = Date.now();
       try {
-        const agentRuntime = await initModelRuntimeWithUserPayload(
+        const { question, languageModel, embeddingModel } = evalRecord;
+        const model = embeddingModel || DEFAULT_EMBEDDING_MODEL;
+
+        const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(
           ModelProvider.OpenAI,
           ctx.jwtPayload,
+          { model },
         );
-
-        const { question, languageModel, embeddingModel } = evalRecord;
+        const modelId = actualModel || model;
 
         let questionEmbeddingId = evalRecord.questionEmbeddingId;
         let context = evalRecord.context;
@@ -66,7 +69,7 @@ export const ragEvalRouter = router({
           const embeddings = await agentRuntime.embeddings({
             dimensions: 1024,
             input: question,
-            model: !!embeddingModel ? embeddingModel : DEFAULT_EMBEDDING_MODEL,
+            model: modelId,
           });
 
           const embeddingId = await ctx.embeddingModel.create({

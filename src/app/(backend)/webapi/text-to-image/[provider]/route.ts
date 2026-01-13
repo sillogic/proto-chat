@@ -48,14 +48,17 @@ export const POST = checkAuth(async (req: Request, { params, jwtPayload }) => {
   const provider = (await params)!.provider!;
 
   try {
-    // ============  1. init chat model   ============ //
-    const agentRuntime = await initModelRuntimeWithUserPayload(provider, jwtPayload);
-
-    // ============  2. create chat completion   ============ //
-
+    // ============  1. Read request data first  ============ //
+    // ProtoChat needs model ID to determine the actual provider
     const data = (await req.json()) as TextToImagePayload;
 
-    const images = await agentRuntime.textToImage(data);
+    // ============  2. Init model runtime with model info  ============ //
+    const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, jwtPayload, { model: data.model });
+
+    // ============  3. Generate images  ============ //
+    // For ProtoChat, replace model ID with the actual underlying model ID
+    const requestData = actualModel ? { ...data, model: actualModel } : data;
+    const images = await agentRuntime.textToImage(requestData);
 
     return NextResponse.json(images);
   } catch (e) {

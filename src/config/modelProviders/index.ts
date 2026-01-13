@@ -44,6 +44,7 @@ import OpenAIProvider from './openai';
 import OpenRouterProvider from './openrouter';
 import PerplexityProvider from './perplexity';
 import PPIOProvider from './ppio';
+import ProtoChatProvider from './protochat';
 import QiniuProvider from './qiniu';
 import QwenProvider from './qwen';
 import ReplicateProvider from './replicate';
@@ -126,6 +127,7 @@ export const LOBE_DEFAULT_MODEL_LIST: ChatModelCard[] = [
 ].flat();
 
 export const DEFAULT_MODEL_PROVIDER_LIST = [
+  ProtoChatProvider, // ProtoChat自有供应商（放在最前面）
   OpenAIProvider,
   { ...AzureProvider, chatModels: [] },
   AzureAIProvider,
@@ -250,6 +252,7 @@ export { default as OpenAIProviderCard } from './openai';
 export { default as OpenRouterProviderCard } from './openrouter';
 export { default as PerplexityProviderCard } from './perplexity';
 export { default as PPIOProviderCard } from './ppio';
+export { default as ProtoChatProviderCard } from './protochat';
 export { default as QiniuProviderCard } from './qiniu';
 export { default as QwenProviderCard } from './qwen';
 export { default as ReplicateProviderCard } from './replicate';

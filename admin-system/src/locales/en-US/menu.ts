@@ -54,5 +54,7 @@ export default {
   'menu.subscriptionRecords': 'Subscription Records',
   'menu.modelPricing': 'Model Pricing',
   'menu.apiKeys': 'Model Provider Config',
+  'menu.aiProviders': 'AI Providers',
   'menu.usageStatistics': 'Usage Statistics',
+  'menu.protochat': 'ProtoChat Sub-Providers',
 };

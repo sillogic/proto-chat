@@ -86,9 +86,11 @@ export const genServerAiProvidersConfig = async (
 
       return {
         config: {
-          enabled:
-            isGlobalEnabled ||
-            (typeof providerConfig.enabled !== 'undefined'
+          // If provider exists in database, use ONLY database value for enabled state
+          // Otherwise, fall back to config/env (for backward compatibility)
+          enabled: dbProvider
+            ? isGlobalEnabled
+            : (typeof providerConfig.enabled !== 'undefined'
               ? providerConfig.enabled
               : llmConfig[providerConfig.enabledKey || `ENABLED_${providerUpperCase}`]),
           enabledModels,

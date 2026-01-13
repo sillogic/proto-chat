@@ -14,6 +14,7 @@ interface ProviderGridProps {
 }
 
 const ALL_TARGET_PROVIDERS = [
+  { id: 'protochat', desc: 'ProtoChat 是本系统的统一计费网关，聚合多个底层供应商（OpenRouter、DeepSeek等），为用户提供统一的积分计费服务。' },
   { id: ModelProvider.OpenAI, desc: 'OpenAI 是全球领先的人工智能研究机构，其开发的模型如 GPT 系列推动了自然语言处理的发展。' },
   { id: ModelProvider.DeepSeek, desc: 'DeepSeek 是一家专注于人工智能模型研发的中国公司，其推出的 DeepSeek-V3 等模型在多项评测中表现优异。' },
   { id: ModelProvider.ZhiPu, desc: '智谱 AI 提供多模态与语言模型的开放平台，支持广泛的 AI 应用场景。' },
@@ -23,7 +24,7 @@ const ALL_TARGET_PROVIDERS = [
 ];
 
 const ProviderGrid: React.FC<ProviderGridProps> = ({ providers, onRefresh, onSelect }) => {
-  const handleToggle = async (id: string, enabled: boolean, e: React.MouseEvent) => {
+  const handleToggle = async (id: string, enabled: boolean, e: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
     e.stopPropagation();
     const res = await upsertGlobalAiProvider({ id, enabled });
     if (res.success) {
@@ -69,19 +70,21 @@ const ProviderGrid: React.FC<ProviderGridProps> = ({ providers, onRefresh, onSel
         <Flexbox gap={16}>
           <Title level={4}>已启用服务商 ({enabledProviders.length})</Title>
           <Row gutter={[16, 16]}>
-            {enabledProviders.map(p => 
-              renderProviderCard(p.id, p.name, p.description, true)
-            )}
+            {enabledProviders.map(p => {
+              const displayName = p.name || (p.id === 'protochat' ? 'ProtoChat' : undefined);
+              return renderProviderCard(p.id, displayName, p.description, true);
+            })}
           </Row>
         </Flexbox>
       )}
 
       <Flexbox gap={16}>
-        <Title level={4}>推荐服务商</Title>
+        <Title level={4}>未启用服务商</Title>
         <Row gutter={[16, 16]}>
           {otherProviders.map(tp => {
             const config = providers.find(p => p.id === tp.id);
-            return renderProviderCard(tp.id, config?.name, tp.desc, config?.enabled);
+            const displayName = config?.name || (tp.id === 'protochat' ? 'ProtoChat' : undefined);
+            return renderProviderCard(tp.id, displayName, tp.desc, config?.enabled);
           })}
         </Row>
       </Flexbox>

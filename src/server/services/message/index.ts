@@ -1,7 +1,10 @@
 import { LobeChatDatabase } from '@/database/type';
 import { CreateMessageParams, UIChatMessage, UpdateMessageParams } from '@lobechat/types';
+import { safeParseJSON } from '@lobechat/utils';
 
 import { MessageModel } from '@/database/models/message';
+import { aiProviders } from '@/database/schemas';
+import { eq, and } from 'drizzle-orm';
 
 import { CreditService } from '../credit';
 import { FileService } from '../file';
@@ -28,9 +31,11 @@ export class MessageService {
   private fileService: FileService;
   private creditService: CreditService;
   private db: LobeChatDatabase;
+  private userId: string;
 
   constructor(db: LobeChatDatabase, userId: string) {
     this.db = db;
+    this.userId = userId;
     this.messageModel = new MessageModel(db, userId);
     this.fileService = new FileService(db, userId);
     this.creditService = new CreditService(db, userId);
@@ -214,11 +219,15 @@ export class MessageService {
           // Check if credits have already been deducted for this message
           const metadata = (message.metadata || {}) as any;
           if (!metadata.creditsDeducted) {
+            // Check if user is using their own API key for this provider
+            const isUserConfig = await this.isUserUsingOwnConfig(message.provider);
+
             const cost = await this.creditService.calculateCost(
               message.model,
               message.provider,
               totalInputTokens || 0,
               totalOutputTokens || 0,
+              isUserConfig, // Pass the flag to determine if user is using own config
             );
             if (cost > 0) {
               await this.creditService.deductCredits(cost, `Chat completion: ${message.model} `, id, {
@@ -229,12 +238,60 @@ export class MessageService {
               });
               // Mark as deducted in database
               await this.messageModel.updateMetadata(id, { cost, creditsDeducted: true });
+            } else if (isUserConfig) {
+              // Mark as deducted (but free) to avoid re-checking
+              await this.messageModel.updateMetadata(id, { cost: 0, creditsDeducted: true, userConfig: true });
             }
           }
         }
       } catch (error) {
         console.error('[MessageService] Failed to deduct credits:', error);
       }
+    }
+  }
+
+  /**
+   * Check if user has configured their own API key for a provider
+   *
+   * Billing logic:
+   * - Only global providers (ProtoChat) are billable
+   * - If user configured their own API key, they use their own service and won't be charged
+   *
+   * @param provider - Provider ID
+   * @returns true if user is using their own API key (no charge), false if using global provider (will charge)
+   */
+  private async isUserUsingOwnConfig(provider: string): Promise<boolean> {
+    try {
+      // Check if user has a personal configuration for this provider
+      const userConfig = await this.db.query.aiProviders.findFirst({
+        where: and(
+          eq(aiProviders.userId, this.userId),
+          eq(aiProviders.id, provider),
+          eq(aiProviders.isGlobal, false) // Only check user's personal providers (not global)
+        ),
+      });
+
+      if (!userConfig) {
+        // No user config found, user is using global provider (ProtoChat)
+        return false;
+      }
+
+      // User has a personal provider config, check if they provided an API key
+      if (userConfig.keyVaults) {
+        const keyVaults = safeParseJSON<{ apiKey?: string }>(userConfig.keyVaults);
+        if (keyVaults?.apiKey) {
+          // User provided their own API key, don't charge
+          return true;
+        }
+      }
+
+      // User config exists but no API key provided
+      // This shouldn't happen in normal flow, but treat as user config
+      console.warn(`[MessageService] User ${this.userId} has provider ${provider} config without API key`);
+      return false;
+    } catch (error) {
+      console.error('[MessageService] Failed to check user config:', error);
+      return false; // On error, default to billing (safer)
     }
   }
 }

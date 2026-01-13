@@ -54,13 +54,16 @@ export const aiChatRouter = router({
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'keyVaultsPayload is not correct' });
     }
 
-    log('initializing model runtime with provider: %s', input.provider);
-    const modelRuntime = await initModelRuntimeWithUserPayload(input.provider, payload);
+    log('initializing model runtime with provider: %s, model: %s', input.provider, input.model);
+    const { runtime: modelRuntime, actualModel } = await initModelRuntimeWithUserPayload(input.provider, payload, { model: input.model });
 
-    log('calling generateObject');
+    // Use actualModel for ProtoChat, otherwise use input.model
+    const modelId = actualModel || input.model;
+
+    log('calling generateObject with model: %s', modelId);
     const result = await modelRuntime.generateObject({
       messages: input.messages,
-      model: input.model,
+      model: modelId,
       schema: input.schema,
       tools: input.tools,
     });

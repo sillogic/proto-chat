@@ -14,25 +14,49 @@ export class CreditService {
 
     /**
      * Calculate credits needed for a chat completion
+     *
+     * 统一的计费逻辑：所有供应商（包括 ProtoChat）都从 modelPricings 表查询用户价，
+     * 用户价已经预先计算好（成本价 × 系数），直接使用，无需运行时计算，提升性能
+     *
+     * @param model - Model ID (原始模型ID，如 'deepseek/deepseek-chat-v3.1')
+     * @param provider - Provider ID (如 'openai', 'protochat' 等)
+     * @param inputTokens - Number of input tokens
+     * @param outputTokens - Number of output tokens
+     * @param isUserConfig - Whether user is using their own API key (if true, no charge)
      */
-    async calculateCost(model: string, provider: string, inputTokens: number, outputTokens: number) {
+    async calculateCost(
+        model: string,
+        provider: string,
+        inputTokens: number,
+        outputTokens: number,
+        isUserConfig: boolean = false
+    ) {
+        // If user is using their own API key, don't charge
+        if (isUserConfig) {
+            console.log(`[Credit] User using own config for ${provider}, no charge`);
+            return 0;
+        }
+
+        // 统一查询 modelPricings 表（包括 ProtoChat）
         const pricing = await this.db.query.modelPricings.findFirst({
             where: and(eq(modelPricings.model, model), eq(modelPricings.provider, provider)),
         });
 
         if (!pricing) {
-            // Default pricing if not found? Or return 0?
-            // For now, return 0 or a very high default to be safe? 
-            // User wants configurable pricing, so we should probably warn or use a default.
+            console.warn(`[Credit] No pricing found for ${provider}::${model}, no charge`);
             return 0;
         }
 
-        const inputPrice = parseFloat(pricing.inputPrice || '0');
-        const outputPrice = parseFloat(pricing.outputPrice || '0');
+        // 直接使用预先计算好的用户价，无需运行时计算（性能优化）
+        const userInputPrice = parseFloat(pricing.userInputPrice || '0');
+        const userOutputPrice = parseFloat(pricing.userOutputPrice || '0');
         const perRequestPrice = parseFloat(pricing.perRequestPrice || '0');
 
         // Price is in credits per 1,000,000 tokens
-        const cost = (inputTokens / 1_000_000) * inputPrice + (outputTokens / 1_000_000) * outputPrice + perRequestPrice;
+        const cost = (inputTokens / 1_000_000) * userInputPrice + (outputTokens / 1_000_000) * userOutputPrice + perRequestPrice;
+
+        const subProviderInfo = pricing.subProvider ? ` (via ${pricing.subProvider})` : '';
+        console.log(`[Credit] Charging for ${provider}::${model}${subProviderInfo}, cost: ${cost.toFixed(4)} credits`);
 
         return cost;
     }

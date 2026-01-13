@@ -15,7 +15,7 @@ export const GET = checkAuth(async (req, { params, jwtPayload }) => {
   try {
     const hasDefaultApiKey = jwtPayload.apiKey || 'dont-need-api-key-for-model-list';
 
-    const agentRuntime = await initModelRuntimeWithUserPayload(provider, {
+    const { runtime: agentRuntime } = await initModelRuntimeWithUserPayload(provider, {
       ...jwtPayload,
       apiKey: noNeedAPIKey(provider) ? hasDefaultApiKey : jwtPayload.apiKey,
     });

@@ -19,7 +19,9 @@ import { merge, mergeArrayById } from '@/utils/merge';
 
 import { AiModelModel } from '../../models/aiModel';
 import { AiProviderModel } from '../../models/aiProvider';
+import { protochatModels, protochatProviders } from '../../schemas/protochat';
 import { LobeChatDatabase } from '../../type';
+import { and, eq } from 'drizzle-orm';
 
 type DecryptUserKeyVaults = (encryptKeyVaultsStr: string | null) => Promise<any>;
 
@@ -305,6 +307,11 @@ export class AiInfraRepos {
   private fetchBuiltinModels = async (
     providerId: string,
   ): Promise<AiProviderModelListItem[] | undefined> => {
+    // Special handling for ProtoChat - fetch from database
+    if (providerId === 'protochat') {
+      return this.fetchProtoChatModels();
+    }
+
     try {
       const modules = await import('model-bank');
 
@@ -324,6 +331,53 @@ export class AiInfraRepos {
     } catch (error) {
       console.error(error);
       // maybe provider id not exist
+    }
+  };
+
+  /**
+   * Fetch ProtoChat models from database
+   * ProtoChat is a wrapper provider that gets its model list from the database
+   * Only returns models from enabled providers
+   */
+  private fetchProtoChatModels = async (): Promise<AiProviderModelListItem[]> => {
+    try {
+      // Query models with JOIN to check if the provider is also enabled
+      const models = await this.db
+        .select({
+          id: protochatModels.id,
+          displayName: protochatModels.displayName,
+          type: protochatModels.type,
+          capabilities: protochatModels.capabilities,
+          contextTokens: protochatModels.contextTokens,
+          maxOutput: protochatModels.maxOutput,
+          settings: protochatModels.settings,
+        })
+        .from(protochatModels)
+        .innerJoin(
+          protochatProviders,
+          eq(protochatModels.originalProvider, protochatProviders.id),
+        )
+        .where(
+          and(
+            eq(protochatModels.enabled, true),
+            eq(protochatProviders.enabled, true), // ✅ 只返回启用的子供应商的模型
+          ),
+        );
+
+      return models.map((m) => ({
+        abilities: (m.capabilities as Record<string, boolean>) || {},
+        contextWindowTokens: m.contextTokens || undefined,
+        displayName: m.displayName,
+        enabled: true, // All models from DB are already enabled
+        id: m.id,
+        maxOutput: m.maxOutput || undefined,
+        settings: (m.settings as Record<string, any>) || undefined,
+        source: AiModelSourceEnum.Builtin,
+        type: m.type as 'chat' | 'image' | 'embedding',
+      }));
+    } catch (error) {
+      console.error('[ProtoChat] Failed to fetch models from database:', error);
+      return [];
     }
   };
 }

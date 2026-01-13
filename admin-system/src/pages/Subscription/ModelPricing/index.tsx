@@ -6,6 +6,7 @@ import {
   syncModelPricings,
   updateModelPricing,
 } from '@/services/subscription';
+import { getProtoChatSettings } from '@/services/protochat';
 import {
   ActionType,
   ModalForm,
@@ -17,14 +18,34 @@ import {
   ProFormTextArea,
   ProTable,
 } from '@ant-design/pro-components';
-import { Button, message, Popconfirm, Space } from 'antd';
-import { CloudSyncOutlined } from '@ant-design/icons';
-import { useRef, useState } from 'react';
+import { Button, message, Popconfirm, Space, Tag } from 'antd';
+import { CloudSyncOutlined, SettingOutlined } from '@ant-design/icons';
+import { useRef, useState, useEffect } from 'react';
+import MultiplierConfig from './MultiplierConfig';
 
 const ModelPricingManagement: React.FC = () => {
   const actionRef = useRef<ActionType | undefined>(undefined);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentRow, setCurrentRow] = useState<ModelPricing | null>(null);
+  const [multiplierModalVisible, setMultiplierModalVisible] = useState(false);
+  const [multiplier, setMultiplier] = useState<number>(1);
+
+  // Fetch multiplier on component mount
+  useEffect(() => {
+    fetchMultiplier();
+  }, []);
+
+  const fetchMultiplier = async () => {
+    try {
+      const res = await getProtoChatSettings();
+      if (res.success) {
+        const mult = res.data.pricing_multiplier?.value || 1;
+        setMultiplier(mult);
+      }
+    } catch (error) {
+      console.error('Failed to fetch multiplier:', error);
+    }
+  };
 
   const handleSync = async () => {
     try {
@@ -54,6 +75,7 @@ const ModelPricingManagement: React.FC = () => {
       copyable: true,
       valueType: 'select',
       valueEnum: {
+        protochat: { text: 'ProtoChat' },
         openai: { text: 'OpenAI' },
         anthropic: { text: 'Anthropic' },
         google: { text: 'Google' },
@@ -75,16 +97,60 @@ const ModelPricingManagement: React.FC = () => {
       },
     },
     {
-      title: '提示词费率 (积分/1M Tokens)',
+      title: '子供应商',
+      dataIndex: 'subProvider',
+      copyable: true,
+      search: false,
+      render: (_, record) => {
+        if (record.provider === 'protochat' && record.subProvider) {
+          return record.subProvider.toUpperCase();
+        }
+        return '-';
+      },
+    },
+    {
+      title: '提示词成本价 (积分/1M Tokens)',
       dataIndex: 'inputPrice',
       valueType: 'digit',
       fieldProps: { precision: 2 },
+      render: (_, record) => parseFloat(record.inputPrice as string).toFixed(2),
     },
     {
-      title: '补全费率 (积分/1M Tokens)',
+      title: '补全成本价 (积分/1M Tokens)',
       dataIndex: 'outputPrice',
       valueType: 'digit',
       fieldProps: { precision: 2 },
+      render: (_, record) => parseFloat(record.outputPrice as string).toFixed(2),
+    },
+    {
+      title: (
+        <Space>
+          <span>提示词用户价 (积分/1M Tokens)</span>
+          {multiplier !== 1 && <Tag color="green">×{multiplier}</Tag>}
+        </Space>
+      ),
+      dataIndex: 'userInputPrice',
+      search: false,
+      render: (_, record) => {
+        // 直接从数据库读取预先计算好的用户价
+        const userPrice = parseFloat(record.userInputPrice as string);
+        return <Tag color="green">{userPrice.toFixed(2)}</Tag>;
+      },
+    },
+    {
+      title: (
+        <Space>
+          <span>补全用户价 (积分/1M Tokens)</span>
+          {multiplier !== 1 && <Tag color="green">×{multiplier}</Tag>}
+        </Space>
+      ),
+      dataIndex: 'userOutputPrice',
+      search: false,
+      render: (_, record) => {
+        // 直接从数据库读取预先计算好的用户价
+        const userPrice = parseFloat(record.userOutputPrice as string);
+        return <Tag color="green">{userPrice.toFixed(2)}</Tag>;
+      },
     },
     {
       title: '备注',
@@ -155,6 +221,13 @@ const ModelPricingManagement: React.FC = () => {
         search={{ labelWidth: 'auto' }}
         pagination={{ pageSize: 20 }}
         toolBarRender={() => [
+          <Button
+            key="multiplier"
+            icon={<SettingOutlined />}
+            onClick={() => setMultiplierModalVisible(true)}
+          >
+            定价系数配置 (当前: ×{multiplier})
+          </Button>,
           <Popconfirm
             key="sync"
             title="确定要清空并同步已启用供应商的模型定价吗？"
@@ -213,6 +286,7 @@ const ModelPricingManagement: React.FC = () => {
           name="provider"
           label="提供商"
           valueEnum={{
+            protochat: 'ProtoChat',
             openai: 'OpenAI',
             anthropic: 'Anthropic',
             google: 'Google',
@@ -254,6 +328,15 @@ const ModelPricingManagement: React.FC = () => {
           placeholder="选填，记录调价原因等"
         />
       </ModalForm>
+
+      <MultiplierConfig
+        open={multiplierModalVisible}
+        onClose={() => setMultiplierModalVisible(false)}
+        onSuccess={() => {
+          fetchMultiplier();
+          actionRef.current?.reload();
+        }}
+      />
     </PageContainer>
   );
 };

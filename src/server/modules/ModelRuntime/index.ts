@@ -5,8 +5,11 @@ import { ClientSecretPayload } from '@lobechat/types';
 import { safeParseJSON } from '@lobechat/utils';
 import { ModelProvider } from 'model-bank';
 
+import { serverDB } from '@/database/server';
 import { getLLMConfig } from '@/envs/llm';
 import { getServerGlobalConfig } from '@/server/globalConfig';
+import { ProtoChatService } from '@/server/services/protochat';
+
 import apiKeyManager from './apiKeyManager';
 
 export * from './trace';
@@ -190,28 +193,81 @@ const buildVertexOptions = (
 };
 
 /**
+ * 初始化ProtoChat Runtime（套壳供应商）
+ *
+ * ProtoChat是一个"套壳"供应商，整合底层供应商（OpenRouter、DeepSeek等）
+ * 需要查询数据库获取模型映射和底层供应商配置
+ *
+ * @param payload - 用户payload
+ * @param params - 运行时参数，必须包含model字段
+ * @returns ModelRuntime实例
+ */
+const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = {}) => {
+  const modelId = params?.model;
+
+  if (!modelId) {
+    throw new Error('Model ID is required for ProtoChat provider');
+  }
+
+  // 1. 创建ProtoChat服务实例
+  const protochatService = new ProtoChatService(serverDB);
+
+  // 2. 查询模型映射（从数据库）
+  const mapping = await protochatService.getModelMapping(modelId);
+
+  // 3. 转换模型ID: 'openrouter::openai/gpt-4o' → 'openai/gpt-4o'
+  const actualModelId = protochatService.convertModelId(mapping.originalId);
+
+  // 4. 确定实际使用的供应商runtime
+  // OpenRouter使用openrouter的runtime，DeepSeek使用deepseek的runtime
+  const runtimeProvider = mapping.originalProvider;
+
+  // 5. 构建运行时参数
+  const runtimeParams = {
+    apiKey: mapping.apiKey,
+    baseURL: mapping.baseUrl,
+  };
+
+  // 6. 使用底层供应商初始化Runtime
+  const runtime = await ModelRuntime.initializeWithProvider(runtimeProvider, runtimeParams);
+
+  // 7. 返回runtime和转换后的模型ID（调用者需要在调用chat()时使用actualModel）
+  return {
+    actualModel: actualModelId,
+    runtime,
+  };
+};
+
+/**
  * Initializes the agent runtime with the user payload in backend
  * @param provider - The provider name.
  * @param payload - The JWT payload.
  * @param params
- * @returns A promise that resolves when the agent runtime is initialized.
+ * @returns 包含runtime的对象，对于ProtoChat还包含actualModel
  */
 export const initModelRuntimeWithUserPayload = async (
   provider: string,
   payload: ClientSecretPayload,
   params: any = {},
-) => {
+): Promise<{ actualModel?: string, runtime: ModelRuntime; }> => {
+  // 特殊处理ProtoChat供应商
+  if (ProtoChatService.isProtoChatProvider(provider)) {
+    return await initProtoChatRuntime(payload, params);
+  }
+
   const runtimeProvider = payload.runtimeProvider ?? provider;
+
+  let runtime: ModelRuntime;
 
   if (runtimeProvider === ModelProvider.VertexAI) {
     const vertexOptions = buildVertexOptions(payload, params);
-    const runtime = LobeVertexAI.initFromVertexAI(vertexOptions);
-
-    return new ModelRuntime(runtime);
+    runtime = new ModelRuntime(LobeVertexAI.initFromVertexAI(vertexOptions));
+  } else {
+    runtime = await ModelRuntime.initializeWithProvider(runtimeProvider, {
+      ...(await getParamsFromPayload(runtimeProvider, payload)),
+      ...params,
+    });
   }
 
-  return ModelRuntime.initializeWithProvider(runtimeProvider, {
-    ...(await getParamsFromPayload(runtimeProvider, payload)),
-    ...params,
-  });
+  return { runtime };
 };
