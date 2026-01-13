@@ -51,10 +51,12 @@ const syncSessionToRedis = async (params: {
   };
   userData: {
     avatar: string | null;
+    createdAt: Date;
     email: string;
     emailVerified: boolean;
     fullName: string;
     id: string;
+    updatedAt: Date;
     username: string | null;
   };
 }) => {
@@ -87,12 +89,13 @@ const syncSessionToRedis = async (params: {
         userId: sessionData.userId,
       },
       user: {
-        createdAt: userData.email, // BetterAuth maps email to createdAt in some cases
+        createdAt: userData.createdAt.toISOString(),
         email: userData.email,
         emailVerified: userData.emailVerified,
         id: userData.id,
         image: userData.avatar,
         name: userData.fullName,
+        updatedAt: userData.updatedAt.toISOString(),
         username: userData.username,
       },
     });
@@ -176,7 +179,11 @@ export async function POST(req: NextRequest) {
 
     // Check if user exists
     let [existingUser] = await serverDB
-      .select({ id: users.id })
+      .select({
+        createdAt: users.createdAt,
+        id: users.id,
+        updatedAt: users.updatedAt,
+      })
       .from(users)
       .where(eq(users.email, email))
       .limit(1);
@@ -212,7 +219,7 @@ export async function POST(req: NextRequest) {
         username: userInfo.preferred_username || userInfo.name || null,
       });
 
-      existingUser = { id: userId };
+      existingUser = { createdAt: now, id: userId, updatedAt: now };
     } else {
       // Update existing user info (only update avatar if Casdoor provides one)
       const casdoorAvatar = userInfo.avatar || userInfo.permanentAvatar;
@@ -225,6 +232,9 @@ export async function POST(req: NextRequest) {
           updatedAt: now,
         })
         .where(eq(users.id, existingUser.id));
+
+      // Update the existingUser object with latest updatedAt
+      existingUser.updatedAt = now;
     }
 
     // Step 4: Create or update account record
@@ -296,10 +306,12 @@ export async function POST(req: NextRequest) {
       },
       userData: {
         avatar: userInfo.avatar || userInfo.permanentAvatar || null,
+        createdAt: existingUser.createdAt,
         email,
         emailVerified: userInfo.email_verified ?? false,
         fullName: displayName,
         id: existingUser.id,
+        updatedAt: existingUser.updatedAt,
         username: userInfo.preferred_username || userInfo.name || null,
       },
     });
@@ -313,9 +325,13 @@ export async function POST(req: NextRequest) {
       success: true,
     } satisfies CasdoorLoginResponse);
 
+    // Get protocol from X-Forwarded-Proto header (for reverse proxy setups)
+    const forwardedProto = req.headers.get('x-forwarded-proto');
+
     // Set signed session cookies (Better Auth requires both session_token and session_data for cookieCache)
     const signedCookies = await createSignedSessionCookies({
       expiresAt: sessionExpiresAt,
+      protocol: forwardedProto,
       sessionData: {
         session: {
           createdAt: now,
@@ -329,12 +345,12 @@ export async function POST(req: NextRequest) {
         },
         user: {
           avatar: userInfo.avatar || userInfo.permanentAvatar || null,
-          createdAt: now,
+          createdAt: existingUser.createdAt,
           email,
           emailVerified: userInfo.email_verified ?? false,
           fullName: displayName,
           id: existingUser.id,
-          updatedAt: now,
+          updatedAt: existingUser.updatedAt,
           username: userInfo.preferred_username || userInfo.name || null,
         },
       },

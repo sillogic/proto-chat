@@ -101,6 +101,8 @@ export interface SessionData {
  */
 export interface SessionCookieOptions {
   expiresAt: Date;
+  /** Protocol from X-Forwarded-Proto header (e.g., 'http' or 'https') */
+  protocol?: string | null;
   secure?: boolean;
   sessionData: SessionData;
   sessionToken: string;
@@ -133,14 +135,14 @@ const createSessionDataCookieValue = async (
     },
     updatedAt: now,
     user: {
-      avatar: sessionData.user.avatar,
+      ...(sessionData.user.avatar && { image: sessionData.user.avatar }),
       createdAt: sessionData.user.createdAt?.toISOString(),
       email: sessionData.user.email,
       emailVerified: sessionData.user.emailVerified,
       id: sessionData.user.id,
       name: sessionData.user.fullName,
       updatedAt: sessionData.user.updatedAt?.toISOString(),
-      username: sessionData.user.username,
+      ...(sessionData.user.username && { username: sessionData.user.username }),
     },
     version: '1',
   };
@@ -180,7 +182,8 @@ export const createSignedSessionCookies = async (
     sessionToken,
     expiresAt,
     sessionData,
-    secure = process.env.NODE_ENV === 'production',
+    protocol,
+    secure = protocol ? protocol === 'https' : process.env.NODE_ENV === 'production',
   } = options;
 
   const signingSecret = authEnv.AUTH_SECRET;
