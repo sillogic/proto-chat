@@ -17,6 +17,8 @@ export * from './rbac';
 export * from './relations';
 export * from './session';
 export * from './subscription';
+export * from './systemDefaultModel';
+export * from './systemEmbedding';
 export * from './topic';
 export * from './user';
 export * from './userExtension';

@@ -11,9 +11,9 @@ import { DEFAULT_MODEL, DEFAULT_PROVIDER } from './llm';
 export const DEFAUTT_AGENT_TTS_CONFIG: LobeAgentTTSConfig = {
   showAllLocaleVoice: false,
   sttLocale: 'auto',
-  ttsService: 'openai',
+  ttsService: 'edge',  // 修改为 'edge' 或 'microsoft'，避免使用 openai
   voice: {
-    openai: 'alloy',
+    edge: 'zh-CN-XiaoxiaoNeural',  // Edge TTS 的默认中文语音
   },
 };
 

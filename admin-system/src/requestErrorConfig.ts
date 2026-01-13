@@ -72,7 +72,28 @@ export const errorConfig: RequestConfig = {
       } else if (error.response) {
         // Axios 的错误
         // 请求成功发出且服务器也响应了状态码，但状态代码超出了 2xx 的范围
-        message.error(`Response status:${error.response.status}`);
+        const status = error.response.status;
+
+        // 处理 401/403 错误：清理登录信息并跳转到登录页
+        if (status === 401 || status === 403) {
+          localStorage.removeItem('admin-token');
+          localStorage.removeItem('admin-user');
+
+          // 使用动态导入避免循环依赖
+          import('@umijs/max').then(({ history }) => {
+            const { pathname, search } = window.location;
+            // 不在登录页时才跳转
+            if (pathname !== '/user/login') {
+              history.replace({
+                pathname: '/user/login',
+                search: `?redirect=${encodeURIComponent(pathname + search)}`,
+              });
+            }
+          });
+          return; // 不显示错误消息
+        }
+
+        message.error(`Response status:${status}`);
       } else if (error.request) {
         // 请求已经成功发起，但没有收到响应
         // \`error.request\` 在浏览器中是 XMLHttpRequest 的实例，

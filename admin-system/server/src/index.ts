@@ -18,6 +18,8 @@ import userRoutes from './routes/users-simplified';
 import dashboardRoutes from './routes/dashboard';
 import subscriptionRoutes from './routes/subscriptions';
 import protochatRoutes from './routes/protochat';
+import systemDefaultModelRoutes from './routes/system-default-model';
+import systemEmbeddingRoutes from './routes/system-embedding';
 import process from 'node:process';
 // 加载环境变量 - 必须在其他 import 之前
 dotenv.config({ override: true });
@@ -74,6 +76,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin/subscriptions', subscriptionRoutes);
 app.use('/api/admin/protochat', protochatRoutes);
+app.use('/api/admin/system-config/default-model', systemDefaultModelRoutes);
+app.use('/api/admin/system-embedding', systemEmbeddingRoutes);
 
 // 托管前端静态文件
 const distPath = path.join(__dirname, '../../dist');

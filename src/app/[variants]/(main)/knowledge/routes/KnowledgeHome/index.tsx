@@ -15,6 +15,7 @@ import TogglePanelButton from '@/features/KnowledgeManager/Header/TogglePanelBut
 import { useShowMobileWorkspace } from '@/hooks/useShowMobileWorkspace';
 import { FilesTabs } from '@/types/files';
 
+import UsageFooter from '../../components/UsageFooter';
 import { useFileCategory } from '../../hooks/useFileCategory';
 import FileModalQueryRoute from '../../shared/FileModalQueryRoute';
 import { useSetFileModalId } from '../../shared/useFileQueryParam';
@@ -62,6 +63,7 @@ const Sidebar = memo(() => {
         <CategoryMenu />
       </Flexbox>
       <Collection />
+      <UsageFooter />
     </Flexbox>
   );
 });

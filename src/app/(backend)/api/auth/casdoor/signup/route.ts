@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { account, session } from '@/database/schemas/betterAuth';
 import { users } from '@/database/schemas/user';
 import { CasdoorClient } from '@/server/modules/Casdoor';
-import { createSignedSessionCookie } from '@/server/modules/Casdoor/cookie';
+import { createSignedSessionCookies } from '@/server/modules/Casdoor/cookie';
 import type { CasdoorSignupRequest, CasdoorSignupResponse } from '@/server/modules/Casdoor/types';
 import { UserService } from '@/server/services/user';
 import { generateDefaultAvatar, isValidAvatar } from '@/server/utils/avatar';
@@ -238,33 +238,65 @@ export async function POST(req: NextRequest) {
     const sessionToken = generateSessionToken();
     const sessionExpiresAt = getSessionExpiresAt();
     const sessionId = createNanoId(12)();
+    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null;
+    const userAgent = req.headers.get('user-agent') || null;
 
     await serverDB.insert(session).values({
       createdAt: now,
       expiresAt: sessionExpiresAt,
       id: sessionId,
-      ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null,
+      ipAddress,
       token: sessionToken,
       updatedAt: now,
-      userAgent: req.headers.get('user-agent') || null,
+      userAgent,
       userId,
     });
 
     // Get callback URL from query params or default to '/'
     const callbackUrl = req.nextUrl.searchParams.get('callbackUrl') || '/';
 
-    // Step 7: Create response with signed session cookie
+    // Step 7: Create response with signed session cookies
     const response = NextResponse.json({
       callbackUrl,
       success: true,
     } satisfies CasdoorSignupResponse);
 
-    // Set signed session cookie (Better Auth uses HMAC-SHA256 signed cookies)
-    const signedCookie = await createSignedSessionCookie({
+    // Get protocol from X-Forwarded-Proto header (for reverse proxy setups)
+    const forwardedProto = req.headers.get('x-forwarded-proto');
+
+    // Set signed session cookies (Better Auth requires both session_token and session_data for cookieCache)
+    const signedCookies = await createSignedSessionCookies({
       expiresAt: sessionExpiresAt,
+      protocol: forwardedProto,
+      sessionData: {
+        session: {
+          createdAt: now,
+          expiresAt: sessionExpiresAt,
+          id: sessionId,
+          ipAddress,
+          token: sessionToken,
+          updatedAt: now,
+          userAgent,
+          userId,
+        },
+        user: {
+          avatar: userInfo.avatar || userInfo.permanentAvatar || null,
+          createdAt: now,
+          email: normalizedEmail,
+          emailVerified: userInfo.email_verified ?? false,
+          fullName: username,
+          id: userId,
+          updatedAt: now,
+          username,
+        },
+      },
       sessionToken,
     });
-    response.headers.append('Set-Cookie', signedCookie);
+
+    // Append all session cookies to response
+    for (const cookie of signedCookies) {
+      response.headers.append('Set-Cookie', cookie);
+    }
 
     return response;
   } catch (error) {
