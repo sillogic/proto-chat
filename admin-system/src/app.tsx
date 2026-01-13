@@ -168,16 +168,5 @@ export const request: RequestConfig = {
       return config;
     },
   ],
-  // 响应拦截器
-  responseInterceptors: [
-    (response) => {
-      // 处理响应错误
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('admin-token');
-        localStorage.removeItem('admin-user');
-        history.push('/user/login');
-      }
-      return response;
-    },
-  ],
+  // 注意：401/403 错误处理已经在 requestErrorConfig.ts 的 errorHandler 中处理
 };
