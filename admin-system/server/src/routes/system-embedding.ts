@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { db } from '../config/database';
-import { systemEmbeddingConfig, systemEmbeddingModels, embeddingUsageLogs } from '@lobechat/database';
+import { systemEmbeddingConfig, systemEmbeddingModels, embeddingUsageLogs } from '../db/system-config-schema';
 import { eq, desc } from 'drizzle-orm';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import { KeyVaultsGateKeeper } from '../utils/encryption';
@@ -233,7 +233,7 @@ router.post('/sync', authenticateToken, requirePermission('system.admin'), async
       throw new Error(`API returned ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as { data?: any[] };
     const models = result.data || [];
 
     // 筛选出embedding类型的模型
@@ -372,7 +372,7 @@ router.post('/test', authenticateToken, requirePermission('system.admin'), async
     const duration = Date.now() - startTime;
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
       console.error('[Embedding] Test failed:', errorData);
 
       return res.status(response.status).json({
@@ -382,7 +382,7 @@ router.post('/test', authenticateToken, requirePermission('system.admin'), async
       });
     }
 
-    const result = await response.json();
+    const result = await response.json() as { data?: { embedding?: number[] }[]; model?: string; usage?: any };
 
     console.log(`[Embedding] Test successful in ${duration}ms`);
 
