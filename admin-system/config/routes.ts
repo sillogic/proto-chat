@@ -88,6 +88,22 @@ export default [
     component: './ProtoChat/Providers',
   },
   {
+    path: '/system-config',
+    name: 'systemConfig',
+    icon: 'SettingOutlined',
+    routes: [
+      {
+        path: '/system-config/embedding',
+        name: 'embedding',
+        component: './SystemConfig/Embedding',
+      },
+      {
+        path: '/system-config',
+        redirect: '/system-config/embedding',
+      },
+    ],
+  },
+  {
     path: '/',
     redirect: '/dashboard',
   },

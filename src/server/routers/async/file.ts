@@ -8,11 +8,14 @@ import { DEFAULT_FILE_EMBEDDING_MODEL_ITEM } from '@/const/settings/knowledge';
 import { ASYNC_TASK_TIMEOUT, AsyncTaskModel } from '@/database/models/asyncTask';
 import { ChunkModel } from '@/database/models/chunk';
 import { EmbeddingModel } from '@/database/models/embedding';
+import { EmbeddingUsageLogModel } from '@/database/models/embeddingUsageLog';
 import { FileModel } from '@/database/models/file';
+import { SystemEmbeddingModel } from '@/database/models/systemEmbedding';
 import { NewChunkItem, NewEmbeddingsItem } from '@/database/schemas';
 import { fileEnv } from '@/envs/file';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { getServerDefaultFilesConfig } from '@/server/globalConfig';
+import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { ChunkService } from '@/server/services/chunk';
 import { FileService } from '@/server/services/file';
@@ -34,8 +37,10 @@ const fileProcedure = asyncAuthedProcedure.use(async (opts) => {
       chunkModel: new ChunkModel(ctx.serverDB, ctx.userId),
       chunkService: new ChunkService(ctx.serverDB, ctx.userId),
       embeddingModel: new EmbeddingModel(ctx.serverDB, ctx.userId),
+      embeddingUsageLogModel: new EmbeddingUsageLogModel(ctx.serverDB),
       fileModel: new FileModel(ctx.serverDB, ctx.userId),
       fileService: new FileService(ctx.serverDB, ctx.userId),
+      systemEmbeddingModel: new SystemEmbeddingModel(ctx.serverDB),
     },
   });
 });
@@ -57,10 +62,52 @@ export const fileRouter = router({
 
       const asyncTask = await ctx.asyncTaskModel.findById(input.taskId);
 
-      const { model, provider } =
-        getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
-
       if (!asyncTask) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Async Task not found' });
+
+      // Try to get system embedding configuration from database
+      const systemConfig = await ctx.systemEmbeddingModel.getConfig();
+
+      let model: string;
+      let provider: string;
+      let modelInputPrice: number | null = null;
+      let embeddingPayload = ctx.jwtPayload; // Default to user's payload
+
+      if (systemConfig && systemConfig.providerId && systemConfig.modelId) {
+        // Use system configuration from database
+        provider = systemConfig.providerId;
+        model = systemConfig.modelId;
+        modelInputPrice = systemConfig.inputPrice ? parseFloat(systemConfig.inputPrice) : null;
+
+        // Decrypt API Key from system config
+        let decryptedApiKey: string | undefined;
+        if (systemConfig.apiKey) {
+          try {
+            const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+            const result = await gateKeeper.decrypt(systemConfig.apiKey);
+            if (result.wasAuthentic) {
+              decryptedApiKey = result.plaintext;
+            }
+          } catch (e) {
+            console.error('[Embedding] Failed to decrypt API key:', e);
+          }
+        }
+
+        // Create custom payload with system config
+        embeddingPayload = {
+          ...ctx.jwtPayload,
+          apiKey: decryptedApiKey,
+          baseURL: systemConfig.baseUrl || undefined,
+        };
+
+        console.log(`[Embedding] Using system config: ${provider}/${model}, baseURL: ${systemConfig.baseUrl || 'default'}`);
+      } else {
+        // Fallback to environment variable configuration
+        const envConfig = getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
+        provider = envConfig.provider;
+        model = envConfig.model;
+
+        console.log(`[Embedding] No system config found, using env config: ${provider}/${model}`);
+      }
 
       try {
         const timeoutPromise = new Promise((_, reject) => {
@@ -87,11 +134,15 @@ export const fileRouter = router({
 
           const chunks = await ctx.chunkModel.getChunksTextByFileId(input.fileId);
           const requestArray = chunk(chunks, CHUNK_SIZE);
+
+          let totalInputTokens = 0;
+          let totalTokens = 0;
+
           try {
             await pMap(
               requestArray,
               async (chunks) => {
-                const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload, { model });
+                const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, embeddingPayload, { model });
                 const modelId = actualModel || model;
 
                 const embeddings = await agentRuntime.embeddings({
@@ -109,6 +160,11 @@ export const fileRouter = router({
                   })) || [];
 
                 await ctx.embeddingModel.bulkCreate(items);
+
+                // Calculate tokens for this batch
+                const batchTokens = chunks.reduce((sum, c) => sum + Math.ceil(c.text.length / 4), 0);
+                totalInputTokens += batchTokens;
+                totalTokens += batchTokens;
               },
               { concurrency: CONCURRENCY },
             );
@@ -117,6 +173,36 @@ export const fileRouter = router({
               message: JSON.stringify(e),
               name: AsyncTaskErrorType.EmbeddingError,
             };
+          }
+
+          // Record embedding usage log
+          if (totalInputTokens > 0) {
+            try {
+              // Calculate cost in USD
+              let costPrice: string | undefined;
+              if (modelInputPrice) {
+                // modelInputPrice is per 1M tokens
+                const costInUSD = (totalInputTokens / 1_000_000) * modelInputPrice;
+                costPrice = costInUSD.toFixed(6); // 6 decimal places for precision
+              }
+
+              await ctx.embeddingUsageLogModel.create({
+                userId: ctx.userId,
+                modelId: model,
+                providerId: provider,
+                inputTokens: totalInputTokens,
+                totalTokens: totalTokens,
+                costPrice: costPrice,
+                operationType: 'file_embedding',
+                fileId: input.fileId,
+                chunkCount: chunks.length,
+              });
+
+              console.log(`[Embedding] Logged usage: ${chunks.length} chunks, ${totalInputTokens} tokens, cost: $${costPrice || 'unknown'}`);
+            } catch (logError) {
+              console.error('[Embedding] Failed to log usage:', logError);
+              // Don't fail the embedding task if logging fails
+            }
           }
 
           const duration = Date.now() - startAt;

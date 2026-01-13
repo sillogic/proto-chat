@@ -57,4 +57,6 @@ export default {
   'menu.aiProviders': 'AI Providers',
   'menu.usageStatistics': 'Usage Statistics',
   'menu.protochat': 'ProtoChat Sub-Providers',
+  'menu.systemConfig': 'System Config',
+  'menu.systemConfig.embedding': 'Embedding Config',
 };

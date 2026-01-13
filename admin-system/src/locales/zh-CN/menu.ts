@@ -57,4 +57,6 @@ export default {
   'menu.aiProviders': 'AI服务商',
   'menu.usageStatistics': '用量统计',
   'menu.protochat': 'ProtoChat子供应商配置',
+  'menu.systemConfig': '系统配置',
+  'menu.systemConfig.embedding': 'Embedding配置',
 };

@@ -1,7 +1,14 @@
 import { UserJSON } from '@clerk/backend';
-import { LobeChatDatabase } from '@lobechat/database';
+import { LobeChatDatabase, idGenerator } from '@lobechat/database';
+import { eq } from 'drizzle-orm';
 
 import { UserModel } from '@/database/models/user';
+import {
+  subscriptionPlans,
+  userBalances,
+  userExtensions,
+  userTransactions,
+} from '@/database/schemas';
 import { initializeServerAnalytics } from '@/libs/analytics';
 import { pino } from '@/libs/logger';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
@@ -25,12 +32,73 @@ export class UserService {
   }
 
   async initUser(user: CreatedUser) {
+    const now = new Date();
+
+    // Step 1: Create inbox for user
     const agentService = new AgentService(this.db, user.id);
     await agentService.createInbox();
+
+    // Step 2: Initialize subscription plan (Free Trial)
+    // Query the Free Trial plan from database
+    const [freePlan] = await this.db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.slug, 'free-trial'))
+      .limit(1);
+
+    if (!freePlan) {
+      pino.warn(
+        { userId: user.id },
+        'Free Trial plan not found in database. User subscription not initialized.',
+      );
+    } else {
+      // Create userExtensions record
+      await this.db
+        .insert(userExtensions)
+        .values({
+          currentPlan: freePlan.slug,
+          planId: freePlan.id,
+          userId: user.id,
+        })
+        .onConflictDoNothing();
+
+      pino.info({ userId: user.id, plan: freePlan.slug }, 'User subscription plan initialized');
+    }
+
+    // Step 3: Initialize user credits balance
+    const initialCredits = freePlan?.credits ? parseFloat(freePlan.credits) : 0;
+
+    await this.db
+      .insert(userBalances)
+      .values({
+        balance: initialCredits.toFixed(4),
+        totalPurchased: '0',
+        userId: user.id,
+      })
+      .onConflictDoNothing();
+
+    // Step 4: Record initial credit transaction (if credits > 0)
+    if (initialCredits > 0) {
+      await this.db.insert(userTransactions).values({
+        amount: initialCredits.toFixed(4),
+        balanceAfter: initialCredits.toFixed(4),
+        category: 'SUBSCRIPTION_GRANT',
+        description: `Initial Free Trial credits: ${initialCredits}`,
+        id: idGenerator('tx'),
+        type: 'SUBSCRIPTION_GRANT',
+        userId: user.id,
+      });
+
+      pino.info(
+        { userId: user.id, credits: initialCredits },
+        'User credits balance initialized',
+      );
+    }
 
     /* ↓ cloud slot ↓ */
     /* ↑ cloud slot ↑ */
 
+    // Step 5: Analytics tracking
     const analytics = await initializeServerAnalytics();
     analytics?.identify(user.id, {
       email: user.email ?? undefined,
