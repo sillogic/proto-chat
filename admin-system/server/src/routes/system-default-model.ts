@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { db } from '../config/database';
-import { systemDefaultModelConfig } from '@lobechat/database';
+import { systemDefaultModelConfig } from '../db/system-config-schema';
 import { eq } from 'drizzle-orm';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import { z } from 'zod';
