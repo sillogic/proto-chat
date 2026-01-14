@@ -155,10 +155,12 @@ const createSessionDataCookieValue = async (
 
   const signature = await makeBase64UrlSignature(signaturePayload, secret);
 
-  // Build final cookie value
+  // Build final cookie value - flatten sessionPayload into cookiePayload
+  // Better-Auth expects: { expiresAt, session, user, updatedAt, signature }
+  // NOT: { expiresAt, session: { session, user, updatedAt, version }, signature }
   const cookiePayload = {
     expiresAt,
-    session: sessionPayload,
+    ...sessionPayload,
     signature,
   };
 
