@@ -4,12 +4,13 @@ import { Button } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
 import { ChevronRight } from 'lucide-react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { memo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
+import { useNavigate } from 'react-router-dom';
 
 import { BRANDING_LOGO_URL, BRANDING_NAME } from '@/const/branding';
+import { useUserStore } from '@/store/user';
+import { authSelectors } from '@/store/user/slices/auth/selectors';
 
 import ParticleBackground from './ParticleBackground';
 
@@ -84,11 +85,17 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
 const WelcomePage = memo(() => {
   const { styles } = useStyles();
   const theme = useTheme();
-  const router = useRouter();
-  const { t } = useTranslation('welcome');
+  const navigate = useNavigate();
+  const isLogin = useUserStore((s) => authSelectors.isLogin(s));
 
   const handleEnter = () => {
-    router.push('/chat');
+    if (isLogin) {
+      navigate('/chat');
+    } else {
+      // 登录成功后直接跳转到 /chat，而不是回到 welcome 页面
+      const callbackUrl = `${location.origin}/chat`;
+      window.location.href = `/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+    }
   };
 
   return (
@@ -108,7 +115,7 @@ const WelcomePage = memo(() => {
 
           <h1 className={styles.title}>{BRANDING_NAME}</h1>
 
-          <p className={styles.description}>{t('landing.subtitle')}</p>
+          <p className={styles.description}>Your Ultimate Research Companion</p>
 
           <Button
             icon={<ChevronRight size={16} />}
@@ -117,16 +124,19 @@ const WelcomePage = memo(() => {
             size="large"
             type="primary"
           >
-            {t('landing.enterButton')}
+            Enter
           </Button>
         </Flexbox>
 
-        <span className={styles.footer}>{t('landing.footer')}</span>
+        <span className={styles.footer}>Sillogic</span>
       </Center>
     </div>
   );
 });
 
 WelcomePage.displayName = 'WelcomePage';
+
+export const DesktopWelcomePage = WelcomePage;
+export const MobileWelcomePage = WelcomePage;
 
 export default WelcomePage;

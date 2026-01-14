@@ -50,11 +50,11 @@ const PlanManagement: React.FC = () => {
       },
     },
     {
-      title: '价格 (分)',
+      title: '价格 (元)',
       dataIndex: 'price',
       valueType: 'money',
       search: false,
-      render: (_, record) => `¥ ${(record.price / 100).toFixed(2)}`,
+      render: (_, record) => `¥ ${record.price.toFixed(2)}`,
       formItemProps: {
         rules: [{ required: true, message: '此项为必填项' }],
       },

@@ -180,6 +180,20 @@ export const auth = betterAuth({
 
   socialProviders,
   advanced: {
+    /**
+     * Force secure cookies in production.
+     * This is necessary when running behind nginx reverse proxy with HTTPS termination.
+     * The app may not detect HTTPS properly since nginx forwards requests over HTTP internally.
+     */
+    useSecureCookies: process.env.NODE_ENV === 'production',
+    /**
+     * Default cookie attributes for production with HTTPS.
+     * SameSite=Lax is the default and works for same-site navigation.
+     */
+    defaultCookieAttributes: {
+      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === 'production',
+    },
     database: {
       /**
        * Align Better Auth user IDs with our shared idGenerator for consistency.

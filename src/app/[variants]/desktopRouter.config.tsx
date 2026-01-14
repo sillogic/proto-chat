@@ -202,7 +202,7 @@ const LabsPage = dynamic(() => import('./(main)/labs'), {
 
 // Welcome components
 const DesktopWelcomePage = dynamic(
-  () => import('./(main)/welcome/index').then((m) => m.DesktopWelcomePage),
+  () => import('@/features/WelcomePage').then((m) => m.DesktopWelcomePage),
   {
     loading: () => <Loading />,
     ssr: false,
@@ -559,12 +559,6 @@ export const createDesktopRouter = (locale: Locales) =>
           errorElement: <ChangelogErrorBoundary />,
           path: 'changelog',
         },
-        // Welcome route
-        {
-          element: <DesktopWelcomePage />,
-          path: 'welcome',
-        },
-
         // Default route - redirect to welcome
         {
           index: true,
@@ -580,5 +574,10 @@ export const createDesktopRouter = (locale: Locales) =>
       element: <RootLayout locale={locale} />,
       errorElement: <RootErrorBoundary />,
       path: '/',
+    },
+    // Welcome route - standalone without sidebar
+    {
+      element: <DesktopWelcomePage />,
+      path: '/welcome',
     },
   ]);

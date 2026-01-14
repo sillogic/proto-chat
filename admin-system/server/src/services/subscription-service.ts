@@ -49,8 +49,10 @@ export class SubscriptionService {
 
     // Update plan
     async updatePlan(id: string, data: Partial<NewSubscriptionPlan>) {
+        // 过滤掉不应该被更新的字段
+        const { id: _id, createdAt, updatedAt, ...updateData } = data as any;
         const result = await db.update(subscriptionPlans)
-            .set({ ...data, updatedAt: new Date() })
+            .set({ ...updateData, updatedAt: new Date() })
             .where(eq(subscriptionPlans.id, id))
             .returning();
         return result[0];
