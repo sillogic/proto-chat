@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
     // refs: https://github.com/lobehub/lobe-chat/pull/7430
     serverMinification: false,
     webVitalsAttribution: ['CLS', 'LCP'],
-    webpackBuildWorker: true,
+    webpackBuildWorker: false,
     webpackMemoryOptimizations: true,
   },
   async headers() {
