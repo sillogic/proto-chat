@@ -202,7 +202,7 @@ const LabsPage = dynamic(() => import('./(main)/labs'), {
 
 // Welcome components
 const MobileWelcomePage = dynamic(
-  () => import('./(main)/welcome/index').then((m) => m.MobileWelcomePage),
+  () => import('@/features/WelcomePage').then((m) => m.MobileWelcomePage),
   {
     loading: () => <Loading />,
     ssr: false,
@@ -603,12 +603,6 @@ export const createMobileRouter = (locale: Locales) =>
           path: 'changelog',
         },
 
-        // Welcome route
-        {
-          element: <MobileWelcomePage />,
-          path: 'welcome',
-        },
-
         // Default route - redirect to welcome
         {
           index: true,
@@ -624,5 +618,10 @@ export const createMobileRouter = (locale: Locales) =>
       element: <RootLayout locale={locale} />,
       errorElement: <RootErrorBoundary />,
       path: '/',
+    },
+    // Welcome route - standalone without sidebar
+    {
+      element: <MobileWelcomePage />,
+      path: '/welcome',
     },
   ]);

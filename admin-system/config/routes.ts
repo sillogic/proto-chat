@@ -76,10 +76,30 @@ export default [
     component: './AiProviders',
   },
   {
-    path: '/usage-statistics',
-    name: 'usageStatistics',
+    path: '/analytics',
+    name: 'analytics',
     icon: 'BarChartOutlined',
-    component: './UsageStatistics',
+    routes: [
+      {
+        path: '/analytics/cost',
+        name: 'costAnalysis',
+        component: './Analytics/CostAnalysis',
+      },
+      {
+        path: '/analytics/revenue',
+        name: 'revenueOverview',
+        component: './Analytics/RevenueOverview',
+      },
+      {
+        path: '/analytics/users',
+        name: 'userInsights',
+        component: './Analytics/UserInsights',
+      },
+      {
+        path: '/analytics',
+        redirect: '/analytics/cost',
+      },
+    ],
   },
   {
     path: '/protochat',

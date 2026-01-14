@@ -1,35 +1,41 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { ProTable, ProColumns } from '@ant-design/pro-components';
-import { Typography, Tag, Space, Card, Statistic, Row, Col } from 'antd';
+import { Typography, Tag, Space } from 'antd';
 import { request } from 'umi';
 import React from 'react';
-import { ClockCircleOutlined, UserOutlined, CrownOutlined } from '@ant-design/icons';
+import { UserOutlined, CrownOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
 interface SubscriptionRecord {
   id: string;
   userId: string;
+  planName: string;
+  planType: string;
+  planId?: string;
+  slug: string;
+  price?: number;
+  paymentMethod?: string;
+  isActive: boolean;
+  status: string;
+  autoRenew: boolean;
+  startedAt: string;
+  endedAt?: string;
+  createdAt: string;
   fullName?: string;
   email?: string;
-  amount: string;
-  type: string;
-  category: string;
-  description: string;
-  createdAt: string;
-  metadata?: any;
 }
+
+const statusMap: Record<string, { text: string; color: string }> = {
+  active: { text: '生效中', color: 'green' },
+  canceled: { text: '已取消', color: 'orange' },
+  expired: { text: '已过期', color: 'default' },
+  past_due: { text: '已逾期', color: 'red' },
+  upgraded: { text: '已升级', color: 'blue' },
+};
 
 const SubscriptionRecords: React.FC = () => {
   const columns: ProColumns<SubscriptionRecord>[] = [
-    {
-      title: '交易 ID',
-      dataIndex: 'id',
-      copyable: true,
-      ellipsis: true,
-      width: 150,
-      search: false,
-    },
     {
       title: '关联用户',
       dataIndex: 'userId',
@@ -55,68 +61,69 @@ const SubscriptionRecords: React.FC = () => {
     {
       title: '订阅套餐',
       dataIndex: 'planName',
-      render: (_, record) => {
-        const name = record.metadata?.planName || record.description.replace('Plan Subscription Grant: ', '') || '-';
-        return (
-          <Space>
-            <CrownOutlined style={{ color: '#faad14' }} />
-            <Text strong>{name}</Text>
-          </Space>
-        );
-      },
       width: 150,
+      render: (_, record) => (
+        <Space>
+          <CrownOutlined style={{ color: '#faad14' }} />
+          <Text strong>{record.planName}</Text>
+        </Space>
+      ),
     },
     {
-      title: '订阅价格',
-      dataIndex: 'price',
-      width: 120,
-      render: (_, record) => {
-        if (!record.metadata?.price) return '-';
-        return `${record.metadata.currency || 'CNY'} ${record.metadata.price}`;
-      },
-      search: false,
-    },
-    {
-      title: '重置额度 (积分)',
-      dataIndex: 'amount',
-      width: 130,
-      align: 'right',
+      title: '套餐类型',
+      dataIndex: 'planType',
+      width: 100,
       render: (val) => (
-        <Text strong style={{ color: '#52c41a' }}>
-          {Number(val).toLocaleString()}
-        </Text>
+        <Tag color={val === 'team' ? 'blue' : 'green'}>
+          {val === 'team' ? '团队' : '个人'}
+        </Tag>
       ),
       search: false,
     },
     {
-      title: '变更内容',
-      dataIndex: 'description',
-      ellipsis: true,
+      title: '订阅价格',
+      dataIndex: 'price',
+      width: 100,
       render: (_, record) => {
-        const isGrant = record.type === 'SUBSCRIPTION_GRANT';
-        return (
-          <Space direction="vertical" size={2}>
-            <Space>
-              <Tag color={isGrant ? 'gold' : 'blue'}>
-                {isGrant ? '套餐订阅' : record.type.replace('_', ' ')}
-              </Tag>
-              <Text>{record.description}</Text>
-            </Space>
-            {record.category && <Text type="secondary" style={{ fontSize: '12px' }}>分类: {record.category}</Text>}
-          </Space>
-        );
+        if (record.price == null) return '-';
+        return `¥ ${record.price}`;
+      },
+      search: false,
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      width: 100,
+      render: (_, record) => {
+        const s = statusMap[record.status] || { text: record.status, color: 'default' };
+        return <Tag color={s.color}>{s.text}</Tag>;
+      },
+      valueEnum: {
+        active: { text: '生效中' },
+        canceled: { text: '已取消' },
+        expired: { text: '已过期' },
+        upgraded: { text: '已升级' },
       },
     },
     {
-      title: '订阅时间',
-      dataIndex: 'createdAt',
+      title: '自动续费',
+      dataIndex: 'autoRenew',
+      width: 90,
+      render: (val) => (
+        <Tag color={val ? 'green' : 'default'}>{val ? '是' : '否'}</Tag>
+      ),
+      search: false,
+    },
+    {
+      title: '开始时间',
+      dataIndex: 'startedAt',
       valueType: 'dateTime',
       width: 170,
       search: false,
     },
     {
       title: '到期时间',
-      dataIndex: ['metadata', 'expiresAt'],
+      dataIndex: 'endedAt',
       valueType: 'dateTime',
       width: 170,
       search: false,
@@ -124,16 +131,16 @@ const SubscriptionRecords: React.FC = () => {
   ];
 
   return (
-    <PageContainer title="订阅与赠送记录" subTitle="查看系统中所有套餐变更和额度赠送的历史流水">
+    <PageContainer title="订阅记录" subTitle="查看系统中所有用户的订阅历史记录">
       <ProTable<SubscriptionRecord>
-        headerTitle="流水记录"
+        headerTitle="订阅记录列表"
         columns={columns}
         request={async (params) => {
           const response = await request('/api/admin/subscriptions/records', {
             params: {
               page: params.current,
               limit: params.pageSize,
-              search: params.keyword || params.userId || '',
+              search: params.keyword || params.userId || params.planName || '',
             },
           });
           return {
