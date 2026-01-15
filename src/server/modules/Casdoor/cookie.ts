@@ -69,8 +69,13 @@ export const createSignedSessionCookies = async (
 
   // Use better-call's serializeSignedCookie for exact compatibility with Better-Auth
   // This ensures the signature format matches exactly what Better-Auth expects
+  // In production with secure cookies, Better Auth expects __Secure- prefix
+  const cookieName = secure
+    ? '__Secure-better-auth.session_token'
+    : 'better-auth.session_token';
+
   const cookie = await serializeSignedCookie(
-    'better-auth.session_token',
+    cookieName,
     sessionToken,
     signingSecret,
     {
@@ -81,10 +86,6 @@ export const createSignedSessionCookies = async (
       secure,
     },
   );
-
-  console.log('[ROPC Cookie] Cookie created using better-call serializeSignedCookie:');
-  console.log('[ROPC Cookie]   token:', sessionToken);
-  console.log('[ROPC Cookie]   cookie:', cookie);
 
   cookies.push(cookie);
 

@@ -61,9 +61,7 @@ const syncSessionToRedis = async (params: {
   };
 }) => {
   const redisConfig = getRedisConfig();
-  console.log('[ROPC Login] Redis enabled:', isRedisEnabled(redisConfig));
   if (!isRedisEnabled(redisConfig)) {
-    console.log('[ROPC Login] Redis is NOT enabled, skipping session sync');
     return;
   }
 
@@ -110,9 +108,6 @@ const syncSessionToRedis = async (params: {
 
     // Store session in Redis with TTL
     await redisClient.set(sessionKey, sessionValue, { ex: ttl });
-    console.log('[ROPC Login] Session stored in Redis:');
-    console.log('[ROPC Login]   key:', sessionKey);
-    console.log('[ROPC Login]   ttl:', ttl, 'seconds');
   } catch (error) {
     // Log but don't fail the login - database session is still valid
     console.error('[Casdoor] Failed to sync session to Redis:', error);
@@ -291,11 +286,6 @@ export async function POST(req: NextRequest) {
     const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null;
     const userAgent = req.headers.get('user-agent') || null;
 
-    console.log('[ROPC Login] Creating session:');
-    console.log('[ROPC Login]   sessionId:', sessionId);
-    console.log('[ROPC Login]   sessionToken:', sessionToken);
-    console.log('[ROPC Login]   userId:', existingUser.id);
-
     await serverDB.insert(session).values({
       createdAt: now,
       expiresAt: sessionExpiresAt,
@@ -307,16 +297,7 @@ export async function POST(req: NextRequest) {
       userId: existingUser.id,
     });
 
-    // Verify session was inserted
-    const [verifySession] = await serverDB
-      .select({ id: session.id, token: session.token })
-      .from(session)
-      .where(eq(session.token, sessionToken))
-      .limit(1);
-    console.log('[ROPC Login] Session verified in DB:', !!verifySession);
-
-    // Step 5.1: Sync session to Redis for Better Auth secondaryStorage
-    console.log('[ROPC Login] Syncing session to Redis...');
+    // Sync session to Redis for Better Auth secondaryStorage
     await syncSessionToRedis({
       expiresAt: sessionExpiresAt,
       sessionData: {
