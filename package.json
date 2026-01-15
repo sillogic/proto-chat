@@ -210,6 +210,7 @@
     "async-retry": "^1.3.3",
     "better-auth": "^1.4.6",
     "better-auth-harmony": "^1.2.5",
+    "better-call": "^1.1.7",
     "brotli-wasm": "^3.0.1",
     "chroma-js": "^3.2.0",
     "cmdk": "^1.1.1",

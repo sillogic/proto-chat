@@ -61,7 +61,11 @@ const syncSessionToRedis = async (params: {
   };
 }) => {
   const redisConfig = getRedisConfig();
-  if (!isRedisEnabled(redisConfig)) return;
+  console.log('[ROPC Login] Redis enabled:', isRedisEnabled(redisConfig));
+  if (!isRedisEnabled(redisConfig)) {
+    console.log('[ROPC Login] Redis is NOT enabled, skipping session sync');
+    return;
+  }
 
   try {
     const redisClient = await initializeRedis(redisConfig);
@@ -73,35 +77,42 @@ const syncSessionToRedis = async (params: {
     const ttl = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
     if (ttl <= 0) return;
 
-    // Build session key (Better Auth format: session.{token})
-    const sessionKey = `${BETTER_AUTH_KEY_PREFIX}session.${sessionData.token}`;
+    // Build session key (Better Auth format: {token} - no "session." prefix)
+    const sessionKey = `${BETTER_AUTH_KEY_PREFIX}${sessionData.token}`;
 
-    // Build session value (Better Auth format: {session, user})
+    // Build session value (Better Auth format: {user, session} - user first, no session.id)
     const sessionValue = JSON.stringify({
-      session: {
-        createdAt: sessionData.createdAt.toISOString(),
-        expiresAt: sessionData.expiresAt.toISOString(),
-        id: sessionData.id,
-        ipAddress: sessionData.ipAddress,
-        token: sessionData.token,
-        updatedAt: sessionData.updatedAt.toISOString(),
-        userAgent: sessionData.userAgent,
-        userId: sessionData.userId,
-      },
       user: {
-        createdAt: userData.createdAt.toISOString(),
+        name: userData.fullName,
         email: userData.email,
         emailVerified: userData.emailVerified,
-        id: userData.id,
         image: userData.avatar,
-        name: userData.fullName,
+        createdAt: userData.createdAt.toISOString(),
         updatedAt: userData.updatedAt.toISOString(),
+        normalizedEmail: null,
+        role: null,
+        banned: false,
+        banReason: null,
+        banExpires: null,
         username: userData.username,
+        id: userData.id,
+      },
+      session: {
+        ipAddress: sessionData.ipAddress,
+        userAgent: sessionData.userAgent,
+        expiresAt: sessionData.expiresAt.toISOString(),
+        userId: sessionData.userId,
+        token: sessionData.token,
+        createdAt: sessionData.createdAt.toISOString(),
+        updatedAt: sessionData.updatedAt.toISOString(),
       },
     });
 
     // Store session in Redis with TTL
     await redisClient.set(sessionKey, sessionValue, { ex: ttl });
+    console.log('[ROPC Login] Session stored in Redis:');
+    console.log('[ROPC Login]   key:', sessionKey);
+    console.log('[ROPC Login]   ttl:', ttl, 'seconds');
   } catch (error) {
     // Log but don't fail the login - database session is still valid
     console.error('[Casdoor] Failed to sync session to Redis:', error);
@@ -280,6 +291,11 @@ export async function POST(req: NextRequest) {
     const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null;
     const userAgent = req.headers.get('user-agent') || null;
 
+    console.log('[ROPC Login] Creating session:');
+    console.log('[ROPC Login]   sessionId:', sessionId);
+    console.log('[ROPC Login]   sessionToken:', sessionToken);
+    console.log('[ROPC Login]   userId:', existingUser.id);
+
     await serverDB.insert(session).values({
       createdAt: now,
       expiresAt: sessionExpiresAt,
@@ -291,7 +307,16 @@ export async function POST(req: NextRequest) {
       userId: existingUser.id,
     });
 
+    // Verify session was inserted
+    const [verifySession] = await serverDB
+      .select({ id: session.id, token: session.token })
+      .from(session)
+      .where(eq(session.token, sessionToken))
+      .limit(1);
+    console.log('[ROPC Login] Session verified in DB:', !!verifySession);
+
     // Step 5.1: Sync session to Redis for Better Auth secondaryStorage
+    console.log('[ROPC Login] Syncing session to Redis...');
     await syncSessionToRedis({
       expiresAt: sessionExpiresAt,
       sessionData: {
