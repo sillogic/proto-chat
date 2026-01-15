@@ -1493,7 +1493,7 @@ router.post('/providers/:id/test-api', authenticateToken, requirePermission('sys
 
         // 尝试获取数据
         const startTime = Date.now();
-        const unifiedModels = await AdapterFactory.fetchAndAdapt(testApiUrl, providerId, apiKey);
+        const unifiedModels = await AdapterFactory.fetchAndAdapt(testApiUrl, providerId, providerId, apiKey);
         const duration = Date.now() - startTime;
 
         // 获取适配器类型

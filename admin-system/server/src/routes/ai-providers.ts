@@ -369,7 +369,7 @@ router.post('/providers/:id/test-api', authenticateToken, requirePermission('sys
             }
         }
 
-        const models = await AdapterFactory.fetchAndAdapt(apiUrl, id, apiKey);
+        const models = await AdapterFactory.fetchAndAdapt(apiUrl, id, id, apiKey);
         const duration = `${Date.now() - startTime}ms`;
 
         console.log(`[${id}] API test successful: ${models.length} models`);
@@ -444,7 +444,7 @@ router.post('/providers/:id/sync', authenticateToken, requirePermission('system.
                     }
                 }
 
-                syncedModels = await AdapterFactory.fetchAndAdapt(pricingApiUrl, id, apiKey);
+                syncedModels = await AdapterFactory.fetchAndAdapt(pricingApiUrl, id, id, apiKey);
                 console.log(`[${id}] 获取到 ${syncedModels.length} 个模型`);
             } catch (error: any) {
                 console.error(`[${id}] API 同步失败，降级到 model-bank:`, error.message);
