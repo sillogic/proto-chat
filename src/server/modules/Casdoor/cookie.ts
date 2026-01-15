@@ -74,9 +74,9 @@ export const createSignedSessionCookies = async (
     sessionToken,
     signingSecret,
     {
-      path: '/',
       expires: expiresAt,
       httpOnly: true,
+      path: '/',
       sameSite: 'lax',
       secure,
     },

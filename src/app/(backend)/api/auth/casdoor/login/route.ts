@@ -82,29 +82,29 @@ const syncSessionToRedis = async (params: {
 
     // Build session value (Better Auth format: {user, session} - user first, no session.id)
     const sessionValue = JSON.stringify({
+      session: {
+        createdAt: sessionData.createdAt.toISOString(),
+        expiresAt: sessionData.expiresAt.toISOString(),
+        ipAddress: sessionData.ipAddress,
+        token: sessionData.token,
+        updatedAt: sessionData.updatedAt.toISOString(),
+        userAgent: sessionData.userAgent,
+        userId: sessionData.userId,
+      },
       user: {
-        name: userData.fullName,
+        banExpires: null,
+        banReason: null,
+        banned: false,
+        createdAt: userData.createdAt.toISOString(),
         email: userData.email,
         emailVerified: userData.emailVerified,
+        id: userData.id,
         image: userData.avatar,
-        createdAt: userData.createdAt.toISOString(),
-        updatedAt: userData.updatedAt.toISOString(),
+        name: userData.fullName,
         normalizedEmail: null,
         role: null,
-        banned: false,
-        banReason: null,
-        banExpires: null,
+        updatedAt: userData.updatedAt.toISOString(),
         username: userData.username,
-        id: userData.id,
-      },
-      session: {
-        ipAddress: sessionData.ipAddress,
-        userAgent: sessionData.userAgent,
-        expiresAt: sessionData.expiresAt.toISOString(),
-        userId: sessionData.userId,
-        token: sessionData.token,
-        createdAt: sessionData.createdAt.toISOString(),
-        updatedAt: sessionData.updatedAt.toISOString(),
       },
     });
 

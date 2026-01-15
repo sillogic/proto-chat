@@ -16,7 +16,7 @@ const createDebugHandler = (handler: (req: NextRequest) => Promise<Response>, me
 
     if (isGetSession) {
       console.log(`[BetterAuth] ===== ${method} ${url} =====`);
-      console.log('[BetterAuth] AUTH_SECRET (first 20 chars):', authEnv.AUTH_SECRET?.substring(0, 20));
+      console.log('[BetterAuth] AUTH_SECRET (first 20 chars):', authEnv.AUTH_SECRET?.slice(0, 20));
       console.log('[BetterAuth] AUTH_SECRET length:', authEnv.AUTH_SECRET?.length);
       const sessionToken = req.cookies.get('better-auth.session_token');
       console.log('[BetterAuth] session_token exists:', !!sessionToken);
@@ -38,8 +38,8 @@ const createDebugHandler = (handler: (req: NextRequest) => Promise<Response>, me
       try {
         const body = await cloned.json();
         console.log('[BetterAuth] Response:', {
-          hasUser: !!body?.user,
           hasSession: !!body?.session,
+          hasUser: !!body?.user,
           userId: body?.user?.id,
         });
       } catch {
