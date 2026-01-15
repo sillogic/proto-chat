@@ -61,7 +61,9 @@ const syncSessionToRedis = async (params: {
   };
 }) => {
   const redisConfig = getRedisConfig();
-  if (!isRedisEnabled(redisConfig)) return;
+  if (!isRedisEnabled(redisConfig)) {
+    return;
+  }
 
   try {
     const redisClient = await initializeRedis(redisConfig);
@@ -73,15 +75,14 @@ const syncSessionToRedis = async (params: {
     const ttl = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
     if (ttl <= 0) return;
 
-    // Build session key (Better Auth format: session.{token})
-    const sessionKey = `${BETTER_AUTH_KEY_PREFIX}session.${sessionData.token}`;
+    // Build session key (Better Auth format: {token} - no "session." prefix)
+    const sessionKey = `${BETTER_AUTH_KEY_PREFIX}${sessionData.token}`;
 
-    // Build session value (Better Auth format: {session, user})
+    // Build session value (Better Auth format: {user, session} - user first, no session.id)
     const sessionValue = JSON.stringify({
       session: {
         createdAt: sessionData.createdAt.toISOString(),
         expiresAt: sessionData.expiresAt.toISOString(),
-        id: sessionData.id,
         ipAddress: sessionData.ipAddress,
         token: sessionData.token,
         updatedAt: sessionData.updatedAt.toISOString(),
@@ -89,12 +90,17 @@ const syncSessionToRedis = async (params: {
         userId: sessionData.userId,
       },
       user: {
+        banExpires: null,
+        banReason: null,
+        banned: false,
         createdAt: userData.createdAt.toISOString(),
         email: userData.email,
         emailVerified: userData.emailVerified,
         id: userData.id,
         image: userData.avatar,
         name: userData.fullName,
+        normalizedEmail: null,
+        role: null,
         updatedAt: userData.updatedAt.toISOString(),
         username: userData.username,
       },
@@ -291,7 +297,7 @@ export async function POST(req: NextRequest) {
       userId: existingUser.id,
     });
 
-    // Step 5.1: Sync session to Redis for Better Auth secondaryStorage
+    // Sync session to Redis for Better Auth secondaryStorage
     await syncSessionToRedis({
       expiresAt: sessionExpiresAt,
       sessionData: {

@@ -34,19 +34,19 @@
   ],
   "scripts": {
     "prebuild": "tsx scripts/prebuild.mts && npm run lint",
-    "build": "cross-env NODE_OPTIONS=--max-old-space-size=6144 next build --webpack",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build --webpack",
     "postbuild": "npm run build-sitemap && npm run build-migrate-db",
     "build-migrate-db": "npm run db:migrate",
     "build-sitemap": "tsx ./scripts/buildSitemapIndex/index.ts",
-    "build:analyze": "cross-env NODE_OPTIONS=--max-old-space-size=6144 ANALYZE=true next build --webpack",
-    "build:docker": "npm run prebuild && cross-env NODE_OPTIONS=--max-old-space-size=6144 DOCKER=true next build --webpack && npm run build-sitemap",
+    "build:analyze": "cross-env NODE_OPTIONS=--max-old-space-size=8192 ANALYZE=true next build --webpack",
+    "build:docker": "npm run prebuild && cross-env NODE_OPTIONS=--max-old-space-size=8192 DOCKER=true next build --webpack && npm run build-sitemap",
     "prebuild:electron": "cross-env NEXT_PUBLIC_IS_DESKTOP_APP=1 tsx scripts/prebuild.mts",
-    "build:electron": "cross-env NODE_OPTIONS=--max-old-space-size=6144 NEXT_PUBLIC_IS_DESKTOP_APP=1 next build --webpack",
+    "build:electron": "cross-env NODE_OPTIONS=--max-old-space-size=8192 NEXT_PUBLIC_IS_DESKTOP_APP=1 next build --webpack",
     "clean:node_modules": "bash -lc 'set -e; echo \"Removing all node_modules...\"; rm -rf node_modules; pnpm -r exec rm -rf node_modules; rm -rf apps/desktop/node_modules; echo \"All node_modules removed.\"'",
+    "db:fix-casdoor": "powershell -ExecutionPolicy Bypass -File ./scripts/fix-casdoor-verifications.ps1",
     "db:generate": "drizzle-kit generate && npm run db:generate-client && npm run workflow:dbml",
     "db:generate-client": "tsx ./scripts/migrateClientDB/compile-migrations.ts",
     "db:migrate": "cross-env MIGRATION_DB=1 tsx ./scripts/migrateServerDB/index.ts",
-    "db:fix-casdoor": "powershell -ExecutionPolicy Bypass -File ./scripts/fix-casdoor-verifications.ps1",
     "db:studio": "drizzle-kit studio",
     "db:visualize": "dbdocs build docs/development/database-schema.dbml --project lobe-chat",
     "desktop:build": "npm run desktop:build-next && npm run desktop:prepare-dist && npm run desktop:build-electron",
@@ -210,6 +210,7 @@
     "async-retry": "^1.3.3",
     "better-auth": "^1.4.6",
     "better-auth-harmony": "^1.2.5",
+    "better-call": "^1.1.7",
     "brotli-wasm": "^3.0.1",
     "chroma-js": "^3.2.0",
     "cmdk": "^1.1.1",
@@ -424,13 +425,13 @@
       "@vercel/speed-insights"
     ],
     "overrides": {
-      "stylelint-config-clean-order": "7.0.0",
+      "@lobehub/ui": "2.22.0",
       "@types/react": "19.2.2",
       "@types/react-dom": "19.2.2",
       "next": "16.1.1",
       "react": "19.2.3",
       "react-dom": "19.2.3",
-      "@lobehub/ui": "2.22.0"
+      "stylelint-config-clean-order": "7.0.0"
     }
   }
 }

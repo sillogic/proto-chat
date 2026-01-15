@@ -99,8 +99,11 @@ export class OpenRouterAdapter {
 
     /**
      * 转换为统一格式
+     * @param apiModel API返回的原始模型数据
+     * @param providerId 供应商ID，如 'openrouter'
+     * @param providerAlias 供应商别名，用于生成模型ID，如 'a1'
      */
-    static adaptModel(apiModel: any, providerId: string): UnifiedModelData {
+    static adaptModel(apiModel: any, providerId: string, providerAlias: string): UnifiedModelData {
         const cleanId = this.cleanModelId(apiModel.id);
         const architecture = apiModel.architecture || {};
         const pricing = apiModel.pricing || {};
@@ -108,8 +111,11 @@ export class OpenRouterAdapter {
 
         // 价格转换：USD/token -> USD/million tokens
         // OpenRouter返回的是每token的美元价格（如0.000005）
-        const inputPrice = parseFloat(pricing.prompt || '0') * 1_000_000;
-        const outputPrice = parseFloat(pricing.completion || '0') * 1_000_000;
+        // 确保价格不为负数（某些模型可能返回异常值）
+        const rawInputPrice = parseFloat(pricing.prompt || '0');
+        const rawOutputPrice = parseFloat(pricing.completion || '0');
+        const inputPrice = (rawInputPrice >= 0 ? rawInputPrice : 0) * 1_000_000;
+        const outputPrice = (rawOutputPrice >= 0 ? rawOutputPrice : 0) * 1_000_000;
         const requestPrice = parseFloat(pricing.request || '0');
         const imagePrice = parseFloat(pricing.image || '0');
 
@@ -129,7 +135,7 @@ export class OpenRouterAdapter {
         const inputModalities = architecture.input_modalities || [];
 
         return {
-            id: `protochat::${cleanId}`,
+            id: `protochat::${providerAlias}::${cleanId}`,
             originalId: `${providerId}::${apiModel.id}`,
             displayName: apiModel.name || apiModel.id,
             type: this.inferModelType(architecture),
@@ -184,9 +190,12 @@ export class OpenRouterAdapter {
 
     /**
      * 批量转换
+     * @param apiModels API返回的原始模型数据数组
+     * @param providerId 供应商ID，如 'openrouter'
+     * @param providerAlias 供应商别名，用于生成模型ID，如 'a1'
      */
-    static adaptModels(apiModels: any[], providerId: string): UnifiedModelData[] {
-        return apiModels.map(model => this.adaptModel(model, providerId));
+    static adaptModels(apiModels: any[], providerId: string, providerAlias: string): UnifiedModelData[] {
+        return apiModels.map(model => this.adaptModel(model, providerId, providerAlias));
     }
 }
 
@@ -228,13 +237,13 @@ export class GenericAdapter {
         throw new Error('无法识别 API 响应格式');
     }
 
-    static adaptModel(apiModel: any, providerId: string): UnifiedModelData {
+    static adaptModel(apiModel: any, providerId: string, providerAlias: string): UnifiedModelData {
         // 尝试通用映射
         const id = apiModel.id || apiModel.model_id || apiModel.name;
         const name = apiModel.name || apiModel.display_name || id;
 
         return {
-            id: `protochat::${id}`,
+            id: `protochat::${providerAlias}::${id}`,
             originalId: `${providerId}::${id}`,
             displayName: name,
             type: 'chat',
@@ -277,15 +286,16 @@ export class AdapterFactory {
     static async fetchAndAdapt(
         apiUrl: string,
         providerId: string,
+        providerAlias: string,
         apiKey?: string
     ): Promise<UnifiedModelData[]> {
         const Adapter = this.getAdapter(apiUrl);
         const rawModels = await Adapter.fetchModels(apiUrl, apiKey);
 
         if (Adapter === OpenRouterAdapter) {
-            return OpenRouterAdapter.adaptModels(rawModels, providerId);
+            return OpenRouterAdapter.adaptModels(rawModels, providerId, providerAlias);
         }
 
-        return rawModels.map(model => GenericAdapter.adaptModel(model, providerId));
+        return rawModels.map(model => GenericAdapter.adaptModel(model, providerId, providerAlias));
     }
 }
