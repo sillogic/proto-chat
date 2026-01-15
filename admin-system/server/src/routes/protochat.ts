@@ -13,6 +13,7 @@ import { KeyVaultsGateKeeper } from '../utils/encryption';
 import { z } from 'zod';
 import { PricingService } from '../services/pricing-service';
 import { AdapterFactory, UnifiedModelData } from '../utils/model-sync-adapters';
+import { generateUniqueAlias } from '../utils/alias-generator';
 import type { Response } from 'express';
 import { LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
 
@@ -149,8 +150,18 @@ router.post('/ai-providers', authenticateToken, requirePermission('system.admin'
                 .set(providerData)
                 .where(eq(protochatProviders.id, id));
         } else {
+            // 新建供应商时自动生成别名
+            const existingProviders = await db
+                .select({ alias: protochatProviders.alias })
+                .from(protochatProviders);
+            const existingAliases = new Set(
+                existingProviders.map(p => p.alias).filter(Boolean) as string[]
+            );
+            const alias = generateUniqueAlias(existingAliases);
+
             await db.insert(protochatProviders).values({
                 ...providerData,
+                alias,
                 createdAt: new Date(),
             });
         }
@@ -399,10 +410,19 @@ router.post('/providers', authenticateToken, requirePermission('system.admin'), 
                 })
                 .where(eq(protochatProviders.id, id));
         } else {
-            // 创建
+            // 创建 - 自动生成别名
+            const existingProviders = await db
+                .select({ alias: protochatProviders.alias })
+                .from(protochatProviders);
+            const existingAliases = new Set(
+                existingProviders.map(p => p.alias).filter(Boolean) as string[]
+            );
+            const alias = generateUniqueAlias(existingAliases);
+
             await db.insert(protochatProviders).values({
                 id,
                 ...data,
+                alias,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             });
@@ -523,10 +543,12 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
 
             return {
                 id: model.id,
+                originalId: model.originalId,
+                originalProvider: model.originalProvider,
                 displayName: model.displayName,
                 type: model.type,
                 enabled: model.enabled,
-                providerId: model.originalProvider,
+                providerId: model.originalProvider, // 兼容旧字段名
 
                 // 上下文窗口（兼容前端字段名）
                 contextWindowTokens: model.contextTokens,
@@ -544,19 +566,19 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
                     streaming: caps.streaming,
                 },
 
-                // 定价信息（转换为前端期望的格式）
+                // 定价信息（转换为前端期望的格式，使用成本价 USD/百万tokens）
                 pricing: pricing ? {
                     currency: pricing.currency || 'USD',
                     units: [
                         {
                             name: 'textInput',
                             strategy: 'fixed' as const,
-                            rate: parseFloat(pricing.userInputPrice),
+                            rate: parseFloat(pricing.costInputPrice),
                         },
                         {
                             name: 'textOutput',
                             strategy: 'fixed' as const,
-                            rate: parseFloat(pricing.userOutputPrice),
+                            rate: parseFloat(pricing.costOutputPrice),
                         },
                     ],
                 } : null,
@@ -765,8 +787,6 @@ const upsertPricingSchema = z.object({
     modelId: z.string().min(1).max(200),
     costInputPrice: z.number().nonnegative(),
     costOutputPrice: z.number().nonnegative(),
-    userInputPrice: z.number().nonnegative(),
-    userOutputPrice: z.number().nonnegative(),
     currency: z.string().max(10).default('USD'),
     priceSource: z.enum(['api', 'model_bank', 'manual']).optional(),
     isFree: z.boolean().default(false),
@@ -781,8 +801,6 @@ router.get('/pricing', authenticateToken, requirePermission('system.admin'), asy
                 modelId: protochatModelPricing.modelId,
                 costInputPrice: protochatModelPricing.costInputPrice,
                 costOutputPrice: protochatModelPricing.costOutputPrice,
-                userInputPrice: protochatModelPricing.userInputPrice,
-                userOutputPrice: protochatModelPricing.userOutputPrice,
                 currency: protochatModelPricing.currency,
                 priceSource: protochatModelPricing.priceSource,
                 isFree: protochatModelPricing.isFree,
@@ -849,8 +867,6 @@ router.post('/pricing', authenticateToken, requirePermission('system.admin'), as
                 .set({
                     costInputPrice: data.costInputPrice.toFixed(6),
                     costOutputPrice: data.costOutputPrice.toFixed(6),
-                    userInputPrice: data.userInputPrice.toFixed(6),
-                    userOutputPrice: data.userOutputPrice.toFixed(6),
                     currency: data.currency,
                     priceSource: data.priceSource,
                     isFree: data.isFree,
@@ -863,8 +879,6 @@ router.post('/pricing', authenticateToken, requirePermission('system.admin'), as
                 modelId,
                 costInputPrice: data.costInputPrice.toFixed(6),
                 costOutputPrice: data.costOutputPrice.toFixed(6),
-                userInputPrice: data.userInputPrice.toFixed(6),
-                userOutputPrice: data.userOutputPrice.toFixed(6),
                 currency: data.currency,
                 priceSource: data.priceSource,
                 isFree: data.isFree,
@@ -1133,7 +1147,6 @@ async function getPricingMultiplier(): Promise<number> {
 async function syncModelToDatabase(
     modelData: UnifiedModelData,
     providerId: string,
-    multiplier: number,
     enabledModelIds?: Set<string>
 ): Promise<void> {
     // 保留现有模型的 enabled 状态
@@ -1175,15 +1188,13 @@ async function syncModelToDatabase(
             set: modelRecord,
         });
 
-    // ProtoChat子供应商同步：存储美元价格（不转换成积分）
+    // ProtoChat子供应商同步：存储美元价格（USD/百万tokens）
     // 积分价格由模型价格页面同步时计算
     const pricingRecord = {
         modelId: modelData.id,
         costInputPrice: modelData.pricing.inputPrice.toFixed(4),
         costOutputPrice: modelData.pricing.outputPrice.toFixed(4),
-        userInputPrice: (modelData.pricing.inputPrice * multiplier).toFixed(4),
-        userOutputPrice: (modelData.pricing.outputPrice * multiplier).toFixed(4),
-        currency: modelData.pricing.currency,
+        currency: 'USD',
         priceSource: 'api',
         isFree: modelData.pricing.isFree,
         syncedAt: new Date(),
@@ -1210,9 +1221,14 @@ async function syncFromAPI(
 ): Promise<any> {
     try {
         const apiUrl = providerData.pricingApiUrl;
+        const providerAlias = providerData.alias;
 
         if (!apiUrl) {
             throw new Error('未配置 API URL');
+        }
+
+        if (!providerAlias) {
+            throw new Error(`供应商 ${providerId} 未配置别名（alias），请先设置别名`);
         }
 
         console.log(`[${providerId}] 开始从 API 同步: ${apiUrl}`);
@@ -1233,7 +1249,7 @@ async function syncFromAPI(
         }
 
         // 使用适配器工厂获取并转换模型数据
-        const unifiedModels = await AdapterFactory.fetchAndAdapt(apiUrl, providerId, apiKey);
+        const unifiedModels = await AdapterFactory.fetchAndAdapt(apiUrl, providerId, providerAlias, apiKey);
 
         console.log(`[${providerId}] 获取到 ${unifiedModels.length} 个模型`);
 
@@ -1260,13 +1276,10 @@ async function syncFromAPI(
         // 删除模型记录
         await db.delete(protochatModels).where(eq(protochatModels.originalProvider, providerId));
 
-        // 获取定价系数
-        const multiplier = await getPricingMultiplier();
-
         // 批量同步到数据库，传递 enabledModelIds 以恢复之前的启用状态
         let syncedCount = 0;
         for (const model of unifiedModels) {
-            await syncModelToDatabase(model, providerId, multiplier, enabledModelIds);
+            await syncModelToDatabase(model, providerId, enabledModelIds);
             syncedCount++;
         }
 
@@ -1297,7 +1310,13 @@ async function syncFromModelBank(
     providerData: any,
     res: Response
 ): Promise<any> {
-    console.log(`[${providerId}] 开始从 model-bank 同步`);
+    const providerAlias = providerData.alias;
+
+    if (!providerAlias) {
+        throw new Error(`供应商 ${providerId} 未配置别名（alias），请先设置别名`);
+    }
+
+    console.log(`[${providerId}] 开始从 model-bank 同步 (alias: ${providerAlias})`);
 
     // 和前端一样：根据 providerId 过滤
     const modelList = LOBE_DEFAULT_MODEL_LIST.filter((m: any) => m.providerId === providerId);
@@ -1334,26 +1353,23 @@ async function syncFromModelBank(
     // 删除模型记录
     await db.delete(protochatModels).where(eq(protochatModels.originalProvider, providerId));
 
-    // 获取定价系数
-    const multiplier = await getPricingMultiplier();
-
-    const SYNC_MULTIPLIER = 500000; // 1 USD = 500,000 Credits
-    const CNY_TO_USD = 1 / 7.15;
-
     let syncedCount = 0;
     let pricingCount = 0;
 
     for (const model of modelList) {
-        // 构建 ProtoChat 模型 ID (去掉 providerId 前缀)
-        let protochatModelId = model.id;
+        // 构建 ProtoChat 模型 ID
+        // 1. 先清理模型 ID (去掉 providerId/ 前缀)
+        let cleanModelId = model.id;
         if (model.id.startsWith(`${providerId}/`)) {
-            protochatModelId = model.id.substring(providerId.length + 1);
+            cleanModelId = model.id.substring(providerId.length + 1);
         }
+        // 2. 使用统一格式: protochat::{alias}::{modelId}
+        const protochatModelId = `protochat::${providerAlias}::${cleanModelId}`;
 
         // 插入或更新模型，恢复之前的 enabled 状态
         const modelData = {
             id: protochatModelId,
-            originalId: model.id,
+            originalId: `${providerId}::${model.id}`,
             originalProvider: providerId,
             displayName: model.displayName || model.id,
             type: model.type || 'chat',
@@ -1395,27 +1411,14 @@ async function syncFromModelBank(
                     return 0;
                 };
 
-                let inputUSD = getRate(inputUnit);
-                let outputUSD = getRate(outputUnit);
-
-                // 转换CNY到USD
-                if (model.pricing.currency === 'CNY') {
-                    inputUSD *= CNY_TO_USD;
-                    outputUSD *= CNY_TO_USD;
-                }
-
-                // 计算成本价和用户价
-                const costInputPrice = Math.ceil(inputUSD * SYNC_MULTIPLIER * 100) / 100;
-                const costOutputPrice = Math.ceil(outputUSD * SYNC_MULTIPLIER * 100) / 100;
-                const userInputPrice = Math.ceil(costInputPrice * multiplier * 100) / 100;
-                const userOutputPrice = Math.ceil(costOutputPrice * multiplier * 100) / 100;
+                // 直接使用 model-bank 中的原始价格（单位已经是 USD/百万tokens）
+                const costInputPrice = getRate(inputUnit);
+                const costOutputPrice = getRate(outputUnit);
 
                 const pricingData = {
                     modelId: protochatModelId,
-                    costInputPrice: costInputPrice.toFixed(2),
-                    costOutputPrice: costOutputPrice.toFixed(2),
-                    userInputPrice: userInputPrice.toFixed(2),
-                    userOutputPrice: userOutputPrice.toFixed(2),
+                    costInputPrice: costInputPrice.toFixed(4),
+                    costOutputPrice: costOutputPrice.toFixed(4),
                     currency: 'USD',
                     priceSource: 'model_bank',
                     isFree: false,

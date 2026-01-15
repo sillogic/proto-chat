@@ -1,8 +1,8 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, like } from 'drizzle-orm';
 
 import {
   LobeChatDatabase,
-  protochatModelPricing,
+  modelPricings,
   protochatModels,
   protochatProviders,
   protochatSettings,
@@ -53,15 +53,30 @@ export class ProtoChatService {
 
   /**
    * 获取模型映射信息
-   * @param modelId ProtoChat模型ID，如 'protochat::gpt-4o'
+   * @param modelId ProtoChat模型ID，支持完整格式 'protochat::a1::gpt-4o' 或简短格式 'gpt-4o'
    */
   async getModelMapping(modelId: string): Promise<ProtoChatModelMapping> {
-    // 查询模型
-    const model = await this.db
+    // 首先尝试精确匹配
+    let model = await this.db
       .select()
       .from(protochatModels)
       .where(eq(protochatModels.id, modelId))
       .limit(1);
+
+    // 如果精确匹配失败，尝试模糊匹配（支持旧格式的模型ID）
+    if (!model.length && !modelId.startsWith('protochat::')) {
+      // 尝试匹配以该模型ID结尾的完整ID（如 'protochat::a1::gemini-2.5-flash' 匹配 'gemini-2.5-flash'）
+      model = await this.db
+        .select()
+        .from(protochatModels)
+        .where(
+          and(
+            like(protochatModels.id, `%::${modelId}`),
+            eq(protochatModels.enabled, true),
+          ),
+        )
+        .limit(1);
+    }
 
     if (!model.length) {
       throw new Error(`ProtoChat model not found: ${modelId}`);
@@ -155,14 +170,19 @@ export class ProtoChatService {
   }
 
   /**
-   * 获取模型定价
+   * 获取模型定价（从 model_pricings 表读取已计算好的积分价格）
    * @param modelId ProtoChat模型ID
    */
   async getModelPricing(modelId: string): Promise<ProtoChatPricing | null> {
     const pricing = await this.db
       .select()
-      .from(protochatModelPricing)
-      .where(eq(protochatModelPricing.modelId, modelId))
+      .from(modelPricings)
+      .where(
+        and(
+          eq(modelPricings.model, modelId),
+          eq(modelPricings.provider, 'protochat'),
+        ),
+      )
       .limit(1);
 
     if (!pricing.length) {
@@ -170,11 +190,13 @@ export class ProtoChatService {
     }
 
     const pricingData = pricing[0];
+    const userInputPrice = Number(pricingData.userInputPrice);
+    const userOutputPrice = Number(pricingData.userOutputPrice);
 
     return {
-      isFree: pricingData.isFree || false,
-      userInputPrice: Number(pricingData.userInputPrice),
-      userOutputPrice: Number(pricingData.userOutputPrice),
+      isFree: userInputPrice === 0 && userOutputPrice === 0,
+      userInputPrice,
+      userOutputPrice,
     };
   }
 

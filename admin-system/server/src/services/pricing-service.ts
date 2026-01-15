@@ -214,14 +214,14 @@ export class PricingService {
                 // $0.10/M × 500,000 = 50,000 积分/M
                 const costInputPriceUSD = parseFloat(pricing.costInputPrice);
                 const costOutputPriceUSD = parseFloat(pricing.costOutputPrice);
-                const userInputPriceUSD = parseFloat(pricing.userInputPrice);
-                const userOutputPriceUSD = parseFloat(pricing.userOutputPrice);
 
                 // Convert to credits
                 const costInputPrice = Math.ceil(costInputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
                 const costOutputPrice = Math.ceil(costOutputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
-                const userInputPrice = Math.ceil(userInputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
-                const userOutputPrice = Math.ceil(userOutputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
+
+                // User price = cost price × multiplier
+                const userInputPrice = Math.ceil(costInputPrice * multiplier * 100) / 100;
+                const userOutputPrice = Math.ceil(costOutputPrice * multiplier * 100) / 100;
 
                 pricingMap.set(key, {
                     id: idGenerator('mp'),

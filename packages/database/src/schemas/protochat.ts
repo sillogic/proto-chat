@@ -29,6 +29,10 @@ export const protochatProviders = pgTable(
     // 优先级，用于选择供应商时排序
     priority: integer('priority').default(0),
 
+    // 供应商别名，用于生成模型ID，隐藏真实供应商名称
+    // 格式如 a1, b2, c3，在模型ID中使用: protochat::{alias}::{modelId}
+    alias: varchar('alias', { length: 10 }),
+
     // API配置
     apiKey: text('api_key'),
     baseUrl: varchar('base_url', { length: 500 }),
@@ -49,6 +53,7 @@ export const protochatProviders = pgTable(
   (table) => [
     index('protochat_providers_enabled_idx').on(table.enabled),
     index('protochat_providers_priority_idx').on(table.priority),
+    unique('protochat_providers_alias_unique').on(table.alias),
   ],
 );
 
@@ -109,13 +114,9 @@ export const protochatModelPricing = pgTable(
     // 关联protochat_models.id
     modelId: varchar('model_id', { length: 200 }).notNull(),
 
-    // 成本价（积分/百万tokens）
+    // 成本价（USD/百万tokens）
     costInputPrice: decimal('cost_input_price', { precision: 15, scale: 4 }).notNull(),
     costOutputPrice: decimal('cost_output_price', { precision: 15, scale: 4 }).notNull(),
-
-    // 用户价（积分/百万tokens）= 成本价 × 定价系数
-    userInputPrice: decimal('user_input_price', { precision: 15, scale: 4 }).notNull(),
-    userOutputPrice: decimal('user_output_price', { precision: 15, scale: 4 }).notNull(),
 
     // 原始货币: 'USD', 'CNY'
     currency: varchar('currency', { length: 10 }).default('USD'),
