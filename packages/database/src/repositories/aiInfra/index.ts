@@ -155,7 +155,9 @@ export class AiInfraRepos {
       description: item.description,
       enabled:
         userProviders.some((provider) => provider.id === item.id && provider.enabled) ||
-        this.providerConfigs[item.id]?.enabled,
+        this.providerConfigs[item.id]?.enabled ||
+        // 回退到 DEFAULT_MODEL_PROVIDER_LIST 中的 enabled 属性（用于 protochat 等特殊供应商）
+        item.enabled,
       id: item.id,
       name: item.name,
       source: 'builtin',

@@ -18,6 +18,8 @@ const ProtoChat: ModelProviderCard = {
   checkModel: undefined,
   description:
     'ProtoChat AI 服务是由系统管理员统一配置和管理的AI服务。提供多种主流AI模型，支持对话、图像生成等功能。使用此服务将消耗积分。',
+  // 默认启用，确保新用户可以直接使用
+  enabled: true,
   // 供应商ID
   id: 'protochat',
   // 模型列表配置
