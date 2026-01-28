@@ -9,6 +9,28 @@ export default {
     current: '当前方案',
     upgrade: '升级',
   },
+  payment: {
+    alert: {
+      description: '请在新窗口完成支付，支付完成后会自动跳转。请勿关闭此窗口。',
+      title: '支付提示',
+    },
+    cancel: '取消支付',
+    close: '关闭',
+    creating: '正在创建订单...',
+    error: {
+      closed: '订单已关闭',
+      createFailed: '创建订单失败',
+      expired: '二维码已过期',
+      unknown: '支付失败',
+    },
+    expireIn: '有效期',
+    monthlyBilling: '月付',
+    scanHint: '请使用微信扫码完成支付',
+    subscribe: '订阅',
+    success: '支付成功！',
+    successHint: '正在跳转...',
+    yearlyBilling: '年付',
+  },
   features: {
     advancedFeatures: '高级功能',
     advancedPlugins: '专享高级插件',

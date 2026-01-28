@@ -30,7 +30,7 @@ router.get('/records', requirePermission('plans.read'), async (req: Authenticate
                 h.plan_type as "planType",
                 h.plan_id as "planId",
                 h.slug,
-                h.price,
+                h.price / 100.0 as price,
                 h.payment_method as "paymentMethod",
                 h.is_active as "isActive",
                 h.status,

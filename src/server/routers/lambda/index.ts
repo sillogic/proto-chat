@@ -24,10 +24,12 @@ import { klavisRouter } from './klavis';
 import { knowledgeBaseRouter } from './knowledgeBase';
 import { marketRouter } from './market';
 import { messageRouter } from './message';
+import { paymentRouter } from './payment';
 import { pluginRouter } from './plugin';
 import { ragEvalRouter } from './ragEval';
 import { sessionRouter } from './session';
 import { sessionGroupRouter } from './sessionGroup';
+import { subscriptionRouter } from './subscription';
 import { threadRouter } from './thread';
 import { topicRouter } from './topic';
 import { uploadRouter } from './upload';
@@ -57,10 +59,12 @@ export const lambdaRouter = router({
   knowledgeBase: knowledgeBaseRouter,
   market: marketRouter,
   message: messageRouter,
+  payment: paymentRouter,
   plugin: pluginRouter,
   ragEval: ragEvalRouter,
   session: sessionRouter,
   sessionGroup: sessionGroupRouter,
+  subscription: subscriptionRouter,
   thread: threadRouter,
   topic: topicRouter,
   upload: uploadRouter,

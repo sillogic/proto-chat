@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core';
 
 // 主项目用户扩展表 - 管理订阅信息和扩展字段
 export const userExtensions = pgTable(
@@ -17,6 +17,9 @@ export const userExtensions = pgTable(
         // 暂停时间
         // 管理备注
         adminNotes: text('admin_notes'),
+
+        // 当前计费周期 'month' | 'year'，free 用户为 NULL
+        billingInterval: text('billing_interval'),
 
 
 
@@ -120,6 +123,9 @@ export const userExtensions = pgTable(
 
 
 
+
+        // 下次积分发放时间
+        nextCreditGrantAt: timestamp('next_credit_grant_at'),
 
         // 下一个计费周期预设的方案 ID (用于中途降级或取消订阅)
         nextPlanId: text('next_plan_id'),
@@ -277,6 +283,12 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
 
     // 套餐名称
     price: integer('price').default(0),
+
+    // 计费周期
+    billingInterval: text('billing_interval'),
+
+    // 关联订单号
+    orderNo: varchar('order_no', { length: 64 }),
 
     slug: text('slug'),
 

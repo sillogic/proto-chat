@@ -1,0 +1,308 @@
+/**
+ * Subscription Maintenance Cron Job
+ *
+ * Handles:
+ * 1. Monthly credit grants for active subscribers
+ * 2. Subscription expiration processing
+ *
+ * Run frequency: Daily at 00:05 UTC
+ * Vercel Cron: "5 0 * * *"
+ */
+
+import { serverDB } from '@/database/client';
+import {
+  subscriptionPlans,
+  userBalances,
+  userExtensions,
+  userSubscriptionHistory,
+  userTransactions,
+} from '@lobechat/database';
+import { and, eq, lte, ne, or, isNull } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
+
+const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
+
+/**
+ * Grant monthly credits to active subscribers
+ */
+async function grantMonthlyCredits() {
+  const now = new Date();
+
+  console.log('[Cron] Starting monthly credit grant...');
+
+  // Find users due for credit grant
+  const usersToGrant = await serverDB
+    .select({
+      userId: userExtensions.userId,
+      planId: userExtensions.planId,
+      nextCreditGrantAt: userExtensions.nextCreditGrantAt,
+      isSuspended: userExtensions.isSuspended,
+      currentPlan: userExtensions.currentPlan,
+    })
+    .from(userExtensions)
+    .where(
+      and(
+        lte(userExtensions.nextCreditGrantAt, now),
+        eq(userExtensions.isSuspended, false),
+        ne(userExtensions.currentPlan, 'free'),
+      ),
+    );
+
+  if (usersToGrant.length === 0) {
+    console.log('[Cron] No users to grant credits');
+    return { granted: 0 };
+  }
+
+  console.log(`[Cron] Found ${usersToGrant.length} users to grant credits`);
+
+  let grantedCount = 0;
+
+  for (const user of usersToGrant) {
+    try {
+      if (!user.planId) {
+        console.warn(`[Cron] User ${user.userId} has no planId, skipping`);
+        continue;
+      }
+
+      // Get plan credits
+      const plan = await serverDB
+        .select()
+        .from(subscriptionPlans)
+        .where(eq(subscriptionPlans.id, user.planId))
+        .limit(1);
+
+      if (!plan || plan.length === 0) {
+        console.warn(`[Cron] Plan ${user.planId} not found for user ${user.userId}`);
+        continue;
+      }
+
+      const credits = Number.parseInt(plan[0].credits, 10);
+
+      await serverDB.transaction(async (tx) => {
+        // Reset user balance
+        const existingBalance = await tx
+          .select()
+          .from(userBalances)
+          .where(eq(userBalances.userId, user.userId))
+          .limit(1);
+
+        if (existingBalance && existingBalance.length > 0) {
+          await tx
+            .update(userBalances)
+            .set({
+              balance: credits,
+              updatedAt: now,
+            })
+            .where(eq(userBalances.userId, user.userId));
+        } else {
+          await tx.insert(userBalances).values({
+            id: crypto.randomUUID(),
+            userId: user.userId,
+            balance: credits,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+
+        // Write transaction record
+        await tx.insert(userTransactions).values({
+          id: crypto.randomUUID(),
+          userId: user.userId,
+          type: 'SUBSCRIPTION_GRANT',
+          category: 'MONTHLY_GRANT',
+          amount: credits,
+          balanceAfter: credits,
+          metadata: {
+            planId: user.planId,
+            planSlug: user.currentPlan,
+            grantType: 'monthly',
+          },
+          createdAt: now,
+        });
+
+        // Update next credit grant date (1 month later)
+        const nextGrantDate = new Date(now);
+        nextGrantDate.setMonth(nextGrantDate.getMonth() + 1);
+
+        await tx
+          .update(userExtensions)
+          .set({
+            nextCreditGrantAt: nextGrantDate,
+            updatedAt: now,
+          })
+          .where(eq(userExtensions.userId, user.userId));
+      });
+
+      grantedCount++;
+      console.log(`[Cron] Granted ${credits} credits to user ${user.userId}`);
+    } catch (error) {
+      console.error(`[Cron] Error granting credits to user ${user.userId}:`, error);
+      // Continue with next user
+    }
+  }
+
+  console.log(`[Cron] Monthly credit grant completed: ${grantedCount}/${usersToGrant.length}`);
+  return { granted: grantedCount };
+}
+
+/**
+ * Process expired subscriptions
+ */
+async function processExpirations() {
+  const now = new Date();
+
+  console.log('[Cron] Starting expiration processing...');
+
+  // Find expired users
+  const expiredUsers = await serverDB
+    .select({
+      userId: userExtensions.userId,
+      planId: userExtensions.planId,
+      currentPlan: userExtensions.currentPlan,
+      planExpiresAt: userExtensions.planExpiresAt,
+    })
+    .from(userExtensions)
+    .where(and(lte(userExtensions.planExpiresAt, now), ne(userExtensions.currentPlan, 'free')));
+
+  if (expiredUsers.length === 0) {
+    console.log('[Cron] No expired subscriptions');
+    return { expired: 0 };
+  }
+
+  console.log(`[Cron] Found ${expiredUsers.length} expired subscriptions`);
+
+  // Get free plan ID
+  const freePlanResult = await serverDB
+    .select()
+    .from(subscriptionPlans)
+    .where(eq(subscriptionPlans.slug, 'free'))
+    .limit(1);
+
+  if (!freePlanResult || freePlanResult.length === 0) {
+    console.error('[Cron] Free plan not found, cannot process expirations');
+    return { expired: 0, error: 'Free plan not found' };
+  }
+
+  const freePlan = freePlanResult[0];
+  let expiredCount = 0;
+
+  for (const user of expiredUsers) {
+    try {
+      await serverDB.transaction(async (tx) => {
+        // Update user to free plan
+        await tx
+          .update(userExtensions)
+          .set({
+            currentPlan: 'free',
+            planId: freePlan.id,
+            billingInterval: null,
+            nextCreditGrantAt: null,
+            updatedAt: now,
+          })
+          .where(eq(userExtensions.userId, user.userId));
+
+        // Write expiration record to subscription history
+        await tx.insert(userSubscriptionHistory).values({
+          id: crypto.randomUUID(),
+          userId: user.userId,
+          planId: user.planId!,
+          planSlug: user.currentPlan!,
+          status: 'expired',
+          price: 0,
+          billingInterval: null,
+          startDate: user.planExpiresAt!,
+          endDate: now,
+          createdAt: now,
+        });
+
+        // Reset balance to free plan credits
+        const freeCredits = Number.parseInt(freePlan.credits, 10);
+
+        await tx
+          .update(userBalances)
+          .set({
+            balance: freeCredits,
+            updatedAt: now,
+          })
+          .where(eq(userBalances.userId, user.userId));
+
+        // Write transaction record
+        await tx.insert(userTransactions).values({
+          id: crypto.randomUUID(),
+          userId: user.userId,
+          type: 'SUBSCRIPTION_GRANT',
+          category: 'SUBSCRIPTION_EXPIRED',
+          amount: freeCredits,
+          balanceAfter: freeCredits,
+          metadata: {
+            previousPlan: user.currentPlan,
+            newPlan: 'free',
+          },
+          createdAt: now,
+        });
+      });
+
+      expiredCount++;
+      console.log(`[Cron] Downgraded user ${user.userId} to free plan`);
+    } catch (error) {
+      console.error(`[Cron] Error processing expiration for user ${user.userId}:`, error);
+      // Continue with next user
+    }
+  }
+
+  console.log(`[Cron] Expiration processing completed: ${expiredCount}/${expiredUsers.length}`);
+  return { expired: expiredCount };
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Verify cron secret
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (token !== CRON_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    console.log('[Cron] Starting subscription maintenance...');
+
+    // Run both tasks
+    const [creditsResult, expirationsResult] = await Promise.all([
+      grantMonthlyCredits(),
+      processExpirations(),
+    ]);
+
+    console.log('[Cron] Subscription maintenance completed');
+
+    return NextResponse.json({
+      success: true,
+      creditsGranted: creditsResult.granted,
+      subscriptionsExpired: expirationsResult.expired,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Cron] Error in subscription maintenance:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * Vercel Cron configuration (vercel.json):
+ *
+ * {
+ *   "crons": [
+ *     {
+ *       "path": "/api/cron/subscription",
+ *       "schedule": "5 0 * * *"
+ *     }
+ *   ]
+ * }
+ *
+ * Schedule explanation: "5 0 * * *" = Every day at 00:05 UTC
+ */

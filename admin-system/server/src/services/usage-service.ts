@@ -97,7 +97,8 @@ export class UsageService {
       nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0);
     } else {
       const nextMonth = new Date(cycleStart);
-      const isYearly = plan?.interval === 'year';
+      // 使用 user_extensions.billingInterval 而不是 plan.interval
+      const isYearly = userExt?.billingInterval === 'year';
 
       if (isYearly) {
         nextMonth.setFullYear(nextMonth.getFullYear() + 1);
@@ -326,7 +327,7 @@ export class UsageService {
   /**
    * 立即执行方案升级/变更 (立即生效)
    */
-  async executeUpgrade(userId: string, targetPlanId: string, customCategory?: string) {
+  async executeUpgrade(userId: string, targetPlanId: string, billingInterval: 'month' | 'year', customCategory?: string, orderNo?: string) {
     const now = new Date();
     try {
       return await db.transaction(async (tx) => {
@@ -335,15 +336,24 @@ export class UsageService {
         const targetPlan = planResult[0];
         if (!targetPlan) throw new Error('Target plan not found');
 
-        // 2. 计算过期时间 (默认 +1 个月/年)
+        // 2. 计算过期时间 (根据 billingInterval)
         const expiresAt = new Date(now);
-        if (targetPlan.interval === 'year') {
+        if (billingInterval === 'year') {
           expiresAt.setFullYear(expiresAt.getFullYear() + 1);
         } else {
           expiresAt.setMonth(expiresAt.getMonth() + 1);
         }
 
-        // 3. 更新 UserExtension (清除 nextPlanId)
+        // 3. 计算下次积分发放时间 (首次发放 = 1个月后)
+        const nextCreditGrantAt = new Date(now);
+        nextCreditGrantAt.setMonth(nextCreditGrantAt.getMonth() + 1);
+
+        // 4. 根据 billingInterval 选择价格
+        const price = billingInterval === 'year'
+          ? (targetPlan.yearlyPrice ?? targetPlan.monthlyPrice * 12)
+          : targetPlan.monthlyPrice;
+
+        // 5. 更新 UserExtension (清除 nextPlanId, 设置 billingInterval 和 nextCreditGrantAt)
         await tx.insert(userExtensions)
           .values({
             currentPlan: targetPlan.slug,
@@ -351,6 +361,8 @@ export class UsageService {
             planExpiresAt: expiresAt,
             planId: targetPlan.id,
             nextPlanId: null,
+            billingInterval: targetPlan.slug === 'free' ? null : billingInterval,
+            nextCreditGrantAt: targetPlan.slug === 'free' ? null : nextCreditGrantAt,
             updatedAt: now,
             userId,
           })
@@ -361,12 +373,14 @@ export class UsageService {
               planExpiresAt: expiresAt,
               planId: targetPlan.id,
               nextPlanId: null,
+              billingInterval: targetPlan.slug === 'free' ? null : billingInterval,
+              nextCreditGrantAt: targetPlan.slug === 'free' ? null : nextCreditGrantAt,
               updatedAt: now,
             },
             target: userExtensions.userId,
           });
 
-        // 4. 维护订阅历史 (关旧开新)
+        // 6. 维护订阅历史 (关旧开新)
         await tx.update(userSubscriptionHistory)
           .set({ endedAt: now, isActive: false, status: 'upgraded' })
           .where(and(eq(userSubscriptionHistory.userId, userId), eq(userSubscriptionHistory.isActive, true)));
@@ -379,13 +393,15 @@ export class UsageService {
           planId: targetPlan.id,
           planName: targetPlan.name,
           planType: targetPlan.type,
-          price: targetPlan.price,
+          price,
+          billingInterval: targetPlan.slug === 'free' ? null : billingInterval,
+          orderNo,
           slug: targetPlan.slug,
           startedAt: now,
           userId,
         });
 
-        // 5. 赠送积分 & 记录流水
+        // 7. 赠送积分 & 记录流水
         const credits = parseFloat(targetPlan.credits || '0');
         // 无论积分是否大于 0，方案变更都应该产生一条流水，记录账户重置
         await tx.insert(userBalances)
@@ -397,9 +413,9 @@ export class UsageService {
           balanceAfter: credits.toString(),
           category: customCategory || 'UPGRADE_GRANT',
           createdAt: now,
-          description: `Plan Switch: ${targetPlan.name}`,
+          description: `Plan Switch: ${targetPlan.name} (${billingInterval})`,
           id: 'tx_pc_' + Math.random().toString(36).slice(2, 12),
-          metadata: { planId: targetPlan.id },
+          metadata: { planId: targetPlan.id, billingInterval, orderNo },
           type: 'SUBSCRIPTION_GRANT',
           updatedAt: now,
           userId,
@@ -465,7 +481,8 @@ export class UsageService {
       const plan = planResult[0];
       if (plan) {
         const nextExpires = new Date(userExt.planExpiresAt || now);
-        if (plan.interval === 'year') nextExpires.setFullYear(nextExpires.getFullYear() + 1);
+        // 使用 user_extensions.billingInterval 而不是 plan.interval
+        if (userExt.billingInterval === 'year') nextExpires.setFullYear(nextExpires.getFullYear() + 1);
         else nextExpires.setMonth(nextExpires.getMonth() + 1);
 
         await db.update(userExtensions)
@@ -499,7 +516,8 @@ export class UsageService {
         .set({ endedAt: now, isActive: false, status: 'expired' })
         .where(and(eq(userSubscriptionHistory.userId, userId), eq(userSubscriptionHistory.isActive, true)));
 
-      return await this.executeUpgrade(userId, nextId, 'DOWNGRADE_GRANT');
+      // 降级到 Free 方案时，使用默认的 month 计费周期
+      return await this.executeUpgrade(userId, nextId, 'month', 'DOWNGRADE_GRANT');
     }
 
     return true;
@@ -508,7 +526,9 @@ export class UsageService {
   // 保留旧方法作为兼容层
   async updateUserPlan(userId: string, planData: any) {
     if (planData.planId) {
-      return this.executeUpgrade(userId, planData.planId);
+      // 默认使用 month，如果 planData 中有 billingInterval 则使用它
+      const billingInterval = planData.billingInterval || 'month';
+      return this.executeUpgrade(userId, planData.planId, billingInterval);
     }
     return false;
   }
