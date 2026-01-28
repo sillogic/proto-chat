@@ -12,7 +12,7 @@ const ComfyUI: ModelProviderCard = {
   chatModels: [],
   description:
     '强大的开源图像、视频、音频生成工作流引擎，支持 SD FLUX Qwen Hunyuan WAN 等先进模型，提供节点化工作流编辑和私有化部署能力',
-  enabled: true,
+  enabled: false,
   id: 'comfyui',
   name: 'ComfyUI',
   settings: {
