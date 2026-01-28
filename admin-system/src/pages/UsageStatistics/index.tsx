@@ -1,7 +1,7 @@
 import { ProCard, ProTable, ProFormSelect } from '@ant-design/pro-components';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { useRequest } from '@umijs/max';
-import { Card, Col, Row, Tag, Typography, Progress, Space, Tooltip } from 'antd';
+import { Card, Col, Row, Tag, Typography, Progress, Space, Tooltip, Tabs } from 'antd';
 import { useState, useMemo } from 'react';
 import { getUsageStats } from '../../services/credit';
 import { getUserList } from '../../services/admin';
@@ -15,6 +15,7 @@ interface UsageStatsViewProps {
 
 export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialUserId, showSelector = false }) => {
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(initialUserId);
+  const [activeTab, setActiveTab] = useState<string>('all');
 
   // If initialUserId changes, update selectedUserId
   useMemo(() => {
@@ -35,7 +36,8 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
     }
   );
 
-  const tokenColumns: any[] = [
+  // Base columns for all types
+  const baseColumns: any[] = [
     {
       title: '创建时间',
       dataIndex: 'createdAt',
@@ -45,18 +47,25 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
     },
     {
       title: '类型',
-      dataIndex: 'type',
+      dataIndex: 'usageType',
       width: 120,
-      render: () => (
-        <Space size={4}>
-          <Tag bordered={false} color="blue" style={{ borderRadius: '4px', paddingInline: '8px' }}>
+      render: (usageType: any) => {
+        const typeMap: Record<string, { color: string; label: string; icon: string }> = {
+          chat: { color: 'blue', label: '文本生成', icon: '💬' },
+          embedding: { color: 'green', label: '向量化', icon: '🔤' },
+          image: { color: 'orange', label: '文生图', icon: '🎨' },
+        };
+        const config = typeMap[usageType?.toLowerCase()] || { color: 'default', label: usageType || '其他', icon: '📝' };
+
+        return (
+          <Tag bordered={false} color={config.color} style={{ borderRadius: '4px', paddingInline: '8px' }}>
              <Space size={4}>
-               <span role="img" aria-label="chat">💬</span>
-               <span>文本生成</span>
+               <span role="img" aria-label={config.label}>{config.icon}</span>
+               <span>{config.label}</span>
              </Space>
           </Tag>
-        </Space>
-      ),
+        );
+      },
     },
     {
       title: '模型',
@@ -69,15 +78,20 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
         </Space>
       ),
     },
+  ];
+
+  // Token-based columns (for chat and embedding)
+  const tokenColumns: any[] = [
+    ...baseColumns,
     {
       title: 'Token 用量',
       dataIndex: 'totalTokens',
       width: 200,
       render: (_: any, record: any) => (
         <Space size={8}>
-          <Text strong>{Number(record.totalTokens).toLocaleString()}</Text>
+          <Text strong>{Number(record.totalTokens || 0).toLocaleString()}</Text>
           <Text type="secondary" style={{ fontSize: '12px' }}>
-            = ↓ {record.totalInputTokens} + ↑ {record.totalOutputTokens}
+            = ↓ {record.totalInputTokens || 0} + ↑ {record.totalOutputTokens || 0}
           </Text>
         </Space>
       ),
@@ -102,6 +116,20 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
     },
   ];
 
+  // Image-specific columns (no token usage or duration)
+  const imageColumns: any[] = [
+    ...baseColumns,
+    {
+      title: '积分',
+      dataIndex: 'credits',
+      width: 100,
+      align: 'right',
+      render: (val: number) => (
+        <Text strong style={{ color: '#fa8c16' }}>{Number(val).toLocaleString()}</Text>
+      ),
+    },
+  ];
+
   const transactionColumns: any[] = [
     {
       title: '交易流水号',
@@ -118,7 +146,8 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
       render: (category: string) => {
         const categoryMap: any = {
           DEPOSIT: { label: '赠送/充值', color: 'green' },
-          CONSUMPTION: { label: '对话消费', color: 'orange' },
+          CONSUMPTION: { label: 'AI消费', color: 'orange' },
+          IMAGE_GENERATION: { label: '图片生成', color: 'gold' },
           REFUND: { label: '退款', color: 'blue' },
           ADJUSTMENT: { label: '人工调账', color: 'purple' },
           RESET: { label: '周期重置', color: 'default' },
@@ -202,7 +231,7 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
               >
                 <div style={{ paddingBlock: "8px" }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}>
-                    <Text type="secondary">本周期已消耗</Text>
+                    <Text type="secondary">本期已消耗</Text>
                     <Text strong style={{ fontSize: '18px' }}>
                       {Number(stats.balance?.totalConsumed || 0).toLocaleString()} / {Number(stats.stats?.credits?.limit ?? stats.balance?.limit ?? 0).toLocaleString()}
                     </Text>
@@ -262,7 +291,7 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
           </Row>
 
           {/* Table 1: Detailed Consumption */}
-          <ProCard 
+          <ProCard
             title={
               <div style={{ paddingBlock: '8px' }}>
                 <Text strong style={{ fontSize: '16px' }}>计算积分使用明细</Text>
@@ -272,15 +301,59 @@ export const UsageStatsView: React.FC<UsageStatsViewProps> = ({ userId: initialU
             headerBordered
             style={{ borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}
           >
-            <ProTable
-              rowKey="id"
-              loading={loading}
-              dataSource={stats?.usage || []}
-              columns={tokenColumns}
-              search={false}
-              ghost
-              pagination={{ pageSize: 5 }}
-              scroll={{ x: 'max-content' }}
+            <Tabs
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              items={[
+                {
+                  key: 'all',
+                  label: '全部',
+                  children: (
+                    <ProTable
+                      rowKey="id"
+                      loading={loading}
+                      dataSource={stats?.usage || []}
+                      columns={tokenColumns}
+                      search={false}
+                      ghost
+                      pagination={{ pageSize: 5 }}
+                      scroll={{ x: 'max-content' }}
+                    />
+                  ),
+                },
+                {
+                  key: 'text',
+                  label: '文本/向量',
+                  children: (
+                    <ProTable
+                      rowKey="id"
+                      loading={loading}
+                      dataSource={(stats?.usage || []).filter((item: any) => item.usageType === 'chat' || item.usageType === 'embedding')}
+                      columns={tokenColumns}
+                      search={false}
+                      ghost
+                      pagination={{ pageSize: 5 }}
+                      scroll={{ x: 'max-content' }}
+                    />
+                  ),
+                },
+                {
+                  key: 'image',
+                  label: '图片生成',
+                  children: (
+                    <ProTable
+                      rowKey="id"
+                      loading={loading}
+                      dataSource={(stats?.usage || []).filter((item: any) => item.usageType === 'image')}
+                      columns={imageColumns}
+                      search={false}
+                      ghost
+                      pagination={{ pageSize: 5 }}
+                      scroll={{ x: 'max-content' }}
+                    />
+                  ),
+                },
+              ]}
             />
           </ProCard>
 

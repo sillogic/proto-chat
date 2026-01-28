@@ -113,7 +113,22 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
         AND created_at < ${endStr}
     `);
 
-    // 4. 获取免费用户成本统计（用于计算纯支出，只统计 protochat 供应商）
+    // 4. 获取图片生成统计（从 user_transactions 查询）
+    const imageStats = await db.execute(sql`
+      SELECT
+        (metadata ->> 'model') as model,
+        (metadata ->> 'provider') as provider,
+        COUNT(*) as "requestCount",
+        ABS(SUM(amount::numeric)) as "totalCost"
+      FROM user_transactions
+      WHERE type = 'CONSUMPTION'
+        AND created_at >= ${startStr}
+        AND created_at < ${endStr}
+        AND metadata ->> 'type' = 'image'
+      GROUP BY metadata ->> 'model', metadata ->> 'provider'
+    `);
+
+    // 5. 获取免费用户成本统计（用于计算纯支出，只统计 protochat 供应商）
     const freeUserStats = await db.execute(sql`
       SELECT
         m.model,
@@ -131,7 +146,7 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       GROUP BY m.model, m.provider
     `);
 
-    // 5. 趋势数据（月度按天，年度按月）- 分别返回上行和下行 Token
+    // 6. 趋势数据（月度按天，年度按月）- 分别返回上行和下行 Token
     const dailyTrend = await db.execute(sql`
       SELECT
         TO_CHAR(m.created_at, ${sql.raw(`'${dateFormat}'`)}) as date,
@@ -215,6 +230,39 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
     const embeddingTokens = parseInt((embeddingStats[0] as any)?.totalTokens || '0');
     const embeddingCost = parseFloat((embeddingStats[0] as any)?.totalCost || '0');
 
+    // 统计图片生成成本（积分，需转换为美元）
+    // 假设 1 USD = 500,000 积分（与 SYNC_MULTIPLIER 一致）
+    let totalImageCost = 0;
+    let totalImageRequests = 0;
+    const imageModelStats: any[] = [];
+
+    for (const item of (imageStats as any[])) {
+      const requestCount = parseInt(item.requestCount || '0');
+      const costInCredits = parseFloat(item.totalCost || '0');
+      const costInUSD = costInCredits / 500000; // 转换为美元
+
+      totalImageCost += costInUSD;
+      totalImageRequests += requestCount;
+
+      imageModelStats.push({
+        model: item.model || 'unknown',
+        provider: item.provider || 'unknown',
+        requestCount,
+        cost: costInUSD.toFixed(8),
+      });
+
+      // 更新 provider 统计
+      const provider = item.provider || 'unknown';
+      if (!providerMap.has(provider)) {
+        providerMap.set(provider, { provider, totalTokens: 0, cost: 0 });
+      }
+      const p = providerMap.get(provider);
+      p.cost += costInUSD;
+    }
+
+    // 合并图片模型到总模型统计
+    modelStats.push(...imageModelStats);
+
     return res.json({
       data: {
         overview: {
@@ -223,14 +271,17 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
           chatCost: totalChatCost.toFixed(6),
           embeddingTokens,
           embeddingCost: embeddingCost.toFixed(6),
+          imageRequests: totalImageRequests,
+          imageCost: totalImageCost.toFixed(6),
           freeUserCost: freeUserCost.toFixed(6),
-          requestCount: totalRequestCount,
-          totalCost: (totalChatCost + embeddingCost).toFixed(6),
+          requestCount: totalRequestCount + totalImageRequests,
+          totalCost: (totalChatCost + embeddingCost + totalImageCost).toFixed(6),
         },
         dailyTrend,
         modelStats: modelStats.sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
         providerStats: Array.from(providerMap.values()).map(p => ({ ...p, cost: p.cost.toFixed(6) })),
         freeUserStats: freeUserModelStats.sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
+        imageStats: imageModelStats.sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
       },
       success: true,
     });
@@ -288,7 +339,17 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
         AND created_at < ${endStr}
     `);
 
-    // 4. 收支趋势（收入，月度按天/年度按月）
+    // 4. 图片生成成本（从 user_transactions）
+    const imageCost = await db.execute(sql`
+      SELECT COALESCE(ABS(SUM(amount::numeric)), 0) as "totalCost"
+      FROM user_transactions
+      WHERE type = 'CONSUMPTION'
+        AND created_at >= ${startStr}
+        AND created_at < ${endStr}
+        AND metadata ->> 'type' = 'image'
+    `);
+
+    // 5. 收支趋势（收入，月度按天/年度按月）
     const dailyRevenue = await db.execute(sql`
       SELECT
         TO_CHAR(ush.started_at, ${sql.raw(`'${dateFormat}'`)}) as date,
@@ -301,7 +362,7 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       GROUP BY TO_CHAR(ush.started_at, ${sql.raw(`'${dateFormat}'`)})
     `);
 
-    // 4b. 成本趋势（按日期和模型分组，后续在JS中计算成本）
+    // 5b. 成本趋势（按日期和模型分组，后续在JS中计算成本）
     const dailyCostRaw = await db.execute(sql`
       SELECT
         TO_CHAR(m.created_at, ${sql.raw(`'${dateFormat}'`)}) as date,
@@ -317,7 +378,7 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       GROUP BY TO_CHAR(m.created_at, ${sql.raw(`'${dateFormat}'`)}), m.model, m.provider
     `);
 
-    // 5. 付费用户数
+    // 6. 付费用户数
     const subscriberStats = await db.execute(sql`
       SELECT
         COUNT(DISTINCT ush.user_id) as "subscriberCount",
@@ -363,7 +424,9 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
     }
 
     const embeddingCostUSD = parseFloat((embeddingCost[0] as any)?.totalCost || '0');
-    const totalCostUSD = totalChatCostUSD + embeddingCostUSD;
+    const imageCostInCredits = parseFloat((imageCost[0] as any)?.totalCost || '0');
+    const imageCostUSD = imageCostInCredits / 500000; // 转换为美元
+    const totalCostUSD = totalChatCostUSD + embeddingCostUSD + imageCostUSD;
 
     // 获取 Embedding token 数
     const embeddingTokenStats = await db.execute(sql`
@@ -390,6 +453,26 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       outputTokens: 0,
       costUSD: embeddingCostUSD.toFixed(6),
       percentage: totalCostUSD > 0 ? ((embeddingCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
+    });
+
+    // 图片生成成本（从 user_transactions 统计请求数）
+    const imageRequestStats = await db.execute(sql`
+      SELECT COUNT(*) as "requestCount"
+      FROM user_transactions
+      WHERE type = 'CONSUMPTION'
+        AND created_at >= ${startStr}
+        AND created_at < ${endStr}
+        AND metadata ->> 'type' = 'image'
+    `);
+    const imageRequests = parseInt((imageRequestStats[0] as any)?.requestCount || '0');
+
+    costBreakdown.push({
+      category: '图片生成',
+      inputTokens: 0,
+      outputTokens: 0,
+      requestCount: imageRequests,
+      costUSD: imageCostUSD.toFixed(6),
+      percentage: totalCostUSD > 0 ? ((imageCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
     });
 
     // 计算每日成本（只统计 protochat 供应商）
@@ -485,6 +568,26 @@ router.get('/users', requirePermission('stats.read'), async (req: AuthenticatedR
       GROUP BY u.id, u.email, u.username, m.model, m.provider
     `);
 
+    // 2b. 免费用户图片生成成本（从 user_transactions）
+    const freeUserImageData = await db.execute(sql`
+      SELECT
+        u.id as "userId",
+        u.email,
+        u.username,
+        COUNT(*) as "requestCount",
+        ABS(SUM(ut.amount::numeric)) as "totalCost"
+      FROM user_transactions ut
+      JOIN users u ON ut.user_id = u.id
+      LEFT JOIN user_extensions ue ON u.id = ue.user_id
+      WHERE ut.type = 'CONSUMPTION'
+        AND ut.created_at >= ${startStr}
+        AND ut.created_at < ${endStr}
+        AND ut.metadata ->> 'type' = 'image'
+        AND u.email != 'admin@system.local'
+        AND (ue.current_plan IS NULL OR ue.current_plan IN ('free', 'plan_free'))
+      GROUP BY u.id, u.email, u.username
+    `);
+
     // 按用户聚合免费用户成本
     const freeUserCostMap = new Map<string, any>();
     for (const item of (freeUserRawData as any[])) {
@@ -514,6 +617,30 @@ router.get('/users', requirePermission('stats.read'), async (req: AuthenticatedR
       user.totalTokens += inputTokens + outputTokens;
       user.requestCount += requestCount;
       user.cost += cost;
+    }
+
+    // 添加图片生成成本到免费用户
+    for (const item of (freeUserImageData as any[])) {
+      const userId = item.userId;
+      const requestCount = parseInt(item.requestCount || '0');
+      const costInCredits = parseFloat(item.totalCost || '0');
+      const costInUSD = costInCredits / 500000;
+
+      if (!freeUserCostMap.has(userId)) {
+        freeUserCostMap.set(userId, {
+          userId,
+          email: item.email,
+          username: item.username,
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          requestCount: 0,
+          cost: 0,
+        });
+      }
+      const user = freeUserCostMap.get(userId);
+      user.requestCount += requestCount;
+      user.cost += costInUSD;
     }
 
     // 排序取前20
@@ -554,6 +681,30 @@ router.get('/users', requirePermission('stats.read'), async (req: AuthenticatedR
       GROUP BY u.id, u.email, u.username, sp.name, sp.monthly_price, m.model, m.provider
     `);
 
+    // 3b. 付费用户图片生成成本
+    const paidUserImageData = await db.execute(sql`
+      SELECT
+        u.id as "userId",
+        u.email,
+        u.username,
+        sp.name as "planName",
+        sp.monthly_price / 100.0 as "subscriptionCNY",
+        COUNT(*) as "requestCount",
+        ABS(SUM(ut.amount::numeric)) as "totalCost"
+      FROM user_transactions ut
+      JOIN users u ON ut.user_id = u.id
+      JOIN user_extensions ue ON u.id = ue.user_id
+      LEFT JOIN subscription_plans sp ON ue.plan_id = sp.id
+      WHERE ut.type = 'CONSUMPTION'
+        AND ut.created_at >= ${startStr}
+        AND ut.created_at < ${endStr}
+        AND ut.metadata ->> 'type' = 'image'
+        AND u.email != 'admin@system.local'
+        AND ue.current_plan IS NOT NULL
+        AND ue.current_plan NOT IN ('free', 'plan_free')
+      GROUP BY u.id, u.email, u.username, sp.name, sp.monthly_price
+    `);
+
     // 按用户聚合付费用户数据
     const paidUserMap = new Map<string, any>();
     for (const item of (paidUserRawData as any[])) {
@@ -581,6 +732,30 @@ router.get('/users', requirePermission('stats.read'), async (req: AuthenticatedR
       user.totalTokens += inputTokens + outputTokens;
       user.requestCount += requestCount;
       user.cost += cost;
+    }
+
+    // 添加图片生成成本到付费用户
+    for (const item of (paidUserImageData as any[])) {
+      const userId = item.userId;
+      const requestCount = parseInt(item.requestCount || '0');
+      const costInCredits = parseFloat(item.totalCost || '0');
+      const costInUSD = costInCredits / 500000;
+
+      if (!paidUserMap.has(userId)) {
+        paidUserMap.set(userId, {
+          userId,
+          email: item.email,
+          username: item.username,
+          planName: item.planName,
+          subscriptionCNY: item.subscriptionCNY,
+          totalTokens: 0,
+          requestCount: 0,
+          cost: 0,
+        });
+      }
+      const user = paidUserMap.get(userId);
+      user.requestCount += requestCount;
+      user.cost += costInUSD;
     }
 
     // 排序取前20

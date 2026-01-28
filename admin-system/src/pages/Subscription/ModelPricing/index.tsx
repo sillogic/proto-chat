@@ -18,7 +18,7 @@ import {
   ProFormTextArea,
   ProTable,
 } from '@ant-design/pro-components';
-import { Button, message, Popconfirm, Space, Tag } from 'antd';
+import { Button, message, Popconfirm, Space, Tag, Tabs } from 'antd';
 import { CloudSyncOutlined, SettingOutlined } from '@ant-design/icons';
 import { useRef, useState, useEffect } from 'react';
 import MultiplierConfig from './MultiplierConfig';
@@ -29,6 +29,7 @@ const ModelPricingManagement: React.FC = () => {
   const [currentRow, setCurrentRow] = useState<ModelPricing | null>(null);
   const [multiplierModalVisible, setMultiplierModalVisible] = useState(false);
   const [multiplier, setMultiplier] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<string>('token');
 
   // Fetch multiplier on component mount
   useEffect(() => {
@@ -61,7 +62,8 @@ const ModelPricingManagement: React.FC = () => {
     }
   };
 
-  const columns: ProColumns<ModelPricing>[] = [
+  // Base columns for both token and image models
+  const baseColumns: ProColumns<ModelPricing>[] = [
     {
       title: '模型标识',
       dataIndex: 'model',
@@ -108,6 +110,11 @@ const ModelPricingManagement: React.FC = () => {
         return '-';
       },
     },
+  ];
+
+  // Token-based model columns
+  const tokenColumns: ProColumns<ModelPricing>[] = [
+    ...baseColumns,
     {
       title: '提示词成本价 (积分/1M Tokens)',
       dataIndex: 'inputPrice',
@@ -132,7 +139,6 @@ const ModelPricingManagement: React.FC = () => {
       dataIndex: 'userInputPrice',
       search: false,
       render: (_, record) => {
-        // 直接从数据库读取预先计算好的用户价
         const userPrice = parseFloat(record.userInputPrice as string);
         return <Tag color="green">{userPrice.toFixed(2)}</Tag>;
       },
@@ -147,7 +153,6 @@ const ModelPricingManagement: React.FC = () => {
       dataIndex: 'userOutputPrice',
       search: false,
       render: (_, record) => {
-        // 直接从数据库读取预先计算好的用户价
         const userPrice = parseFloat(record.userOutputPrice as string);
         return <Tag color="green">{userPrice.toFixed(2)}</Tag>;
       },
@@ -193,54 +198,167 @@ const ModelPricingManagement: React.FC = () => {
     },
   ];
 
+  // Image model columns (per-request pricing)
+  const imageColumns: ProColumns<ModelPricing>[] = [
+    ...baseColumns,
+    {
+      title: '单次成本价 (积分/次)',
+      dataIndex: 'perRequestPrice',
+      valueType: 'digit',
+      fieldProps: { precision: 2 },
+      render: (_, record) => {
+        const price = parseFloat(record.perRequestPrice || '0');
+        return price > 0 ? price.toFixed(2) : '-';
+      },
+    },
+    {
+      title: '备注',
+      dataIndex: 'memo',
+      ellipsis: true,
+      search: false,
+    },
+    {
+      title: '操作',
+      valueType: 'option',
+      width: 120,
+      render: (_, record) => (
+        <Space>
+          <a
+            key="edit"
+            onClick={() => {
+              setCurrentRow(record);
+              setModalVisible(true);
+            }}
+          >
+            编辑
+          </a>
+          <Popconfirm
+            key="delete"
+            title="确定删除此计费配置吗？"
+            onConfirm={async () => {
+              const res = await deleteModelPricing(record.id);
+              if (res.success) {
+                message.success('删除成功');
+                actionRef.current?.reload();
+              } else {
+                message.error('删除失败');
+              }
+            }}
+          >
+            <a style={{ color: 'red' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <PageContainer header={{ title: '模型价格配置' }}>
-      <ProTable<ModelPricing>
-        columns={columns}
-        actionRef={actionRef}
-        cardBordered
-        request={async (params) => {
-          const res = await getModelPricings();
-          let data = res.data || [];
-          
-          // Filter by model and provider if searched
-          if (params.model) {
-            data = data.filter(item => item.model.toLowerCase().includes(params.model!.toLowerCase()));
-          }
-          if (params.provider) {
-            data = data.filter(item => item.provider === params.provider);
-          }
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'token',
+            label: '文本/Embedding模型 (Token计费)',
+            children: (
+              <ProTable<ModelPricing>
+                columns={tokenColumns}
+                actionRef={actionRef}
+                cardBordered
+                request={async (params) => {
+                  const res = await getModelPricings();
+                  let data = res.data || [];
 
-          return {
-            data: data,
-            success: res.success,
-            total: data.length,
-          };
-        }}
-        rowKey="id"
-        search={{ labelWidth: 'auto' }}
-        pagination={{ pageSize: 20 }}
-        toolBarRender={() => [
-          <Button
-            key="multiplier"
-            icon={<SettingOutlined />}
-            onClick={() => setMultiplierModalVisible(true)}
-          >
-            定价系数配置 (当前: ×{multiplier})
-          </Button>,
-          <Popconfirm
-            key="sync"
-            title="确定要清空并同步已启用供应商的模型定价吗？"
-            onConfirm={handleSync}
-          >
-            <Button
-              key="button"
-              icon={<CloudSyncOutlined />}
-              type="primary"
-            >
-              初始化/同步模型定价
-            </Button>
-          </Popconfirm>,
+                  // Filter token-based models (perRequestPrice is 0 or null)
+                  data = data.filter(item => !item.perRequestPrice || parseFloat(item.perRequestPrice) === 0);
+
+                  // Filter by model and provider if searched
+                  if (params.model) {
+                    data = data.filter(item => item.model.toLowerCase().includes(params.model!.toLowerCase()));
+                  }
+                  if (params.provider) {
+                    data = data.filter(item => item.provider === params.provider);
+                  }
+
+                  return {
+                    data: data,
+                    success: res.success,
+                    total: data.length,
+                  };
+                }}
+                rowKey="id"
+                search={{ labelWidth: 'auto' }}
+                pagination={{ pageSize: 20 }}
+                toolBarRender={() => [
+                  <Button
+                    key="multiplier"
+                    icon={<SettingOutlined />}
+                    onClick={() => setMultiplierModalVisible(true)}
+                  >
+                    定价系数配置 (当前: ×{multiplier})
+                  </Button>,
+                  <Popconfirm
+                    key="sync"
+                    title="确定要清空并同步已启用供应商的模型定价吗？"
+                    onConfirm={handleSync}
+                  >
+                    <Button
+                      key="button"
+                      icon={<CloudSyncOutlined />}
+                      type="primary"
+                    >
+                      初始化/同步模型定价
+                    </Button>
+                  </Popconfirm>,
+                ]}
+              />
+            ),
+          },
+          {
+            key: 'image',
+            label: '图片生成模型 (按次计费)',
+            children: (
+              <ProTable<ModelPricing>
+                columns={imageColumns}
+                actionRef={actionRef}
+                cardBordered
+                request={async (params) => {
+                  const res = await getModelPricings();
+                  let data = res.data || [];
+
+                  // Filter image models (perRequestPrice > 0)
+                  data = data.filter(item => item.perRequestPrice && parseFloat(item.perRequestPrice) > 0);
+
+                  // Filter by model and provider if searched
+                  if (params.model) {
+                    data = data.filter(item => item.model.toLowerCase().includes(params.model!.toLowerCase()));
+                  }
+                  if (params.provider) {
+                    data = data.filter(item => item.provider === params.provider);
+                  }
+
+                  return {
+                    data: data,
+                    success: res.success,
+                    total: data.length,
+                  };
+                }}
+                rowKey="id"
+                search={{ labelWidth: 'auto' }}
+                pagination={{ pageSize: 20 }}
+                toolBarRender={() => [
+                  <Button
+                    key="multiplier"
+                    icon={<SettingOutlined />}
+                    onClick={() => setMultiplierModalVisible(true)}
+                  >
+                    定价系数配置 (当前: ×{multiplier})
+                  </Button>,
+                ]}
+              />
+            ),
+          },
         ]}
       />
 
@@ -321,6 +439,13 @@ const ModelPricingManagement: React.FC = () => {
           initialValue={0}
           fieldProps={{ precision: 2 }}
           rules={[{ required: true, message: '请输入补全费率' }]}
+        />
+        <ProFormDigit
+          name="perRequestPrice"
+          label="按次计费 (积分 / 次)"
+          initialValue={0}
+          fieldProps={{ precision: 2 }}
+          tooltip="用于图片生成等按次计费的模型。如果大于0，则忽略Token费率"
         />
         <ProFormTextArea
           name="memo"

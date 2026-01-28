@@ -225,6 +225,22 @@ const CostAnalysis: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
+              title={
+                <Space>
+                  <span>图片生成成本 (USD)</span>
+                  <Tag color="gold">按次</Tag>
+                </Space>
+              }
+              value={data?.overview?.imageCost || 0}
+              precision={6}
+              prefix="$"
+              valueStyle={{ color: '#fa8c16' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
               title="免费用户成本 (USD)"
               value={data?.overview?.freeUserCost || 0}
               precision={6}
