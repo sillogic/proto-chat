@@ -69,7 +69,7 @@ const UsersPage: React.FC = () => {
       fixed: 'left',
     },
     {
-      title: '账户余额',
+      title: '积分余额',
       dataIndex: 'credit_balance',
       width: 100,
       render: (val) => {

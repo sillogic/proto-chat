@@ -101,50 +101,107 @@ const ComparisonTable = memo<ComparisonTableProps>(({ plans, billingCycle }) => 
 
   const isYearly = billingCycle === 'yearly';
 
+  // Helper to find model estimate count from features
+  const getModelEstimate = (p: PlanData, modelName: string) => {
+    const estimate = p.features?.display?.model_estimates?.find((m) =>
+      m.model.includes(modelName),
+    );
+    return estimate?.count || '-';
+  };
+
+  // Helper to format storage
+  const formatStorage = (mb: number) => {
+    if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+    return `${mb} MB`;
+  };
+
   const features = [
     {
       items: [
-        { key: 'credits', label: '计算积分/月', values: plans.map((p) => p.credits) },
-        { key: 'gpt5Mini', label: 'GPT-5 mini 对话数', values: plans.map((p) => p.gpt5Mini) },
-        { key: 'deepseek', label: 'DeepSeek V3.2 对话数', values: plans.map((p) => p.deepseek) },
+        {
+          key: 'credits',
+          label: '计算积分/月',
+          values: plans.map((p) => p.features?.resources?.credits_per_month || p.credits),
+        },
+        {
+          key: 'gpt5Mini',
+          label: 'GPT-5 mini 对话数',
+          values: plans.map((p) => getModelEstimate(p, 'GPT-5 mini')),
+        },
+        {
+          key: 'deepseek',
+          label: 'DeepSeek V3.2 对话数',
+          values: plans.map((p) => getModelEstimate(p, 'DeepSeek')),
+        },
       ],
       section: '计算资源',
     },
     {
       items: [
-        { key: 'fileStorage', label: '文件存储', values: plans.map((p) => p.fileStorage) },
+        {
+          key: 'fileStorage',
+          label: '文件存储',
+          values: plans.map((p) =>
+            p.features?.resources?.file_storage_gb
+              ? `${p.features.resources.file_storage_gb} GB`
+              : formatStorage(p.storageLimit),
+          ),
+        },
         {
           key: 'vectorStorage',
           label: '向量存储',
-          values: plans.map((p) => `${p.vectorStorage} (${p.vectorStorageSize})`),
+          values: plans.map((p) => {
+            const count = p.features?.resources?.vector_storage || `${p.vectorLimit} 条`;
+            const size = p.features?.resources?.vector_storage_display || '';
+            return size ? `${count} (${size})` : count;
+          }),
         },
       ],
       section: '存储空间',
     },
     {
       items: [
-        { key: 'apiService', label: '自定义 API 服务', values: [true, true, true] },
-        { key: 'unlimitedMsg', label: '无限消息请求', values: [true, true, true] },
+        {
+          key: 'apiService',
+          label: '自定义 API 服务',
+          values: plans.map((p) => p.features?.capabilities?.custom_api ?? false),
+        },
+        {
+          key: 'unlimitedMsg',
+          label: '无限消息请求',
+          values: plans.map((p) => p.features?.capabilities?.unlimited_messages ?? false),
+        },
       ],
       section: '模型服务',
     },
     {
       items: [
-        { key: 'history', label: '无限对话历史', values: [true, true, true] },
-        { key: 'sync', label: '全局云同步', values: [true, true, true] },
+        {
+          key: 'history',
+          label: '无限对话历史',
+          values: plans.map((p) => p.features?.cloud_services?.unlimited_history ?? false),
+        },
+        {
+          key: 'sync',
+          label: '全局云同步',
+          values: plans.map((p) => p.features?.cloud_services?.global_sync ?? false),
+        },
+        {
+          key: 'webSearch',
+          label: '智能联网查询',
+          values: plans.map((p) => p.features?.cloud_services?.web_search ?? false),
+        },
       ],
       section: '云服务',
     },
     {
       items: [
-        { key: 'market', label: '精选助手市场', values: [true, true, true] },
-        { key: 'plugins', label: '专享高级插件', values: [true, true, true] },
-        { key: 'webSearch', label: '智能联网查询', values: [true, true, true] },
+        {
+          key: 'support',
+          label: '技术支持',
+          values: plans.map((p) => p.features?.support?.level || '-'),
+        },
       ],
-      section: '高级功能',
-    },
-    {
-      items: [{ key: 'support', label: '技术支持', values: ['社区论坛', '优先邮件', '专属客服'] }],
       section: '服务支持',
     },
   ];
@@ -164,7 +221,7 @@ const ComparisonTable = memo<ComparisonTableProps>(({ plans, billingCycle }) => 
             >
               <div>{t(plan.name as any)}</div>
               <div className={styles.planPrice}>
-                ¥{isYearly ? Math.round(plan.price.yearly / 12) : plan.price.monthly}/月
+                ¥{isYearly && plan.yearlyPrice ? Math.round(plan.yearlyPrice / 100 / 12) : plan.monthlyPrice / 100}/月
               </div>
             </th>
           ))}

@@ -1,30 +1,35 @@
 import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { subscriptionPlans, userExtensions } from '@lobechat/database';
-import { desc, eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Features structure from plan document
 export interface PlanFeatures {
-  display: {
-    description: string;
-    support_level: 'community' | 'priority_email' | 'dedicated';
-    model_estimates: Array<{
+  display?: {
+    description?: string;
+    model_estimates?: Array<{
       model: string;
       count: string;
     }>;
-    vector_storage_display: string;
   };
-  capabilities: {
-    custom_api: boolean;
-    unlimited_messages: boolean;
-    unlimited_history: boolean;
-    global_sync: boolean;
-    agent_market: boolean;
-    premium_plugins: boolean;
-    web_search: boolean;
-    file_upload: boolean;
-    tts: boolean;
+  resources?: {
+    credits_per_month?: string;
+    file_storage_gb?: string;
+    vector_storage?: string;
+    vector_storage_display?: string;
+  };
+  cloud_services?: {
+    unlimited_history?: boolean;
+    global_sync?: boolean;
+    web_search?: boolean;
+  };
+  support?: {
+    level?: string;
+  };
+  capabilities?: {
+    custom_api?: boolean;
+    unlimited_messages?: boolean;
   };
 }
 
@@ -56,7 +61,7 @@ export const subscriptionRouter = router({
       .select()
       .from(subscriptionPlans)
       .where(eq(subscriptionPlans.isActive, true))
-      .orderBy(desc(subscriptionPlans.displayOrder));
+      .orderBy(asc(subscriptionPlans.displayOrder));
 
     return plans.map((plan) => ({
       id: plan.id,

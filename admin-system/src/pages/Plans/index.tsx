@@ -39,7 +39,7 @@ import {
   CloseCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import axios from 'axios';
+import { request } from '@umijs/max';
 
 // 方案数据结构
 interface Plan {
@@ -53,25 +53,30 @@ interface Plan {
   storageLimit: number; // MB
   vectorLimit: number;
   features: {
-    display: {
-      description: string;
-      support_level: 'community' | 'priority_email' | 'dedicated';
-      model_estimates: Array<{
+    display?: {
+      description?: string;
+      model_estimates?: Array<{
         model: string;
         count: string;
       }>;
-      vector_storage_display: string;
     };
-    capabilities: {
-      custom_api: boolean;
-      unlimited_messages: boolean;
-      unlimited_history: boolean;
-      global_sync: boolean;
-      agent_market: boolean;
-      premium_plugins: boolean;
-      web_search: boolean;
-      file_upload: boolean;
-      tts: boolean;
+    resources?: {
+      credits_per_month?: string;
+      file_storage_gb?: string;
+      vector_storage?: string;
+      vector_storage_display?: string;
+    };
+    cloud_services?: {
+      unlimited_history?: boolean;
+      global_sync?: boolean;
+      web_search?: boolean;
+    };
+    support?: {
+      level?: string;
+    };
+    capabilities?: {
+      custom_api?: boolean;
+      unlimited_messages?: boolean;
     };
   };
   displayOrder: number;
@@ -92,8 +97,9 @@ const PlansPage: React.FC = () => {
   const loadPlans = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/plans');
-      setPlans(response.data);
+      const response = await request('/api/admin/plans');
+      const data = response?.data ?? response;
+      setPlans(Array.isArray(data) ? data : []);
     } catch (error) {
       message.error('加载方案失败');
       console.error(error);
@@ -128,9 +134,9 @@ const PlansPage: React.FC = () => {
     form.setFieldsValue({
       ...plan,
       monthlyPrice: plan.monthlyPrice / 100, // 转为元
-      yearlyPrice: plan.yearlyPrice ? plan.yearlyPrice / 100 : null,
-      description: plan.features.display.description,
-      supportLevel: plan.features.display.support_level,
+      yearlyMonthlyPrice: plan.yearlyPrice ? plan.yearlyPrice / 12 / 100 : null, // 年付月价（元）
+      description: plan.features?.display?.description || '',
+      supportLevel: plan.features?.support?.level || '',
     });
     setEditModalVisible(true);
   };
@@ -157,25 +163,26 @@ const PlansPage: React.FC = () => {
       const data = {
         ...values,
         monthlyPrice: Math.round(values.monthlyPrice * 100),
-        yearlyPrice: values.yearlyPrice ? Math.round(values.yearlyPrice * 100) : null,
+        yearlyPrice: values.yearlyMonthlyPrice ? Math.round(values.yearlyMonthlyPrice * 100) * 12 : null,
         features: {
+          ...currentPlan?.features,
           display: {
+            ...currentPlan?.features?.display,
             description: values.description,
-            support_level: values.supportLevel,
-            model_estimates: currentPlan?.features.display.model_estimates || [],
-            vector_storage_display: currentPlan?.features.display.vector_storage_display || '',
           },
-          capabilities: currentPlan?.features.capabilities || {},
+          support: {
+            level: values.supportLevel,
+          },
         },
       };
 
       if (currentPlan) {
         // 更新
-        await axios.put(`/api/plans/${currentPlan.id}`, data);
+        await request(`/api/admin/plans/${currentPlan.id}`, { method: 'PUT', data });
         message.success('方案更新成功');
       } else {
         // 创建
-        await axios.post('/api/plans', data);
+        await request('/api/admin/plans', { method: 'POST', data });
         message.success('方案创建成功');
       }
 
@@ -190,7 +197,7 @@ const PlansPage: React.FC = () => {
   // 删除方案
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`/api/plans/${id}`);
+      await request(`/api/admin/plans/${id}`, { method: 'DELETE' });
       message.success('方案删除成功');
       loadPlans();
     } catch (error) {
@@ -202,9 +209,9 @@ const PlansPage: React.FC = () => {
   // 切换启用状态
   const handleToggleActive = async (plan: Plan) => {
     try {
-      await axios.put(`/api/plans/${plan.id}`, {
-        ...plan,
-        isActive: !plan.isActive,
+      await request(`/api/admin/plans/${plan.id}`, {
+        method: 'PUT',
+        data: { ...plan, isActive: !plan.isActive },
       });
       message.success(`方案已${plan.isActive ? '停用' : '启用'}`);
       loadPlans();
@@ -217,9 +224,9 @@ const PlansPage: React.FC = () => {
   // 切换推荐标签
   const handleTogglePopular = async (plan: Plan) => {
     try {
-      await axios.put(`/api/plans/${plan.id}`, {
-        ...plan,
-        isPopular: !plan.isPopular,
+      await request(`/api/admin/plans/${plan.id}`, {
+        method: 'PUT',
+        data: { ...plan, isPopular: !plan.isPopular },
       });
       message.success(`推荐标签已${plan.isPopular ? '移除' : '设置'}`);
       loadPlans();
@@ -269,19 +276,21 @@ const PlansPage: React.FC = () => {
       title: '月价',
       dataIndex: 'monthlyPrice',
       key: 'monthlyPrice',
-      render: (price) => `¥${(price / 100).toFixed(2)}`,
+      render: (price) => price != null ? `¥${(price / 100).toFixed(2)}` : '¥0',
       sorter: (a, b) => a.monthlyPrice - b.monthlyPrice,
     },
     {
-      title: '年价',
+      title: '年付',
       dataIndex: 'yearlyPrice',
       key: 'yearlyPrice',
       render: (price, record) => {
         if (!price) return <Tag>不支持</Tag>;
+        const yearlyMonthly = price / 12 / 100;
         const discount = calculateDiscount(record.monthlyPrice, price);
         return (
           <Space direction="vertical" size={0}>
-            <span>¥{(price / 100).toFixed(2)}</span>
+            <span>¥{yearlyMonthly}/月</span>
+            <span style={{ fontSize: 12, color: '#999' }}>年付 ¥{(price / 100).toFixed(0)}</span>
             {discount !== '-' && <Tag color="green">省 {discount}</Tag>}
           </Space>
         );
@@ -292,10 +301,10 @@ const PlansPage: React.FC = () => {
       dataIndex: 'credits',
       key: 'credits',
       render: (credits) => {
-        const num = parseInt(credits);
+        const num = parseInt(credits) || 0;
         if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
         if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
-        return credits;
+        return String(num);
       },
     },
     {
@@ -397,7 +406,7 @@ const PlansPage: React.FC = () => {
         description={
           <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
             <li>年付价格 &lt; 月付价格 × 12 时，会自动显示优惠标签</li>
-            <li>displayOrder 数值越大，前端展示排序越靠前</li>
+            <li>displayOrder 数值越小，前端展示排序越靠前</li>
             <li>推荐标签会在方案卡片上显示"推荐"角标</li>
             <li>停用的方案不会在前端显示</li>
           </ul>
@@ -505,16 +514,16 @@ const PlansPage: React.FC = () => {
             </Col>
             <Col span={8}>
               <Form.Item
-                label="年价（元）"
-                name="yearlyPrice"
-                tooltip="留空表示不支持年付"
+                label="年付月价（元）"
+                name="yearlyMonthlyPrice"
+                tooltip="年付时每月价格，留空表示不支持年付。年总价 = 此值 × 12"
               >
                 <InputNumber
                   min={0}
                   step={1}
-                  precision={2}
+                  precision={0}
                   style={{ width: '100%' }}
-                  placeholder="例如：2870（可选）"
+                  placeholder="例如：119（可选）"
                 />
               </Form.Item>
             </Col>
@@ -567,9 +576,10 @@ const PlansPage: React.FC = () => {
             rules={[{ required: true }]}
           >
             <Select>
-              <Select.Option value="community">社区支持</Select.Option>
-              <Select.Option value="priority_email">优先邮件支持</Select.Option>
-              <Select.Option value="dedicated">专属客服</Select.Option>
+              <Select.Option value="社区论坛">社区论坛</Select.Option>
+              <Select.Option value="邮件和社区论坛">邮件和社区论坛</Select.Option>
+              <Select.Option value="优先邮件支持">优先邮件支持</Select.Option>
+              <Select.Option value="优先邮件和即时支持">优先邮件和即时支持</Select.Option>
             </Select>
           </Form.Item>
 

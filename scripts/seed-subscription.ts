@@ -27,31 +27,36 @@ const runSeed = async () => {
                 monthlyPrice: 0,
                 yearlyPrice: null,
                 currency: 'CNY',
-                credits: '1000000', // 1M credits per month
-                storageLimit: 512, // 512 MB
-                vectorLimit: 50, // 50 chunks
+                credits: '350000', // 350,000 积分/月
+                storageLimit: 512, // 0.5 GB
+                vectorLimit: 1000, // 1,000 条
                 displayOrder: 0,
                 isPopular: false,
                 features: {
                     display: {
                         description: '适合新用户体验',
-                        support_level: 'community',
                         model_estimates: [
-                            { model: 'GPT-4o mini', count: '约 500 条' },
-                            { model: 'Claude 3.5 Sonnet', count: '约 100 条' },
+                            { model: 'GPT-5 mini', count: '约 500 条' },
+                            { model: 'DeepSeek V3.2', count: '约 140 条' },
                         ],
-                        vector_storage_display: '≈ 5MB',
+                    },
+                    resources: {
+                        credits_per_month: '350,000',
+                        file_storage_gb: '0.5',
+                        vector_storage: '1,000 条',
+                        vector_storage_display: '≈ 10MB',
+                    },
+                    cloud_services: {
+                        unlimited_history: false,
+                        global_sync: true,
+                        web_search: false,
+                    },
+                    support: {
+                        level: '社区论坛',
                     },
                     capabilities: {
                         custom_api: false,
                         unlimited_messages: false,
-                        unlimited_history: false,
-                        global_sync: true,
-                        agent_market: true,
-                        premium_plugins: false,
-                        web_search: false,
-                        file_upload: true,
-                        tts: false,
                     },
                 },
                 isActive: true,
@@ -60,35 +65,39 @@ const runSeed = async () => {
                 name: 'Lite',
                 slug: 'lite',
                 type: 'individual' as const,
-                monthlyPrice: 14900, // ¥149.00
-                yearlyPrice: 143040, // ¥1430.40 (20% off)
+                monthlyPrice: 14900, // ¥149/月
+                yearlyPrice: 142800, // ¥1428/年（年付月价 ¥119 × 12）
                 currency: 'CNY',
-                credits: '30000000', // 30M credits per month
-                storageLimit: 5120, // 5 GB
-                vectorLimit: 1000, // 1000 chunks
-                displayOrder: 1,
+                credits: '5000000', // 5,000,000 积分/月
+                storageLimit: 1024, // 1.0 GB
+                vectorLimit: 5000, // 5,000 条
+                displayOrder: 10,
                 isPopular: false,
                 features: {
                     display: {
-                        description: '适合个人轻度使用',
-                        support_level: 'priority_email',
+                        description: '适合轻度使用 AI 的用户',
                         model_estimates: [
-                            { model: 'GPT-4o mini', count: '约 7,000 条' },
-                            { model: 'Claude 3.5 Sonnet', count: '约 2,000 条' },
-                            { model: 'GPT-4o', count: '约 250 条' },
+                            { model: 'GPT-5 mini', count: '约 7,000 条' },
+                            { model: 'DeepSeek V3.2', count: '约 1,900 条' },
                         ],
+                    },
+                    resources: {
+                        credits_per_month: '5,000,000',
+                        file_storage_gb: '1.0',
+                        vector_storage: '5,000 条',
                         vector_storage_display: '≈ 50MB',
+                    },
+                    cloud_services: {
+                        unlimited_history: true,
+                        global_sync: true,
+                        web_search: true,
+                    },
+                    support: {
+                        level: '邮件和社区论坛',
                     },
                     capabilities: {
                         custom_api: true,
-                        unlimited_messages: false,
-                        unlimited_history: true,
-                        global_sync: true,
-                        agent_market: true,
-                        premium_plugins: true,
-                        web_search: true,
-                        file_upload: true,
-                        tts: true,
+                        unlimited_messages: true,
                     },
                 },
                 isActive: true,
@@ -97,74 +106,80 @@ const runSeed = async () => {
                 name: 'Pro',
                 slug: 'pro',
                 type: 'individual' as const,
-                monthlyPrice: 29900, // ¥299.00
-                yearlyPrice: 287040, // ¥2870.40 (20% off)
+                monthlyPrice: 29900, // ¥299/月
+                yearlyPrice: 286800, // ¥2868/年（年付月价 ¥239 × 12）
                 currency: 'CNY',
-                credits: '100000000', // 100M credits per month
-                storageLimit: 20480, // 20 GB
-                vectorLimit: 5000, // 5000 chunks
-                displayOrder: 2,
-                isPopular: true,
+                credits: '15000000', // 15,000,000 积分/月
+                storageLimit: 2048, // 2.0 GB
+                vectorLimit: 10000, // 10,000 条
+                displayOrder: 20,
+                isPopular: true, // 最多选择标签
                 features: {
                     display: {
-                        description: '适合专业用户和中度使用',
-                        support_level: 'priority_email',
+                        description: '为频繁使用 AI 的专业用户设计',
                         model_estimates: [
-                            { model: 'GPT-4o mini', count: '约 25,000 条' },
-                            { model: 'Claude 3.5 Sonnet', count: '约 6,500 条' },
-                            { model: 'GPT-4o', count: '约 850 条' },
-                            { model: 'Claude Opus 4', count: '约 200 条' },
+                            { model: 'GPT-5 mini', count: '约 21,100 条' },
+                            { model: 'DeepSeek V3.2', count: '约 5,800 条' },
                         ],
-                        vector_storage_display: '≈ 250MB',
+                    },
+                    resources: {
+                        credits_per_month: '15,000,000',
+                        file_storage_gb: '2.0',
+                        vector_storage: '10,000 条',
+                        vector_storage_display: '≈ 100MB',
+                    },
+                    cloud_services: {
+                        unlimited_history: true,
+                        global_sync: true,
+                        web_search: true,
+                    },
+                    support: {
+                        level: '优先邮件支持',
                     },
                     capabilities: {
                         custom_api: true,
-                        unlimited_messages: false,
-                        unlimited_history: true,
-                        global_sync: true,
-                        agent_market: true,
-                        premium_plugins: true,
-                        web_search: true,
-                        file_upload: true,
-                        tts: true,
+                        unlimited_messages: true,
                     },
                 },
                 isActive: true,
             },
             {
-                name: 'Enterprise',
-                slug: 'enterprise',
-                type: 'team' as const,
-                monthlyPrice: 99900, // ¥999.00
-                yearlyPrice: 959040, // ¥9590.40 (20% off)
+                name: 'Ultra',
+                slug: 'ultra',
+                type: 'individual' as const,
+                monthlyPrice: 59900, // ¥599/月
+                yearlyPrice: 574800, // ¥5748/年（年付月价 ¥479 × 12）
                 currency: 'CNY',
-                credits: '500000000', // 500M credits per month
-                storageLimit: 102400, // 100 GB
-                vectorLimit: 50000, // 50000 chunks
-                displayOrder: 3,
+                credits: '35000000', // 35,000,000 积分/月
+                storageLimit: 4096, // 4.0 GB
+                vectorLimit: 20000, // 20,000 条
+                displayOrder: 30,
                 isPopular: false,
                 features: {
                     display: {
-                        description: '适合团队和重度使用',
-                        support_level: 'dedicated',
+                        description: '针对需要更高 AI 复杂对话的重度用户',
                         model_estimates: [
-                            { model: 'GPT-4o mini', count: '约 125,000 条' },
-                            { model: 'Claude 3.5 Sonnet', count: '约 32,000 条' },
-                            { model: 'GPT-4o', count: '约 4,250 条' },
-                            { model: 'Claude Opus 4', count: '约 1,000 条' },
+                            { model: 'GPT-5 mini', count: '约 49,100 条' },
+                            { model: 'DeepSeek V3.2', count: '约 13,400 条' },
                         ],
-                        vector_storage_display: '≈ 2.5GB',
+                    },
+                    resources: {
+                        credits_per_month: '35,000,000',
+                        file_storage_gb: '4.0',
+                        vector_storage: '20,000 条',
+                        vector_storage_display: '≈ 200MB',
+                    },
+                    cloud_services: {
+                        unlimited_history: true,
+                        global_sync: true,
+                        web_search: true,
+                    },
+                    support: {
+                        level: '优先邮件和即时支持',
                     },
                     capabilities: {
                         custom_api: true,
                         unlimited_messages: true,
-                        unlimited_history: true,
-                        global_sync: true,
-                        agent_market: true,
-                        premium_plugins: true,
-                        web_search: true,
-                        file_upload: true,
-                        tts: true,
                     },
                 },
                 isActive: true,

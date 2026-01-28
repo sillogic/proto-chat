@@ -254,14 +254,14 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       SELECT
         sp.name as "planName",
         sp.slug,
-        sp.price as "priceCNY",
+        sp.monthly_price / 100.0 as "priceCNY",
         COUNT(ush.id) as "count"
       FROM user_subscription_history ush
       JOIN subscription_plans sp ON ush.plan_id = sp.id
       WHERE ush.started_at >= ${startStr}
         AND ush.started_at < ${endStr}
-        AND sp.price > 0
-      GROUP BY sp.name, sp.slug, sp.price
+        AND sp.monthly_price > 0
+      GROUP BY sp.name, sp.slug, sp.monthly_price
     `);
 
     // 2. 成本统计（只统计 protochat 供应商）
@@ -292,12 +292,12 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
     const dailyRevenue = await db.execute(sql`
       SELECT
         TO_CHAR(ush.started_at, ${sql.raw(`'${dateFormat}'`)}) as date,
-        COALESCE(SUM(sp.price::numeric), 0) as "revenueCNY"
+        COALESCE(SUM(sp.monthly_price::numeric / 100.0), 0) as "revenueCNY"
       FROM user_subscription_history ush
       JOIN subscription_plans sp ON ush.plan_id = sp.id
       WHERE ush.started_at >= ${startStr}
         AND ush.started_at < ${endStr}
-        AND sp.price > 0
+        AND sp.monthly_price > 0
       GROUP BY TO_CHAR(ush.started_at, ${sql.raw(`'${dateFormat}'`)})
     `);
 
@@ -324,7 +324,7 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
         COUNT(DISTINCT CASE WHEN ush.started_at >= ${startStr} THEN ush.user_id END) as "newSubscribers"
       FROM user_subscription_history ush
       JOIN subscription_plans sp ON ush.plan_id = sp.id
-      WHERE sp.price > 0
+      WHERE sp.monthly_price > 0
         AND ush.is_active = true
     `);
 
@@ -538,7 +538,7 @@ router.get('/users', requirePermission('stats.read'), async (req: AuthenticatedR
         u.email,
         u.username,
         sp.name as "planName",
-        sp.price as "subscriptionCNY",
+        sp.monthly_price / 100.0 as "subscriptionCNY",
         m.model,
         m.provider,
         SUM((COALESCE(m.metadata ->> 'totalInputTokens', '0'))::int) as "inputTokens",
@@ -551,7 +551,7 @@ router.get('/users', requirePermission('stats.read'), async (req: AuthenticatedR
       WHERE u.email != 'admin@system.local'
         AND ue.current_plan IS NOT NULL
         AND ue.current_plan NOT IN ('free', 'plan_free')
-      GROUP BY u.id, u.email, u.username, sp.name, sp.price, m.model, m.provider
+      GROUP BY u.id, u.email, u.username, sp.name, sp.monthly_price, m.model, m.provider
     `);
 
     // 按用户聚合付费用户数据

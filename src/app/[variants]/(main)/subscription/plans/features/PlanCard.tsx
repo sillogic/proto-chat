@@ -175,19 +175,6 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
   };
 
   // Get support level display text
-  const getSupportText = (level: string) => {
-    switch (level) {
-      case 'community':
-        return t('features.communitySupport', '社区支持');
-      case 'priority_email':
-        return t('features.priorityEmail', '优先邮件支持');
-      case 'dedicated':
-        return t('features.priorityChat', '专属客服');
-      default:
-        return level;
-    }
-  };
-
   return (
     <Flexbox className={styles.card}>
       {plan.isPopular && <div className={styles.popularBadge}>{t('cta.popular', '推荐')}</div>}
@@ -200,7 +187,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
           </Center>
           <Flexbox gap={2}>
             <span className={styles.title}>{plan.name}</span>
-            <span className={styles.desc}>{plan.features.display.description}</span>
+            <span className={styles.desc}>{plan.features?.display?.description}</span>
           </Flexbox>
         </Flexbox>
 
@@ -255,7 +242,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
             {formatNumber(plan.credits)} {t('features.creditsPerMonth', '/月')}
           </span>
           <Flexbox gap={6}>
-            {plan.features.display.model_estimates.map((estimate, index) => (
+            {(plan.features?.display?.model_estimates || []).map((estimate, index) => (
               <Flexbox key={index} align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>{estimate.model}</span>
@@ -282,7 +269,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
               <span className={styles.featureValue}>
                 {formatNumber(plan.vectorLimit)} 条{' '}
                 <span style={{ color: theme.colorTextQuaternary, fontSize: 12 }}>
-                  {plan.features.display.vector_storage_display}
+                  {plan.features?.resources?.vector_storage_display}
                 </span>
               </span>
             </Flexbox>
@@ -293,7 +280,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
         <Flexbox gap={8}>
           <span className={styles.sectionTitle}>{t('features.cloudService', '云服务')}</span>
           <Flexbox gap={6}>
-            {plan.features.capabilities.unlimited_history && (
+            {plan.features?.cloud_services?.unlimited_history && (
               <Flexbox align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>
@@ -301,7 +288,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
                 </span>
               </Flexbox>
             )}
-            {plan.features.capabilities.global_sync && (
+            {plan.features?.cloud_services?.global_sync && (
               <Flexbox align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>
@@ -309,13 +296,13 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
                 </span>
               </Flexbox>
             )}
-            {plan.features.capabilities.web_search && (
+            {plan.features?.cloud_services?.web_search && (
               <Flexbox align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>{t('features.webSearch', '联网搜索')}</span>
               </Flexbox>
             )}
-            {plan.features.capabilities.custom_api && (
+            {plan.features?.capabilities?.custom_api && (
               <Flexbox align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>{t('features.customApi', '自定义 API')}</span>
@@ -330,7 +317,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
           <Flexbox align={'center'} gap={8} horizontal>
             <Icon className={styles.checkIcon} icon={Check} size={14} />
             <span className={styles.featureItem}>
-              {getSupportText(plan.features.display.support_level)}
+              {plan.features?.support?.level || '-'}
             </span>
           </Flexbox>
         </Flexbox>
@@ -338,7 +325,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
 
       {/* Payment Modal */}
       <PaymentModal
-        amount={isYearly && yearlyTotal ? yearlyTotal : monthlyPrice * 100}
+        amount={isYearly && plan.yearlyPrice ? plan.yearlyPrice : plan.monthlyPrice}
         billingCycle={isYearly ? 'year' : 'month'}
         onClose={() => setPaymentModalOpen(false)}
         onSuccess={() => {

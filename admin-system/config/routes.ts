@@ -55,7 +55,7 @@ export default [
     path: '/plans',
     name: 'plans',
     icon: 'CrownOutlined',
-    component: './Subscription/Plans',
+    component: './Plans',
   },
   {
     path: '/subscription-records',

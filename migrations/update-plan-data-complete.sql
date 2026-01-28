@@ -21,8 +21,8 @@ END $$;
 UPDATE subscription_plans
 SET
   name = 'Lite',
-  monthly_price = 11900,  -- ¥119/月
-  yearly_price = 143040,  -- ¥1430/年（原价 ¥1788，优惠 20%）
+  monthly_price = 14900,  -- ¥149/月
+  yearly_price = 142800,  -- ¥1428/年（年付月价 ¥119 × 12）
   display_order = 10,
   is_popular = false,
   credits = '5000000',  -- 5,000,000 积分/月
@@ -63,8 +63,8 @@ WHERE slug = 'lite';
 UPDATE subscription_plans
 SET
   name = 'Pro',
-  monthly_price = 23900,  -- ¥239/月
-  yearly_price = 287040,  -- ¥2870/年（原价 ¥3588，优惠 20%）
+  monthly_price = 29900,  -- ¥299/月
+  yearly_price = 286800,  -- ¥2868/年（年付月价 ¥239 × 12）
   display_order = 20,
   is_popular = true,  -- 最多选择标签
   credits = '15000000',  -- 15,000,000 积分/月
@@ -105,8 +105,8 @@ WHERE slug IN ('pro', 'premium');
 UPDATE subscription_plans
 SET
   name = 'Ultra',
-  monthly_price = 47900,  -- ¥479/月
-  yearly_price = 575040,  -- ¥5750/年（原价 ¥7188，优惠 20%）
+  monthly_price = 59900,  -- ¥599/月
+  yearly_price = 574800,  -- ¥5748/年（年付月价 ¥479 × 12）
   display_order = 30,
   is_popular = false,
   credits = '35000000',  -- 35,000,000 积分/月
@@ -237,9 +237,9 @@ BEGIN
   RAISE NOTICE '===========================================';
   RAISE NOTICE '';
   RAISE NOTICE '数据说明：';
-  RAISE NOTICE '- Lite: ¥119/月, ¥1430/年 (20%% off)';
-  RAISE NOTICE '- Pro: ¥239/月, ¥2870/年 (20%% off) [最多选择]';
-  RAISE NOTICE '- Ultra: ¥479/月, ¥5750/年 (20%% off)';
+  RAISE NOTICE '- Lite: ¥149/月, ¥1428/年 (年付月价 ¥119)';
+  RAISE NOTICE '- Pro: ¥299/月, ¥2868/年 (年付月价 ¥239) [最多选择]';
+  RAISE NOTICE '- Ultra: ¥599/月, ¥5748/年 (年付月价 ¥479)';
   RAISE NOTICE '';
   RAISE NOTICE '下一步：';
   RAISE NOTICE '1. 重启开发服务器: bun run dev';
