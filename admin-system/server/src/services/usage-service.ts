@@ -541,26 +541,33 @@ export class UsageService {
     const monthStartStr = monthStart.toISOString();
 
     const query = sql`
-      SELECT 
-        u.id, 
-        u.username, 
-        u.full_name, 
-        u.email, 
-        u.created_at, 
+      SELECT
+        u.id,
+        u.username,
+        u.full_name,
+        u.email,
+        u.created_at,
         u.last_active_at,
+        u.banned,
         ue.current_plan as "planType",
         ue.next_plan_id as "nextPlanId",
         ue.plan_expires_at as "plan_expires_at",
         ue.is_suspended,
-        ub.balance as credit_balance,
-        COALESCE(sp.name, 'Free Trial') as plan_name,
+        COALESCE(ub.balance, '0') as credit_balance,
+        COALESCE(sp.name, CASE
+          WHEN ue.current_plan = 'free' OR ue.current_plan = 'plan_free' THEN 'Free'
+          WHEN ue.current_plan = 'lite' OR ue.current_plan = 'plan_lite' THEN 'Lite'
+          WHEN ue.current_plan = 'pro' OR ue.current_plan = 'plan_pro' THEN 'Pro'
+          WHEN ue.current_plan = 'ultra' OR ue.current_plan = 'plan_ultra' THEN 'Ultra'
+          ELSE 'Free'
+        END) as plan_name,
         COALESCE(msg_count, 0) as monthly_messages,
         COALESCE(session_count, 0) as monthly_sessions,
         COALESCE(file_count, 0) as monthly_files,
         COALESCE(total_size, 0) as monthly_storage_used
       FROM users u
       LEFT JOIN user_extensions ue ON u.id = ue.user_id
-      LEFT JOIN subscription_plans sp ON (ue.plan_id = sp.id OR ue.current_plan = sp.slug)
+      LEFT JOIN subscription_plans sp ON ue.plan_id = sp.id
       LEFT JOIN user_balances ub ON u.id = ub.user_id
       LEFT JOIN (
         SELECT user_id, COUNT(*) as msg_count FROM messages WHERE created_at >= ${monthStartStr} GROUP BY user_id

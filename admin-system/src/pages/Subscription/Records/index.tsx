@@ -15,6 +15,7 @@ interface SubscriptionRecord {
   planId?: string;
   slug: string;
   price?: number;
+  billingInterval?: 'month' | 'year' | null;
   paymentMethod?: string;
   isActive: boolean;
   status: string;
@@ -61,31 +62,86 @@ const SubscriptionRecords: React.FC = () => {
     {
       title: '订阅套餐',
       dataIndex: 'planName',
-      width: 150,
-      render: (_, record) => (
-        <Space>
-          <CrownOutlined style={{ color: '#faad14' }} />
-          <Text strong>{record.planName}</Text>
-        </Space>
-      ),
+      width: 180,
+      render: (_, record) => {
+        const planColorMap: Record<string, string> = {
+          free: '#1890ff',
+          plan_free: '#1890ff',
+          lite: '#52c41a',
+          plan_lite: '#52c41a',
+          pro: '#faad14',
+          plan_pro: '#faad14',
+          ultra: '#722ed1',
+          plan_ultra: '#722ed1',
+        };
+        const color = planColorMap[record.slug] || '#faad14';
+        return (
+          <Space direction="vertical" size={0}>
+            <Space>
+              <CrownOutlined style={{ color }} />
+              <Text strong>{record.planName}</Text>
+            </Space>
+            {record.billingInterval && (
+              <Tag color="blue" style={{ fontSize: '10px' }}>
+                {record.billingInterval === 'year' ? '年付' : '月付'}
+              </Tag>
+            )}
+          </Space>
+        );
+      },
     },
     {
-      title: '套餐类型',
-      dataIndex: 'planType',
+      title: '方案级别',
+      dataIndex: 'slug',
       width: 100,
-      render: (val) => (
-        <Tag color={val === 'team' ? 'blue' : 'green'}>
-          {val === 'team' ? '团队' : '个人'}
-        </Tag>
-      ),
-      search: false,
+      render: (slug) => {
+        const levelMap: Record<string, { text: string; color: string }> = {
+          free: { text: 'Free', color: 'default' },
+          plan_free: { text: 'Free', color: 'default' },
+          lite: { text: 'Lite', color: 'green' },
+          plan_lite: { text: 'Lite', color: 'green' },
+          pro: { text: 'Pro', color: 'gold' },
+          plan_pro: { text: 'Pro', color: 'gold' },
+          ultra: { text: 'Ultra', color: 'purple' },
+          plan_ultra: { text: 'Ultra', color: 'purple' },
+        };
+        const level = levelMap[slug] || { text: slug, color: 'default' };
+        return <Tag color={level.color}>{level.text}</Tag>;
+      },
+      valueEnum: {
+        free: { text: 'Free' },
+        plan_free: { text: 'Free' },
+        lite: { text: 'Lite' },
+        plan_lite: { text: 'Lite' },
+        pro: { text: 'Pro' },
+        plan_pro: { text: 'Pro' },
+        ultra: { text: 'Ultra' },
+        plan_ultra: { text: 'Ultra' },
+      },
+    },
+    {
+      title: '付费方式',
+      dataIndex: 'billingInterval',
+      width: 100,
+      render: (val) => {
+        if (!val) return <Tag color="default">免费</Tag>;
+        return (
+          <Tag color={val === 'year' ? 'purple' : 'blue'}>
+            {val === 'year' ? '年付' : '月付'}
+          </Tag>
+        );
+      },
+      valueEnum: {
+        month: { text: '月付' },
+        year: { text: '年付' },
+      },
     },
     {
       title: '订阅价格',
       dataIndex: 'price',
       width: 100,
       render: (_, record) => {
-        if (record.price == null) return '-';
+        if (record.price == null || record.price === 0) return '-';
         return `¥ ${(record.price / 100).toFixed(2)}`;
       },
       search: false,
