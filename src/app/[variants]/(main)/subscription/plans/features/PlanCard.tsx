@@ -3,11 +3,14 @@
 import { Icon, Tag } from '@lobehub/ui';
 import { Button, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
-import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical } from 'lucide-react';
-import { memo } from 'react';
+import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'lucide-react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 
+import PaymentModal from '@/features/Payment/PaymentModal';
+
+import type { PlanData } from '../../../hooks/useSubscriptionPlans';
 import type { BillingCycle } from './BillingToggle';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
@@ -115,6 +118,9 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
 }));
 
 const planIcons = {
+  free: {
+    icon: Sparkles,
+  },
   lite: {
     icon: FlaskConical,
   },
@@ -124,191 +130,229 @@ const planIcons = {
   ultra: {
     icon: Atom,
   },
+  enterprise: {
+    icon: Atom,
+  },
 };
 
 interface PlanCardProps {
   billingCycle: BillingCycle;
-  credits: string;
-  deepseek: string;
-  desc: string;
-  fileStorage: string;
-  gpt5Mini: string;
-  id: string;
-  name: string;
-  onUpgrade: (planId: string) => void;
-  popular?: boolean;
-  price: {
-    monthly: number;
-    yearly: number;
-  };
-  vectorStorage: string;
-  vectorStorageSize: string;
+  plan: PlanData;
 }
 
-const PlanCard = memo<PlanCardProps>(
-  ({
-    id,
-    name,
-    desc,
-    price,
-    credits,
-    gpt5Mini,
-    deepseek,
-    fileStorage,
-    vectorStorage,
-    vectorStorageSize,
-    popular,
-    billingCycle,
-    onUpgrade,
-  }) => {
-    const { t } = useTranslation('subscription');
-    const { styles, theme } = useStyles();
+const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
+  const { t } = useTranslation('subscription');
+  const { styles, theme } = useStyles();
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
-    const iconConfig = planIcons[id as keyof typeof planIcons] || planIcons.lite;
-    const isYearly = billingCycle === 'yearly';
-    const currentPrice = isYearly ? Math.round(price.yearly / 12) : price.monthly;
-    const yearlyTotal = price.yearly;
-    const monthlyTotal = price.monthly * 12;
+  const iconConfig = planIcons[plan.slug as keyof typeof planIcons] || planIcons.lite;
+  const isYearly = billingCycle === 'yearly';
 
-    return (
-      <Flexbox className={styles.card}>
-        {popular && <div className={styles.popularBadge}>{t('cta.popular', '推荐')}</div>}
+  // Calculate prices in yuan (divide by 100 since backend stores in cents)
+  const monthlyPrice = plan.monthlyPrice / 100;
+  const yearlyPrice = plan.yearlyPrice ? plan.yearlyPrice / 100 : null;
 
-        {/* Header */}
-        <Flexbox className={styles.cardHeader} gap={16}>
-          <Flexbox align={'center'} gap={12} horizontal>
-            <Center className={styles.iconContainer}>
-              <Icon color={theme.colorText} icon={iconConfig.icon} size={22} />
-            </Center>
-            <Flexbox gap={2}>
-              <span className={styles.title}>{t(name as any)}</span>
-              <span className={styles.desc}>{t(desc as any)}</span>
-            </Flexbox>
+  // Determine displayed price
+  const currentPrice = isYearly && yearlyPrice ? Math.round(yearlyPrice / 12) : monthlyPrice;
+  const yearlyTotal = yearlyPrice;
+  const monthlyTotal = monthlyPrice * 12;
+
+  // Check if yearly billing is available and has discount
+  const hasYearlyOption = yearlyPrice !== null;
+  const showYearlyDiscount = isYearly && yearlyPrice && yearlyPrice < monthlyPrice * 12;
+
+  // Format storage and vector limits
+  const formatStorage = (mb: number) => {
+    if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+    return `${mb} MB`;
+  };
+
+  const formatNumber = (num: number | string) => {
+    const n = typeof num === 'string' ? parseFloat(num) : num;
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+    return n.toString();
+  };
+
+  // Get support level display text
+  const getSupportText = (level: string) => {
+    switch (level) {
+      case 'community':
+        return t('features.communitySupport', '社区支持');
+      case 'priority_email':
+        return t('features.priorityEmail', '优先邮件支持');
+      case 'dedicated':
+        return t('features.priorityChat', '专属客服');
+      default:
+        return level;
+    }
+  };
+
+  return (
+    <Flexbox className={styles.card}>
+      {plan.isPopular && <div className={styles.popularBadge}>{t('cta.popular', '推荐')}</div>}
+
+      {/* Header */}
+      <Flexbox className={styles.cardHeader} gap={16}>
+        <Flexbox align={'center'} gap={12} horizontal>
+          <Center className={styles.iconContainer}>
+            <Icon color={theme.colorText} icon={iconConfig.icon} size={22} />
+          </Center>
+          <Flexbox gap={2}>
+            <span className={styles.title}>{plan.name}</span>
+            <span className={styles.desc}>{plan.features.display.description}</span>
           </Flexbox>
-
-          {/* Price */}
-          <Flexbox gap={4}>
-            <Flexbox align={'baseline'} gap={4} horizontal>
-              <span className={styles.price}>¥{currentPrice}</span>
-              <span className={styles.priceLabel}>/月</span>
-            </Flexbox>
-            {isYearly && (
-              <Flexbox align={'center'} gap={8} horizontal>
-                <span className={styles.priceOriginal}>¥{monthlyTotal}/年</span>
-                <Tag color="blue" size={'small'}>
-                  {t('billingCycle.yearlyDiscount')}
-                </Tag>
-              </Flexbox>
-            )}
-            {isYearly && (
-              <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
-                实付 ¥{yearlyTotal}/年
-              </span>
-            )}
-          </Flexbox>
-
-          {/* Upgrade Button */}
-          <Button
-            block
-            onClick={() => onUpgrade(id)}
-            style={
-              popular
-                ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
-                : undefined
-            }
-            type={popular ? 'primary' : 'default'}
-          >
-            {t('cta.upgrade')}
-          </Button>
         </Flexbox>
 
-        {/* Body */}
-        <Flexbox className={styles.cardBody} gap={20}>
-          {/* Credits Section */}
-          <Flexbox gap={8}>
-            <Flexbox align={'center'} gap={4} horizontal>
-              <span className={styles.sectionTitle}>{t('features.credits')}</span>
-              <Tooltip title="计算积分用于调用 AI 模型">
-                <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
-              </Tooltip>
+        {/* Price */}
+        <Flexbox gap={4}>
+          <Flexbox align={'baseline'} gap={4} horizontal>
+            <span className={styles.price}>¥{currentPrice}</span>
+            <span className={styles.priceLabel}>/月</span>
+          </Flexbox>
+          {showYearlyDiscount && (
+            <Flexbox align={'center'} gap={8} horizontal>
+              <span className={styles.priceOriginal}>¥{monthlyTotal}/年</span>
+              <Tag color="blue" size={'small'}>
+                {t('billingCycle.yearlyDiscount', '年付优惠')}
+              </Tag>
             </Flexbox>
-            <span style={{ color: theme.colorText, fontSize: 15, fontWeight: 600 }}>
-              {credits} {t('features.creditsPerMonth')}
+          )}
+          {isYearly && yearlyTotal && (
+            <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
+              实付 ¥{yearlyTotal}/年
             </span>
-            <Flexbox gap={6}>
-              <Flexbox align={'center'} gap={8} horizontal>
-                <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>GPT-5 mini</span>
-                <span className={styles.featureValue}>{gpt5Mini}</span>
-              </Flexbox>
-              <Flexbox align={'center'} gap={8} horizontal>
-                <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>DeepSeek V3.2</span>
-                <span className={styles.featureValue}>{deepseek}</span>
-              </Flexbox>
-            </Flexbox>
-          </Flexbox>
+          )}
+        </Flexbox>
 
-          {/* Files Section */}
-          <Flexbox gap={8}>
-            <span className={styles.sectionTitle}>{t('features.files')}</span>
-            <Flexbox gap={6}>
-              <Flexbox align={'center'} gap={8} horizontal>
-                <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>{t('features.fileStorage')}</span>
-                <span className={styles.featureValue}>{fileStorage}</span>
-              </Flexbox>
-              <Flexbox align={'center'} gap={8} horizontal>
-                <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>{t('features.vectorStorage')}</span>
-                <span className={styles.featureValue}>
-                  {vectorStorage}{' '}
-                  <span style={{ color: theme.colorTextQuaternary, fontSize: 12 }}>
-                    {vectorStorageSize}
-                  </span>
-                </span>
-              </Flexbox>
-            </Flexbox>
-          </Flexbox>
+        {/* Upgrade Button */}
+        <Button
+          block
+          disabled={!hasYearlyOption && isYearly}
+          onClick={() => setPaymentModalOpen(true)}
+          style={
+            plan.isPopular
+              ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
+              : undefined
+          }
+          type={plan.isPopular ? 'primary' : 'default'}
+        >
+          {t('cta.upgrade', '升级')}
+        </Button>
+      </Flexbox>
 
-          {/* Services */}
-          <Flexbox gap={8}>
-            <span className={styles.sectionTitle}>{t('features.cloudService')}</span>
-            <Flexbox gap={6}>
-              <Flexbox align={'center'} gap={8} horizontal>
-                <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>{t('features.unlimitedHistory')}</span>
-              </Flexbox>
-              <Flexbox align={'center'} gap={8} horizontal>
-                <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>{t('features.globalSync')}</span>
-              </Flexbox>
-              <Flexbox align={'center'} gap={8} horizontal>
-                <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>{t('features.webSearch')}</span>
-              </Flexbox>
-            </Flexbox>
+      {/* Body */}
+      <Flexbox className={styles.cardBody} gap={20}>
+        {/* Credits Section */}
+        <Flexbox gap={8}>
+          <Flexbox align={'center'} gap={4} horizontal>
+            <span className={styles.sectionTitle}>{t('features.credits', '计算积分')}</span>
+            <Tooltip title="计算积分用于调用 AI 模型">
+              <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
+            </Tooltip>
           </Flexbox>
+          <span style={{ color: theme.colorText, fontSize: 15, fontWeight: 600 }}>
+            {formatNumber(plan.credits)} {t('features.creditsPerMonth', '/月')}
+          </span>
+          <Flexbox gap={6}>
+            {plan.features.display.model_estimates.map((estimate, index) => (
+              <Flexbox key={index} align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>{estimate.model}</span>
+                <span className={styles.featureValue}>{estimate.count}</span>
+              </Flexbox>
+            ))}
+          </Flexbox>
+        </Flexbox>
 
-          {/* Support */}
-          <Flexbox gap={8}>
-            <span className={styles.sectionTitle}>{t('features.support')}</span>
+        {/* Files Section */}
+        <Flexbox gap={8}>
+          <span className={styles.sectionTitle}>{t('features.files', '文件存储')}</span>
+          <Flexbox gap={6}>
+            <Flexbox align={'center'} gap={8} horizontal>
+              <Icon className={styles.checkIcon} icon={Check} size={14} />
+              <span className={styles.featureItem}>{t('features.fileStorage', '文件存储')}</span>
+              <span className={styles.featureValue}>{formatStorage(plan.storageLimit)}</span>
+            </Flexbox>
             <Flexbox align={'center'} gap={8} horizontal>
               <Icon className={styles.checkIcon} icon={Check} size={14} />
               <span className={styles.featureItem}>
-                {id === 'lite'
-                  ? t('features.communitySupport')
-                  : id === 'pro'
-                    ? t('features.priorityEmail')
-                    : t('features.priorityChat')}
+                {t('features.vectorStorage', '向量存储')}
+              </span>
+              <span className={styles.featureValue}>
+                {formatNumber(plan.vectorLimit)} 条{' '}
+                <span style={{ color: theme.colorTextQuaternary, fontSize: 12 }}>
+                  {plan.features.display.vector_storage_display}
+                </span>
               </span>
             </Flexbox>
           </Flexbox>
         </Flexbox>
+
+        {/* Cloud Services - Capabilities */}
+        <Flexbox gap={8}>
+          <span className={styles.sectionTitle}>{t('features.cloudService', '云服务')}</span>
+          <Flexbox gap={6}>
+            {plan.features.capabilities.unlimited_history && (
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>
+                  {t('features.unlimitedHistory', '无限历史记录')}
+                </span>
+              </Flexbox>
+            )}
+            {plan.features.capabilities.global_sync && (
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>
+                  {t('features.globalSync', '全球同步')}
+                </span>
+              </Flexbox>
+            )}
+            {plan.features.capabilities.web_search && (
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>{t('features.webSearch', '联网搜索')}</span>
+              </Flexbox>
+            )}
+            {plan.features.capabilities.custom_api && (
+              <Flexbox align={'center'} gap={8} horizontal>
+                <Icon className={styles.checkIcon} icon={Check} size={14} />
+                <span className={styles.featureItem}>{t('features.customApi', '自定义 API')}</span>
+              </Flexbox>
+            )}
+          </Flexbox>
+        </Flexbox>
+
+        {/* Support */}
+        <Flexbox gap={8}>
+          <span className={styles.sectionTitle}>{t('features.support', '技术支持')}</span>
+          <Flexbox align={'center'} gap={8} horizontal>
+            <Icon className={styles.checkIcon} icon={Check} size={14} />
+            <span className={styles.featureItem}>
+              {getSupportText(plan.features.display.support_level)}
+            </span>
+          </Flexbox>
+        </Flexbox>
       </Flexbox>
-    );
-  },
-);
+
+      {/* Payment Modal */}
+      <PaymentModal
+        amount={isYearly && yearlyTotal ? yearlyTotal : monthlyPrice * 100}
+        billingCycle={isYearly ? 'year' : 'month'}
+        onClose={() => setPaymentModalOpen(false)}
+        onSuccess={() => {
+          setPaymentModalOpen(false);
+          // TODO: Refresh user state or redirect
+          window.location.reload();
+        }}
+        open={paymentModalOpen}
+        planId={plan.id}
+        planName={plan.name}
+      />
+    </Flexbox>
+  );
+});
 
 PlanCard.displayName = 'PlanCard';
 

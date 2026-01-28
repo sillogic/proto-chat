@@ -31,21 +31,29 @@ export const subscriptionPlans = pgTable('subscription_plans', {
 
     currency: text('currency').default('CNY').notNull(),
 
+    // Display order for frontend
+    displayOrder: integer('display_order').default(0).notNull(),
+
     features: jsonb('features').default({}).notNull(),
 
     id: text('id').primaryKey(),
 
-    interval: planIntervalEnum('interval').default('month').notNull(),
-
     isActive: boolean('is_active').default(true),
 
-    name: text('name').notNull(),
+    // Popular plan badge
+    isPopular: boolean('is_popular').default(false).notNull(),
 
-    price: integer('price').notNull(),
+    // Monthly price in cents (e.g. 14900 for ¥149.00)
+    monthlyPrice: integer('monthly_price').notNull(),
+
+    name: text('name').notNull(),
 
     slug: text('slug').notNull().unique(),
 
     type: planTypeEnum('type').default('individual').notNull(),
+
+    // Yearly price in cents (NULL = not available for yearly billing)
+    yearlyPrice: integer('yearly_price'),
 
     ...timestamps,
 });

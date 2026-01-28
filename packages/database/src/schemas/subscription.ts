@@ -24,8 +24,11 @@ export const subscriptionPlans = pgTable('subscription_plans', {
     credits: numeric('credits', { precision: 12, scale: 2 }).default('0').notNull(),
 
 
-    // Price in cents (e.g. 990 for $9.90)
+    // Currency
     currency: text('currency').default('CNY').notNull(),
+
+    // Display order for frontend
+    displayOrder: integer('display_order').default(0).notNull(),
 
     // Rows/Chunks
     features: jsonb('features').default({}).notNull(),
@@ -40,24 +43,21 @@ export const subscriptionPlans = pgTable('subscription_plans', {
 
 
 
-    interval: planIntervalEnum('interval').default('month').notNull(),
-
-
-
     isActive: boolean('is_active').default(true),
 
+    // Popular plan badge
+    isPopular: boolean('is_popular').default(false).notNull(),
 
+
+
+    // Monthly price in cents (e.g. 14900 for ¥149.00)
+    monthlyPrice: integer('monthly_price').notNull(),
 
 
     name: text('name').notNull(),
 
 
-
-
-    price: integer('price').notNull(),
-
-
-    // e.g., "Lite Monthly", "Pro Yearly"
+    // e.g., "lite", "pro"
     slug: text('slug').notNull().unique(),
 
 
@@ -67,11 +67,14 @@ export const subscriptionPlans = pgTable('subscription_plans', {
 
 
 
-    // e.g., "lite-monthly"
+    // e.g., "individual", "team"
     type: planTypeEnum('type').default('individual').notNull(),
 
     // MB
     vectorLimit: integer('vector_limit').default(0).notNull(),
+
+    // Yearly price in cents (NULL = not available for yearly billing)
+    yearlyPrice: integer('yearly_price'),
 
     ...timestamps,
 });

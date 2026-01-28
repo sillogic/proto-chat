@@ -1,9 +1,10 @@
 'use client';
 
 import { Icon } from '@lobehub/ui';
+import { Skeleton } from 'antd';
 import { createStyles } from 'antd-style';
 import { GraduationCap } from 'lucide-react';
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 
@@ -74,7 +75,16 @@ const Client = memo<ClientProps>(() => {
   const { t } = useTranslation('subscription');
   const { styles, theme } = useStyles();
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
-  const { plans, handleUpgrade } = useSubscriptionPlans();
+  const { plans, isLoading } = useSubscriptionPlans();
+
+  // Filter plans: separate individual and team plans, exclude free plan from main list
+  const { individualPlans, teamPlans } = useMemo(() => {
+    const individual = plans.filter(
+      (plan) => plan.type === 'individual' && plan.slug !== 'free',
+    );
+    const team = plans.filter((plan) => plan.type === 'team');
+    return { individualPlans: individual, teamPlans: team };
+  }, [plans]);
 
   return (
     <Flexbox className={styles.pageContainer} gap={48} width={'100%'}>
@@ -84,8 +94,10 @@ const Client = memo<ClientProps>(() => {
           <Icon color={theme.colorText} icon={GraduationCap} size={28} />
         </Center>
         <Flexbox align={'center'} gap={8}>
-          <span className={styles.title}>{t('title')}</span>
-          <span className={styles.subtitle}>{t('subtitle')}</span>
+          <span className={styles.title}>{t('title', '订阅方案')}</span>
+          <span className={styles.subtitle}>
+            {t('subtitle', '选择适合您的 AI 研究助手服务')}
+          </span>
         </Flexbox>
         <BillingToggle onChange={setBillingCycle} value={billingCycle} />
       </Flexbox>
@@ -93,47 +105,63 @@ const Client = memo<ClientProps>(() => {
       {/* Personal Plans Section */}
       <Flexbox gap={24}>
         <Flexbox align={'center'} gap={4}>
-          <span className={styles.sectionTitle}>{t('personal.title')}</span>
+          <span className={styles.sectionTitle}>{t('personal.title', '个人方案')}</span>
           <span className={styles.sectionSubtitle}>为个人用户提供的 AI 研究助手服务</span>
         </Flexbox>
-        <div className={styles.cardsContainer}>
-          {plans.map((plan) => (
-            <PlanCard
-              billingCycle={billingCycle}
-              credits={plan.credits}
-              deepseek={plan.deepseek}
-              desc={plan.desc}
-              fileStorage={plan.fileStorage}
-              gpt5Mini={plan.gpt5Mini}
-              id={plan.id}
-              key={plan.id}
-              name={plan.name}
-              onUpgrade={handleUpgrade}
-              popular={plan.popular}
-              price={plan.price}
-              vectorStorage={plan.vectorStorage}
-              vectorStorageSize={plan.vectorStorageSize}
-            />
-          ))}
-        </div>
+
+        {isLoading ? (
+          <div className={styles.cardsContainer}>
+            {[1, 2, 3].map((i) => (
+              <Skeleton.Node
+                key={i}
+                active
+                style={{ width: 300, height: 500, borderRadius: 12 }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={styles.cardsContainer}>
+            {individualPlans.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                billingCycle={billingCycle}
+                plan={plan}
+              />
+            ))}
+          </div>
+        )}
       </Flexbox>
 
       {/* Comparison Table */}
-      <Flexbox gap={24}>
-        <Flexbox align={'center'} gap={4}>
-          <span className={styles.sectionTitle}>方案对比</span>
-          <span className={styles.sectionSubtitle}>详细了解各方案的功能差异</span>
+      {!isLoading && individualPlans.length > 0 && (
+        <Flexbox gap={24}>
+          <Flexbox align={'center'} gap={4}>
+            <span className={styles.sectionTitle}>方案对比</span>
+            <span className={styles.sectionSubtitle}>详细了解各方案的功能差异</span>
+          </Flexbox>
+          <ComparisonTable billingCycle={billingCycle} plans={individualPlans} />
         </Flexbox>
-        <ComparisonTable billingCycle={billingCycle} plans={plans} />
-      </Flexbox>
+      )}
 
-      {/* Team Plan Section */}
+      {/* Team Plan Section - Show if team plans exist, otherwise show TeamPlan component */}
       <Flexbox gap={24}>
         <Flexbox align={'center'} gap={4}>
-          <span className={styles.sectionTitle}>{t('team.title')}</span>
+          <span className={styles.sectionTitle}>{t('team.title', '团队方案')}</span>
           <span className={styles.sectionSubtitle}>为科研团队和企业提供定制化解决方案</span>
         </Flexbox>
-        <TeamPlan />
+        {teamPlans.length > 0 ? (
+          <div className={styles.cardsContainer}>
+            {teamPlans.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                billingCycle={billingCycle}
+                plan={plan}
+              />
+            ))}
+          </div>
+        ) : (
+          <TeamPlan />
+        )}
       </Flexbox>
     </Flexbox>
   );
