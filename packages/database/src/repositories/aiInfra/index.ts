@@ -271,6 +271,8 @@ export class AiInfraRepos {
       return allModels.some((model) => model.providerId === provider.id && model.type === 'chat');
     });
     const enabledImageAiProviders = enabledAiProviders.filter((provider) => {
+      // 只允许 protochat provider 提供图像模型，避免显示其他供应商的内置 image 模型
+      if (provider.id !== 'protochat') return false;
       return allModels.some((model) => model.providerId === provider.id && model.type === 'image');
     });
 
@@ -352,6 +354,7 @@ export class AiInfraRepos {
           capabilities: protochatModels.capabilities,
           contextTokens: protochatModels.contextTokens,
           maxOutput: protochatModels.maxOutput,
+          parameters: protochatModels.parameters,
           settings: protochatModels.settings,
         })
         .from(protochatModels)
@@ -373,6 +376,7 @@ export class AiInfraRepos {
         enabled: true, // All models from DB are already enabled
         id: m.id,
         maxOutput: m.maxOutput || undefined,
+        parameters: (m.parameters as any) || undefined,
         settings: (m.settings as Record<string, any>) || undefined,
         source: AiModelSourceEnum.Builtin,
         type: m.type as 'chat' | 'image' | 'embedding',

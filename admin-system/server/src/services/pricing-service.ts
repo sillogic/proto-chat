@@ -2,7 +2,7 @@ import { db } from '../config/database';
 import { modelPricings, NewModelPricing } from '../db/subscription-schema';
 import { aiProviders, aiModels } from '../db/ai-providers-schema';
 import { protochatProviders, protochatSettings, protochatModels, protochatModelPricing } from '../db/protochat-schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, or, isNull } from 'drizzle-orm';
 // @ts-ignore - workspace package with type issues
 import { LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
 import { idGenerator } from '../utils/id-generator';
@@ -86,8 +86,13 @@ export class PricingService {
         const multiplier = await this.getPricingMultiplier();
         console.log(`[Pricing Sync] Using pricing multiplier: ${multiplier}`);
 
-        // 2. Clear existing pricings
-        await db.delete(modelPricings);
+        // 2. Clear existing token-based pricings (preserve per-request pricing for image models)
+        await db.delete(modelPricings).where(
+            or(
+                eq(modelPricings.perRequestPrice, '0'),
+                isNull(modelPricings.perRequestPrice),
+            ),
+        );
 
         // 3. Fetch enabled global providers
         const enabledProviders = await db

@@ -9,6 +9,7 @@ import { FileModel } from '@/database/models/file';
 import { GenerationModel } from '@/database/models/generation';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
+import { CreditService } from '@/server/services/credit';
 import { GenerationService } from '@/server/services/generation';
 
 const log = debug('lobe-image:async');
@@ -23,6 +24,7 @@ const imageProcedure = asyncAuthedProcedure.use(async (opts) => {
   return opts.next({
     ctx: {
       asyncTaskModel: new AsyncTaskModel(ctx.serverDB, ctx.userId),
+      creditService: new CreditService(ctx.serverDB, ctx.userId),
       fileModel: new FileModel(ctx.serverDB, ctx.userId),
       generationModel: new GenerationModel(ctx.serverDB, ctx.userId),
       generationService: new GenerationService(ctx.serverDB, ctx.userId),
@@ -304,6 +306,22 @@ export const imageRouter = router({
             url: uploadedImageUrl,
           },
         );
+
+        // Deduct credits for image generation (uses perRequestPrice from model_pricings)
+        try {
+          const cost = await ctx.creditService.calculateCost(model, provider, 0, 0);
+          if (cost > 0) {
+            await ctx.creditService.deductCredits(
+              cost,
+              `Image generation: ${model}`,
+              generationId,
+              { model, provider, type: 'image' },
+            );
+            log('Credits deducted for image generation: %s, cost: %s', taskId, cost);
+          }
+        } catch (creditError: any) {
+          log('Failed to deduct credits for image generation: %s, error: %s', taskId, creditError.message);
+        }
 
         log('Updating task status to Success: %s', taskId);
         await ctx.asyncTaskModel.update(taskId, {
