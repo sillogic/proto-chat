@@ -4,7 +4,7 @@ const ProtoChat: ModelProviderCard = {
   chatModels: [],
   description:
     'ProtoChat Cloud 通过官方部署的 API 来实现 AI 模型的调用，并采用 Credits 计算积分的方式来衡量 AI 模型的用量，对应大模型使用的 Tokens。',
-  enabled: true,
+  enabled: false,
   id: 'protochat',
   modelsUrl: '',
   name: 'ProtoChat',

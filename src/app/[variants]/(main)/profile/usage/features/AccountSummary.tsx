@@ -44,7 +44,7 @@ const AccountSummary = memo<AccountSummaryProps>(({ data, isLoading }) => {
               <div
                 style={{ display: 'flex', justifyContent: 'space-between', marginBlockEnd: 8 }}
               >
-                <Text type="secondary">本周期已消耗</Text>
+                <Text type="secondary">本期已消耗</Text>
                 <Text strong style={{ fontSize: '18px' }}>
                   {Number(data.balance?.totalConsumed || 0).toLocaleString()} /{' '}
                   {Number(data.balance?.limit || 0).toLocaleString()}

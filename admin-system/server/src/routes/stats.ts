@@ -112,29 +112,23 @@ router.get('/', requirePermission('stats.read'), async (req: AuthenticatedReques
         // Query C: Usage Service Stats
         queries.push(isGlobal ? Promise.resolve({}) : usageService.getUserMonthlyUsage(userId));
 
-        // Query D: Detailed Usage
+        // Query D: Detailed Usage - Query from user_transactions and join with messages
         queries.push(db.execute(sql`
-           SELECT
-              m.created_at as "createdAt",
-              'Chat' as type,
-              m.model,
-              m.provider,
-              (COALESCE(m.metadata->>'totalInputTokens', '0'))::int as "totalInputTokens",
-              (COALESCE(m.metadata->>'totalOutputTokens', '0'))::int as "totalOutputTokens",
-              (COALESCE(m.metadata->>'totalInputTokens', '0'))::int + (COALESCE(m.metadata->>'totalOutputTokens', '0'))::int as "totalTokens",
-              (COALESCE(m.metadata->>'cost', '0'))::numeric as spend,
-              (COALESCE(m.metadata->>'tps', '0'))::numeric as tps,
-              (COALESCE(m.metadata->>'ttft', '0'))::numeric as ttft,
-              m.metadata->>'duration' as duration,
-              mp.input_price as "inputPrice",
-              mp.output_price as "outputPrice",
-              mp.per_request_price as "perRequestPrice"
-          FROM messages m
-          LEFT JOIN model_pricings mp ON m.model = mp.model AND m.provider = mp.provider
-          WHERE m.role = 'assistant'
-          ${isGlobal ? sql`AND m.user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')` : sql`AND m.user_id = ${userId}`}
-          ${isGlobal ? sql`AND m.created_at >= ${startOfPeriodStr}` : sql``}
-          ORDER BY m.created_at DESC
+          SELECT
+              ut.created_at as "createdAt",
+              ut.id,
+              ut.amount,
+              ut.metadata,
+              ut.ref_id as "refId",
+              m.model as msg_model,
+              m.provider as msg_provider,
+              m.metadata as msg_metadata
+          FROM user_transactions ut
+          LEFT JOIN messages m ON ut.ref_id = m.id
+          WHERE ut.type = 'CONSUMPTION'
+          ${isGlobal ? sql`AND ut.user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')` : sql`AND ut.user_id = ${userId}`}
+          ${isGlobal ? sql`AND ut.created_at >= ${startOfPeriodStr}` : sql``}
+          ORDER BY ut.created_at DESC
           LIMIT 100
         `));
 
@@ -158,17 +152,47 @@ router.get('/', requirePermission('stats.read'), async (req: AuthenticatedReques
         }
         // Post-process Detailed Usage
         const processedUsage = (detailedUsage as any[]).map((item: any) => {
-            const inputPrice = parseFloat(item.inputPrice || '0');
-            const outputPrice = parseFloat(item.outputPrice || '0');
-            const perRequestPrice = parseFloat(item.perRequestPrice || '0');
+            const metadata = (item.metadata as any) || {};
+            const msgMetadata = (item.msg_metadata as any) || {};
 
-            const inputCredits = (item.totalInputTokens / 1_000_000) * inputPrice;
-            const outputCredits = (item.totalOutputTokens / 1_000_000) * outputPrice;
-            const totalCredits = inputCredits + outputCredits + perRequestPrice;
+            // Determine model and provider
+            const model = metadata.model || item.msg_model || '-';
+            const provider = metadata.provider || item.msg_provider || '-';
+
+            // Determine usage type (chat, embedding, image, etc.)
+            let usageType = 'chat';
+            if (metadata.type) {
+                usageType = metadata.type.toLowerCase();
+            } else if (item.msg_model) {
+                // If associated with a message, it's chat
+                usageType = 'chat';
+            } else if (item.refId && item.refId.startsWith('gen_')) {
+                // If refId starts with 'gen_', it's image generation
+                usageType = 'image';
+            }
+
+            // Get token info (for chat/embedding)
+            const totalInputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
+            const totalOutputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
+            const totalTokens = totalInputTokens + totalOutputTokens;
+
+            // Get duration (for chat)
+            const duration = metadata.duration || msgMetadata.duration || 0;
+
+            // Credits from transaction amount
+            const credits = Math.abs(Number(item.amount || 0));
 
             return {
-                ...item,
-                credits: Math.round(totalCredits)
+                id: item.id,
+                createdAt: item.createdAt,
+                usageType,
+                model,
+                provider,
+                totalInputTokens,
+                totalOutputTokens,
+                totalTokens,
+                duration,
+                credits,
             };
         });
 

@@ -85,13 +85,15 @@ const UsersPage: React.FC = () => {
       dataIndex: 'plan_name',
       width: 150,
       render: (planName, record) => {
-        const color = record.planType === 'free' ? 'blue' : 'gold';
+        const planType = record.planType || 'free';
+        const isFree = planType.includes('free');
+        const color = isFree ? 'blue' : 'gold';
         return (
           <Space direction="vertical" size={0}>
-            <Tag color={color}>{planName || 'Free Trial'}</Tag>
+            <Tag color={color}>{planName || 'Free'}</Tag>
             {record.nextPlanId && (
               <Tag color="orange" style={{ fontSize: '10px' }}>
-                次月: {plans.find(p => p.id === record.nextPlanId)?.name || '免费'}
+                次月: {plans.find(p => p.id === record.nextPlanId)?.name || 'Free'}
               </Tag>
             )}
           </Space>
@@ -121,7 +123,20 @@ const UsersPage: React.FC = () => {
       width: 160,
       render: (date: any) => {
         if (!date) return '-';
-        return new Date(date).toLocaleString();
+        try {
+          const parsedDate = new Date(date);
+          if (isNaN(parsedDate.getTime())) return '-';
+          return parsedDate.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        } catch (e) {
+          return '-';
+        }
       },
       search: false,
     },

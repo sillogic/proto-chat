@@ -280,11 +280,17 @@ export class UserUsageService {
 
                 // Determine usage type (text, embedding, image, etc.)
                 let usageType = 'chat';
-                if (m) {
+                // Check metadata.type first to distinguish between chat/image/embedding
+                if (metadata.type) {
+                    usageType = metadata.type.toLowerCase();
+                } else if (m) {
+                    // If associated with a message, it's chat
                     usageType = 'chat';
-                } else if (r.category?.toUpperCase() === 'CONSUMPTION') {
-                    usageType = 'chat';
+                } else if (r.refId && r.refId.startsWith('gen_')) {
+                    // If refId starts with 'gen_', it's image generation
+                    usageType = 'image';
                 } else if (r.category) {
+                    // Fallback to category
                     usageType = r.category.toLowerCase();
                 }
 

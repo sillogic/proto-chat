@@ -164,18 +164,28 @@ async function generateByChatModel(
     },
   ];
 
-  // Add image for editing mode if provided
-  if (params.imageUrl && params.imageUrl !== null) {
-    log('Processing image URL for editing mode: %s', params.imageUrl);
+  // Add reference images for editing mode if provided
+  // Support both imageUrl (singular) and imageUrls (array)
+  const imageInputs: string[] = [];
+  if (Array.isArray(params.imageUrls) && params.imageUrls.length > 0) {
+    imageInputs.push(...params.imageUrls);
+  } else if (params.imageUrl && params.imageUrl !== null) {
+    imageInputs.push(params.imageUrl);
+  }
+
+  if (imageInputs.length > 0) {
+    log('Processing %d reference image(s) for editing mode', imageInputs.length);
     try {
-      const processedImageUrl = await processImageUrlForChat(params.imageUrl);
-      content.push({
-        image_url: {
-          url: processedImageUrl,
-        },
-        type: 'image_url',
-      });
-      log('Successfully processed image URL for chat input');
+      for (const imgUrl of imageInputs) {
+        const processedImageUrl = await processImageUrlForChat(imgUrl);
+        content.push({
+          image_url: {
+            url: processedImageUrl,
+          },
+          type: 'image_url',
+        });
+      }
+      log('Successfully processed %d image(s) for chat input', imageInputs.length);
     } catch (error) {
       throw new Error(`Failed to process image URL: ${error}`);
     }
@@ -201,20 +211,48 @@ async function generateByChatModel(
     throw new Error('No message in chat completion response');
   }
 
-  // Check if response has images in the expected format
+  // Strategy 1: Check message.images array (OpenRouter standard format)
   if ((message as any).images && Array.isArray((message as any).images)) {
     const { images } = message as any;
     if (images.length > 0) {
       const image = images[0];
       if (image.image_url?.url) {
-        log('Successfully extracted image from chat response');
+        log('Successfully extracted image from message.images');
         return { imageUrl: image.image_url.url };
       }
     }
   }
 
-  // If no images found, throw error
-  throw new Error('No image generated in chat completion response');
+  // Strategy 2: Check message.content for inline image parts (some providers return images in content array)
+  const messageContent = (message as any).content;
+  if (Array.isArray(messageContent)) {
+    for (const part of messageContent) {
+      if (part.type === 'image_url' && part.image_url?.url) {
+        log('Successfully extracted image from content array (image_url)');
+        return { imageUrl: part.image_url.url };
+      }
+      if (part.type === 'image' && part.source?.data) {
+        const mimeType = part.source.media_type || 'image/png';
+        log('Successfully extracted image from content array (source.data)');
+        return { imageUrl: `data:${mimeType};base64,${part.source.data}` };
+      }
+    }
+  }
+
+  // Strategy 3: Check if content is a string containing a base64 data URL
+  if (typeof messageContent === 'string' && messageContent.includes('data:image/')) {
+    const match = messageContent.match(/(data:image\/[^;]+;base64,[A-Za-z0-9+/=]+)/);
+    if (match) {
+      log('Successfully extracted image from content string (base64 data URL)');
+      return { imageUrl: match[1] };
+    }
+  }
+
+  // If no images found, include response info for debugging
+  const contentPreview = typeof messageContent === 'string'
+    ? messageContent.slice(0, 200)
+    : JSON.stringify(messageContent)?.slice(0, 200);
+  throw new Error(`No image generated in chat completion response. Content preview: ${contentPreview}`);
 }
 
 /**

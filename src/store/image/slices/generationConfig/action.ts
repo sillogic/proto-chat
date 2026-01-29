@@ -331,6 +331,37 @@ export const createGenerationConfigSlice: StateCreator<
 
   _initializeDefaultImageConfig: () => {
     const { defaultImageNum } = settingsSelectors.currentImageSettings(useUserStore.getState());
+    const enabledImageModelList = aiProviderSelectors.enabledImageModelList(getAiInfraStoreState());
+
+    // 尝试选取第一个可用的 image provider/model 作为默认值
+    const firstProvider = enabledImageModelList.find((p) => p.children.length > 0);
+    if (firstProvider) {
+      const firstModel = firstProvider.children[0];
+      try {
+        const { defaultValues, parametersSchema, initialActiveRatio } = prepareModelConfigState(
+          firstModel.id,
+          firstProvider.id,
+        );
+        set(
+          {
+            model: firstModel.id,
+            provider: firstProvider.id,
+            parameters: defaultValues,
+            parametersSchema,
+            isAspectRatioLocked: false,
+            activeAspectRatio: initialActiveRatio,
+            imageNum: defaultImageNum,
+            isInit: true,
+          },
+          false,
+          'initializeImageConfig/default',
+        );
+        return;
+      } catch {
+        // fallback below
+      }
+    }
+
     set({ imageNum: defaultImageNum, isInit: true }, false, 'initializeImageConfig/default');
   },
 

@@ -37,26 +37,38 @@ export class UserService {
     const agentService = new AgentService(this.db, user.id);
     await agentService.createInbox();
 
-    // Step 2: Initialize subscription plan (Free Trial)
-    // Query the Free Trial plan from database
-    const [freePlan] = await this.db
+    // Step 2: Initialize subscription plan (Free)
+    // Query the Free plan from database (try multiple slug variants)
+    let freePlan = await this.db
       .select()
       .from(subscriptionPlans)
-      .where(eq(subscriptionPlans.slug, 'free-trial'))
-      .limit(1);
+      .where(eq(subscriptionPlans.slug, 'free'))
+      .limit(1)
+      .then(rows => rows[0]);
+
+    if (!freePlan) {
+      freePlan = await this.db
+        .select()
+        .from(subscriptionPlans)
+        .where(eq(subscriptionPlans.slug, 'plan_free'))
+        .limit(1)
+        .then(rows => rows[0]);
+    }
 
     if (!freePlan) {
       pino.warn(
         { userId: user.id },
-        'Free Trial plan not found in database. User subscription not initialized.',
+        'Free plan not found in database. User subscription not initialized.',
       );
     } else {
-      // Create userExtensions record
+      // For free plan, no expiration (or set to far future)
+      // Free plan doesn't expire, set to null
       await this.db
         .insert(userExtensions)
         .values({
           currentPlan: freePlan.slug,
           planId: freePlan.id,
+          planExpiresAt: null, // Free plan has no expiration
           userId: user.id,
         })
         .onConflictDoNothing();

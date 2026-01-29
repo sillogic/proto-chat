@@ -1,8 +1,8 @@
 'use client';
 
 import { Tag } from '@lobehub/ui';
-import { Table, TableColumnType, Typography, Space } from 'antd';
-import { memo } from 'react';
+import { Table, TableColumnType, Typography, Space, Tabs } from 'antd';
+import { memo, useState } from 'react';
 
 import { parseAsInteger, useQueryParam } from '@/hooks/useQueryParam';
 import { useClientDataSWR } from '@/libs/swr';
@@ -14,6 +14,7 @@ import { UsageChartProps } from '../Client';
 const { Text } = Typography;
 
 const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
+  const [activeTab, setActiveTab] = useState<string>('all');
 
   const [currentPage, setCurrentPage] = useQueryParam('c_current', parseAsInteger.withDefault(1), {
     clearOnDefault: true,
@@ -32,7 +33,8 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
       }),
   );
 
-  const columns: TableColumnType<any>[] = [
+  // Common columns for all types
+  const baseColumns: TableColumnType<any>[] = [
     {
       dataIndex: 'createdAt',
       key: 'createdAt',
@@ -44,7 +46,6 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
       dataIndex: 'usageType',
       key: 'usageType',
       render: (usageType) => {
-        // Use more contrasty colors and remove icons as requested
         const typeMap: Record<string, { color: string; label: string }> = {
           chat: { color: 'processing', label: '文本生成' },
           embedding: { color: 'success', label: '向量化' },
@@ -73,6 +74,11 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
       ),
       title: '模型',
     },
+  ];
+
+  // Token-based columns (for chat and embedding)
+  const tokenColumns: TableColumnType<any>[] = [
+    ...baseColumns,
     {
       dataIndex: 'totalTokens',
       key: 'totalTokens',
@@ -97,37 +103,127 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
       width: 100,
     },
     {
-        align: 'right',
-        dataIndex: 'duration',
-        key: 'duration',
-        render: (val) => (
-          <Text style={{ fontSize: '12px' }} type="secondary">{val ? `${(Number(val) / 1000).toFixed(2)}s` : '-'}</Text>
-        ),
-        title: '用时',
-        width: 80,
+      align: 'right',
+      dataIndex: 'duration',
+      key: 'duration',
+      render: (val) => (
+        <Text style={{ fontSize: '12px' }} type="secondary">{val ? `${(Number(val) / 1000).toFixed(2)}s` : '-'}</Text>
+      ),
+      title: '用时',
+      width: 80,
     },
   ];
 
+  // Image-specific columns (no token usage or duration)
+  const imageColumns: TableColumnType<any>[] = [
+    ...baseColumns,
+    {
+      align: 'right',
+      dataIndex: 'credits',
+      key: 'credits',
+      render: (val) => (
+        <Text strong style={{ color: '#fa8c16' }}>{Number(val).toLocaleString()}</Text>
+      ),
+      title: '积分',
+      width: 100,
+    },
+  ];
+
+  // Filter data based on active tab
+  const filteredData = data?.list?.filter((item: any) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'text') return item.usageType === 'chat' || item.usageType === 'embedding';
+    if (activeTab === 'image') return item.usageType === 'image';
+    return true;
+  }) || [];
+
+  // Determine which columns to use
+  const columns = activeTab === 'image' ? imageColumns : tokenColumns;
+
   return (
-    <Table
-      columns={columns}
-      dataSource={data?.list || []}
-      loading={isLoading}
-      pagination={{
-        current: currentPage,
-        onChange: (page) => {
-          setCurrentPage(page);
+    <Tabs
+      activeKey={activeTab}
+      onChange={setActiveTab}
+      items={[
+        {
+          key: 'all',
+          label: '全部',
+          children: (
+            <Table
+              columns={tokenColumns}
+              dataSource={data?.list || []}
+              loading={isLoading}
+              pagination={{
+                current: currentPage,
+                onChange: (page) => {
+                  setCurrentPage(page);
+                },
+                onShowSizeChange: (current, size) => {
+                  setCurrentPage(current);
+                  setPageSize(size);
+                },
+                pageSize,
+                total: data?.total || 0,
+              }}
+              rowKey="id"
+              scroll={{ x: 'max-content' }}
+              size="small"
+            />
+          ),
         },
-        onShowSizeChange: (current, size) => {
-          setCurrentPage(current);
-          setPageSize(size);
+        {
+          key: 'text',
+          label: '文本/向量',
+          children: (
+            <Table
+              columns={tokenColumns}
+              dataSource={filteredData}
+              loading={isLoading}
+              pagination={{
+                current: currentPage,
+                onChange: (page) => {
+                  setCurrentPage(page);
+                },
+                onShowSizeChange: (current, size) => {
+                  setCurrentPage(current);
+                  setPageSize(size);
+                },
+                pageSize,
+                total: filteredData.length,
+              }}
+              rowKey="id"
+              scroll={{ x: 'max-content' }}
+              size="small"
+            />
+          ),
         },
-        pageSize,
-        total: data?.total || 0,
-      }}
-      rowKey="id"
-      scroll={{ x: 'max-content' }}
-      size="small"
+        {
+          key: 'image',
+          label: '图片生成',
+          children: (
+            <Table
+              columns={imageColumns}
+              dataSource={filteredData}
+              loading={isLoading}
+              pagination={{
+                current: currentPage,
+                onChange: (page) => {
+                  setCurrentPage(page);
+                },
+                onShowSizeChange: (current, size) => {
+                  setCurrentPage(current);
+                  setPageSize(size);
+                },
+                pageSize,
+                total: filteredData.length,
+              }}
+              rowKey="id"
+              scroll={{ x: 'max-content' }}
+              size="small"
+            />
+          ),
+        },
+      ]}
     />
   );
 });

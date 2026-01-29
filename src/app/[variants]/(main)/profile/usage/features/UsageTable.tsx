@@ -48,7 +48,8 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
       render: (category) => {
         const categoryMap: any = {
           ADJUSTMENT: { color: 'purple', label: '人工调账' },
-          CONSUMPTION: { color: 'orange', label: '对话消费' },
+          CONSUMPTION: { color: 'orange', label: 'AI消费' },
+          IMAGE_GENERATION: { color: 'gold', label: '图片生成' },
           DEPOSIT: { color: 'green', label: '赠送/充值' },
           REFUND: { color: 'blue', label: '退款' },
           RESET: { color: 'default', label: '周期重置' },
