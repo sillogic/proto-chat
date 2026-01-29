@@ -79,7 +79,7 @@ export interface CreateOrderInput {
   userId: string;
   planId: string;
   planInterval: 'month' | 'year';
-  payChannel: 'wechat_native' | 'alipay'; // extensible
+  payChannel: 'wechat_native' | 'alipay_precreate'; // extensible
 }
 
 // Payment service configuration
@@ -91,6 +91,11 @@ export interface PaymentConfig {
     notifyUrl: string;
   };
   alipay?: {
-    // Future: Alipay config
+    appId: string;
+    privateKey: string; // RSA2 private key
+    alipayPublicKey: string; // Alipay public key for signature verification
+    notifyUrl: string;
+    gatewayUrl?: string; // Optional, defaults to production gateway
+    sandbox?: boolean; // Whether to use sandbox environment
   };
 }

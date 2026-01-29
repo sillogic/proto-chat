@@ -9,6 +9,7 @@ import { eq, and } from 'drizzle-orm';
 
 import type { PaymentChannel, PaymentConfig, CreateOrderInput, PaymentOrder } from './types';
 import { WeChatNativeChannel } from './channels/wechat-native';
+import { AlipayPrecreateChannel } from './channels/alipay-precreate';
 import { generateOrderNo } from './utils/order-no';
 
 export class PaymentService {
@@ -23,10 +24,9 @@ export class PaymentService {
       this.channels.set('wechat_native', new WeChatNativeChannel(config.wechat));
     }
 
-    // Future: Register other channels (Alipay, etc.)
-    // if (config.alipay) {
-    //   this.channels.set('alipay', new AlipayChannel(config.alipay));
-    // }
+    if (config.alipay) {
+      this.channels.set('alipay_precreate', new AlipayPrecreateChannel(config.alipay));
+    }
   }
 
   /**

@@ -1,9 +1,9 @@
 'use client';
 
 import { Icon } from '@lobehub/ui';
-import { Alert, Button, Modal, Spin } from 'antd';
+import { Alert, Button, message, Modal, Segmented, Spin } from 'antd';
 import { createStyles } from 'antd-style';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { Alipay, CheckCircle, WechatPay, XCircle } from '@ant-design/icons';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
@@ -79,11 +79,14 @@ interface PaymentModalProps {
   onSuccess: () => void;
 }
 
+type PaymentMethod = 'alipay_precreate' | 'wechat_native';
+
 const PaymentModal = memo<PaymentModalProps>(
   ({ open, planName, planId, amount, billingCycle, onClose, onSuccess }) => {
     const { t } = useTranslation('subscription');
     const { styles } = useStyles();
 
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('alipay_precreate');
     const [orderNo, setOrderNo] = useState<string>('');
     const [codeUrl, setCodeUrl] = useState<string>('');
     const [expiredAt, setExpiredAt] = useState<Date | null>(null);
@@ -96,7 +99,7 @@ const PaymentModal = memo<PaymentModalProps>(
     const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Create order when modal opens
+    // Create order when modal opens or payment method changes
     useEffect(() => {
       if (!open) return;
 
@@ -105,10 +108,19 @@ const PaymentModal = memo<PaymentModalProps>(
           setStatus('loading');
           setErrorMessage('');
 
+          // Close previous order if exists
+          if (orderNo && (status === 'qrcode' || status === 'polling')) {
+            try {
+              await lambdaClient.payment.closeOrder.mutate({ orderNo });
+            } catch (error) {
+              console.error('Failed to close previous order:', error);
+            }
+          }
+
           const result = await lambdaClient.payment.createOrder.mutate({
             planId,
             interval: billingCycle,
-            payChannel: 'wechat_native',
+            payChannel: paymentMethod,
           });
 
           setOrderNo(result.orderNo);
@@ -128,7 +140,7 @@ const PaymentModal = memo<PaymentModalProps>(
       };
 
       createOrder();
-    }, [open, planId, billingCycle, t]);
+    }, [open, planId, billingCycle, paymentMethod, t]);
 
     // Countdown timer
     useEffect(() => {
@@ -280,6 +292,42 @@ const PaymentModal = memo<PaymentModalProps>(
       // QR code display
       return (
         <Flexbox gap={24}>
+          {/* Payment Method Selector */}
+          <Flexbox gap={8}>
+            <span className={styles.subtitle}>{t('payment.method', '支付方式')}</span>
+            <Segmented
+              block
+              onChange={(value) => {
+                if (value === 'wechat_native') {
+                  message.info(t('payment.comingSoon', '敬请期待'));
+                } else {
+                  setPaymentMethod(value as PaymentMethod);
+                }
+              }}
+              options={[
+                {
+                  label: (
+                    <Flexbox align="center" gap={8} horizontal style={{ padding: '4px 8px' }}>
+                      <Alipay style={{ fontSize: 20 }} />
+                      <span>{t('payment.alipay', '支付宝')}</span>
+                    </Flexbox>
+                  ),
+                  value: 'alipay_precreate',
+                },
+                {
+                  label: (
+                    <Flexbox align="center" gap={8} horizontal style={{ padding: '4px 8px' }}>
+                      <WechatPay style={{ fontSize: 20 }} />
+                      <span>{t('payment.wechat', '微信支付')}</span>
+                    </Flexbox>
+                  ),
+                  value: 'wechat_native',
+                },
+              ]}
+              value={paymentMethod}
+            />
+          </Flexbox>
+
           {/* QR Code */}
           <Center className={styles.qrContainer}>
             {codeUrl ? (
@@ -296,7 +344,9 @@ const PaymentModal = memo<PaymentModalProps>(
           {/* Instructions */}
           <Flexbox align="center" gap={8}>
             <span className={styles.hint}>
-              {t('payment.scanHint', '请使用微信扫码完成支付')}
+              {paymentMethod === 'alipay_precreate'
+                ? t('payment.scanHint.alipay', '请使用支付宝扫码完成支付')
+                : t('payment.scanHint.wechat', '请使用微信扫码完成支付')}
             </span>
             {remainingSeconds > 0 && (
               <span className={styles.timer}>
@@ -343,9 +393,13 @@ const PaymentModal = memo<PaymentModalProps>(
 
         <div className={styles.body}>
           <Flexbox gap={24}>
-            <Center>
-              <span className={styles.price}>¥{(amount / 100).toFixed(2)}</span>
-            </Center>
+            {/* Price Display */}
+            <Flexbox align="center" gap={8}>
+              <Flexbox align="center" gap={12} horizontal>
+                <span className={styles.subtitle}>{t('payment.realAmount', '实付')}</span>
+                <span className={styles.price}>¥{(amount / 100).toFixed(2)}</span>
+              </Flexbox>
+            </Flexbox>
             {renderContent()}
           </Flexbox>
         </div>

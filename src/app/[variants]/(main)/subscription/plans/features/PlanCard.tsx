@@ -137,10 +137,11 @@ const planIcons = {
 
 interface PlanCardProps {
   billingCycle: BillingCycle;
+  currentPlanSlug?: string;
   plan: PlanData;
 }
 
-const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
+const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug }) => {
   const { t } = useTranslation('subscription');
   const { styles, theme } = useStyles();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -174,7 +175,30 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
     return n.toString();
   };
 
-  // Get support level display text
+  // Determine button text and style based on current subscription
+  const isCurrentPlan = currentPlanSlug === plan.slug;
+  const isUpgrade = currentPlanSlug && !isCurrentPlan && currentPrice > 0; // TODO: Add price comparison logic
+
+  const getButtonText = () => {
+    if (isCurrentPlan) {
+      return t('cta.currentSubscription', '我的订阅');
+    }
+    if (isUpgrade) {
+      return t('cta.upgradeSubscription', '订阅升级');
+    }
+    return t('cta.upgrade', '升级');
+  };
+
+  const getButtonType = () => {
+    if (isCurrentPlan) {
+      return 'default';
+    }
+    if (isUpgrade || plan.isPopular) {
+      return 'primary';
+    }
+    return 'default';
+  };
+
   return (
     <Flexbox className={styles.card}>
       {plan.isPopular && <div className={styles.popularBadge}>{t('cta.popular', '推荐')}</div>}
@@ -215,16 +239,16 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
         {/* Upgrade Button */}
         <Button
           block
-          disabled={!hasYearlyOption && isYearly}
+          disabled={isCurrentPlan || (!hasYearlyOption && isYearly)}
           onClick={() => setPaymentModalOpen(true)}
           style={
-            plan.isPopular
+            isUpgrade || (plan.isPopular && !isCurrentPlan)
               ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
               : undefined
           }
-          type={plan.isPopular ? 'primary' : 'default'}
+          type={getButtonType()}
         >
-          {t('cta.upgrade', '升级')}
+          {getButtonText()}
         </Button>
       </Flexbox>
 

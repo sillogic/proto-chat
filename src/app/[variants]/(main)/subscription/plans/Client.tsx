@@ -75,7 +75,7 @@ const Client = memo<ClientProps>(() => {
   const { t } = useTranslation('subscription');
   const { styles, theme } = useStyles();
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
-  const { plans, isLoading } = useSubscriptionPlans();
+  const { plans, currentPlan, isLoading } = useSubscriptionPlans();
 
   // Filter plans: separate individual and team plans, exclude free plan from main list
   const { individualPlans, teamPlans } = useMemo(() => {
@@ -125,6 +125,7 @@ const Client = memo<ClientProps>(() => {
               <PlanCard
                 key={plan.id}
                 billingCycle={billingCycle}
+                currentPlanSlug={currentPlan?.planSlug}
                 plan={plan}
               />
             ))}
@@ -155,6 +156,7 @@ const Client = memo<ClientProps>(() => {
               <PlanCard
                 key={plan.id}
                 billingCycle={billingCycle}
+                currentPlanSlug={currentPlan?.planSlug}
                 plan={plan}
               />
             ))}
