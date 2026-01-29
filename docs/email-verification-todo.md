@@ -37,21 +37,16 @@
 
 ---
 
-### 任务 2：开启 SMTP 服务
+### 任务 2：开启 SMTP 服务 ✅ 已完成
 
-**目标：** 允许程序通过 SMTP 发送邮件
+**说明：** 钉钉企业邮箱的 SMTP 服务**默认开启**，无需手动配置。
 
-**方法 A：在钉钉管理后台**
-- 邮箱管理 → 邮箱设置 → 客户端设置
-- 确保 SMTP 服务已开启
+**SMTP 服务参数：**
+| 协议 | 服务器地址 | 常规端口 | 加密端口（推荐） |
+|------|-----------|---------|-----------------|
+| SMTP | smtp.em.dingtalk.com | 25 | 465 |
 
-**方法 B：登录网页版邮箱**
-1. 访问：https://qiye.aliyun.com/
-2. 用新创建的邮箱登录
-3. 右上角设置 → 客户端设置
-4. 开启 **POP3/SMTP 服务**
-
-**完成标志：** ✅ SMTP 服务已开启
+> 💡 建议使用加密端口 465 以确保连接安全性
 
 ---
 
@@ -69,7 +64,7 @@ NEXT_PUBLIC_AUTH_EMAIL_VERIFICATION=1
 EMAIL_SERVICE_PROVIDER=nodemailer
 
 # 钉钉企业邮箱 SMTP 服务器
-SMTP_HOST=smtp.qiye.aliyun.com
+SMTP_HOST=smtp.em.dingtalk.com
 SMTP_PORT=465
 SMTP_SECURE=true
 

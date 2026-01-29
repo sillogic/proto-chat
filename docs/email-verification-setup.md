@@ -14,7 +14,7 @@ NEXT_PUBLIC_AUTH_EMAIL_VERIFICATION=1
 EMAIL_SERVICE_PROVIDER=nodemailer
 
 # 钉钉企业邮箱 SMTP 服务器
-SMTP_HOST=smtp.qiye.aliyun.com
+SMTP_HOST=smtp.em.dingtalk.com
 SMTP_PORT=465
 SMTP_SECURE=true
 
@@ -41,22 +41,22 @@ NEXT_PUBLIC_AUTH_URL=http://localhost:3010
    - **显示名称：** ProtoChat 系统
    - **设置密码并记录**
 
-### 步骤 2：开启 SMTP 服务
+### 步骤 2：SMTP 服务（无需手动开启）
 
-**方法 1：在钉钉管理后台**
-- 邮箱管理 → 邮箱设置 → 客户端设置
-- 确保 SMTP 服务已开启
+钉钉企业邮箱的 SMTP 服务**默认开启**，无需手动配置。
 
-**方法 2：登录网页版邮箱**
-1. 访问 https://qiye.aliyun.com/
-2. 用新创建的邮箱登录
-3. 设置 → 客户端设置 → 开启"POP3/SMTP服务"
+**SMTP 服务参数：**
+| 协议 | 服务器地址 | 常规端口 | 加密端口（推荐） |
+|------|-----------|---------|-----------------|
+| SMTP | smtp.em.dingtalk.com | 25 | 465 |
 
-### 步骤 3：测试 SMTP 连接
+> 💡 建议使用加密端口 465 以确保连接安全性
 
-使用以下参数测试：
-- **SMTP 服务器：** smtp.qiye.aliyun.com
-- **端口：** 465（SSL）或 25（无SSL）
+### 步骤 3：测试 SMTP 连接（可选）
+
+如需手动测试，使用以下参数：
+- **SMTP 服务器：** smtp.em.dingtalk.com
+- **端口：** 465（SSL/TLS 加密，推荐）
 - **加密方式：** SSL/TLS
 - **账号：** 完整邮箱地址
 - **密码：** 邮箱密码
@@ -149,7 +149,7 @@ NEXT_PUBLIC_AUTH_URL=https://protochat.ai
 # 其他配置保持不变
 NEXT_PUBLIC_AUTH_EMAIL_VERIFICATION=1
 EMAIL_SERVICE_PROVIDER=nodemailer
-SMTP_HOST=smtp.qiye.aliyun.com
+SMTP_HOST=smtp.em.dingtalk.com
 SMTP_PORT=465
 SMTP_SECURE=true
 SMTP_USER=noreply@protochat.ai
