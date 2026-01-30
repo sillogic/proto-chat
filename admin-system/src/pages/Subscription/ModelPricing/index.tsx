@@ -426,27 +426,35 @@ const ModelPricingManagement: React.FC = () => {
           }}
           rules={[{ required: true, message: '请选择提供商' }]}
         />
-        <ProFormDigit
-          name="inputPrice"
-          label="提示词费率 (积分 / 1M Tokens)"
-          initialValue={0}
-          fieldProps={{ precision: 2 }}
-          rules={[{ required: true, message: '请输入提示词费率' }]}
-        />
-        <ProFormDigit
-          name="outputPrice"
-          label="补全费率 (积分 / 1M Tokens)"
-          initialValue={0}
-          fieldProps={{ precision: 2 }}
-          rules={[{ required: true, message: '请输入补全费率' }]}
-        />
-        <ProFormDigit
-          name="perRequestPrice"
-          label="按次计费 (积分 / 次)"
-          initialValue={0}
-          fieldProps={{ precision: 2 }}
-          tooltip="用于图片生成等按次计费的模型。如果大于0，则忽略Token费率"
-        />
+        {/* Token计费模型字段 - 新建或编辑Token模型时显示 */}
+        {(!currentRow || (!currentRow.perRequestPrice || parseFloat(currentRow.perRequestPrice) === 0)) && (
+          <>
+            <ProFormDigit
+              name="inputPrice"
+              label="提示词费率 (积分 / 1M Tokens)"
+              initialValue={0}
+              fieldProps={{ precision: 2 }}
+              rules={[{ required: true, message: '请输入提示词费率' }]}
+            />
+            <ProFormDigit
+              name="outputPrice"
+              label="补全费率 (积分 / 1M Tokens)"
+              initialValue={0}
+              fieldProps={{ precision: 2 }}
+              rules={[{ required: true, message: '请输入补全费率' }]}
+            />
+          </>
+        )}
+        {/* 按次计费模型字段 - 新建或编辑图片模型时显示 */}
+        {(!currentRow || (currentRow.perRequestPrice && parseFloat(currentRow.perRequestPrice) > 0)) && (
+          <ProFormDigit
+            name="perRequestPrice"
+            label="按次计费 (积分 / 次)"
+            initialValue={0}
+            fieldProps={{ precision: 2 }}
+            tooltip="用于图片生成等按次计费的模型。如果大于0，则忽略Token费率"
+          />
+        )}
         <ProFormTextArea
           name="memo"
           label="备注"

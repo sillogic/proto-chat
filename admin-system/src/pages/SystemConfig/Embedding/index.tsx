@@ -52,7 +52,7 @@ const EmbeddingConfigPage: React.FC = () => {
       ]);
 
       if (configRes.success) {
-        setConfig(configRes.data);
+        setConfig(configRes.data ?? null);
         if (configRes.data) {
           providerForm.setFieldsValue({
             providerId: configRes.data.providerId,
@@ -75,7 +75,7 @@ const EmbeddingConfigPage: React.FC = () => {
       }
 
       if (modelsRes.success) {
-        setModels(modelsRes.data);
+        setModels(modelsRes.data ?? []);
       }
     } catch (error: any) {
       console.error('Failed to fetch data:', error);
