@@ -52,6 +52,7 @@ export default {
   'menu.users': 'User Management',
   'menu.plans': 'Subscription Plans',
   'menu.subscriptionRecords': 'Subscription Records',
+  'menu.paymentOrders': 'Payment Orders',
   'menu.modelPricing': 'Model Pricing',
   'menu.apiKeys': 'Model Provider Config',
   'menu.aiProviders': 'AI Providers',

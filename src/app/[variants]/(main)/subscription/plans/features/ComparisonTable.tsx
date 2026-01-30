@@ -90,6 +90,19 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   `,
 }));
 
+// Helper functions
+const getModelEstimate = (p: PlanData, modelName: string) => {
+  const estimate = p.features?.display?.model_estimates?.find((m) =>
+    m.model.includes(modelName),
+  );
+  return estimate?.count || '-';
+};
+
+const formatStorage = (mb: number) => {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${mb} MB`;
+};
+
 interface ComparisonTableProps {
   billingCycle: BillingCycle;
   plans: PlanData[];
@@ -100,20 +113,6 @@ const ComparisonTable = memo<ComparisonTableProps>(({ plans, billingCycle }) => 
   const { styles } = useStyles();
 
   const isYearly = billingCycle === 'yearly';
-
-  // Helper to find model estimate count from features
-  const getModelEstimate = (p: PlanData, modelName: string) => {
-    const estimate = p.features?.display?.model_estimates?.find((m) =>
-      m.model.includes(modelName),
-    );
-    return estimate?.count || '-';
-  };
-
-  // Helper to format storage
-  const formatStorage = (mb: number) => {
-    if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
-    return `${mb} MB`;
-  };
 
   const features = [
     {

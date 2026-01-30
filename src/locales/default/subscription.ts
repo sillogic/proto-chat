@@ -7,29 +7,9 @@ export default {
   cta: {
     contact: '联系我们',
     current: '当前方案',
+    currentSubscription: '我的订阅',
     upgrade: '升级',
-  },
-  payment: {
-    alert: {
-      description: '请在新窗口完成支付，支付完成后会自动跳转。请勿关闭此窗口。',
-      title: '支付提示',
-    },
-    cancel: '取消支付',
-    close: '关闭',
-    creating: '正在创建订单...',
-    error: {
-      closed: '订单已关闭',
-      createFailed: '创建订单失败',
-      expired: '二维码已过期',
-      unknown: '支付失败',
-    },
-    expireIn: '有效期',
-    monthlyBilling: '月付',
-    scanHint: '请使用微信扫码完成支付',
-    subscribe: '订阅',
-    success: '支付成功！',
-    successHint: '正在跳转...',
-    yearlyBilling: '年付',
+    upgradeSubscription: '订阅升级',
   },
   features: {
     advancedFeatures: '高级功能',
@@ -54,6 +34,36 @@ export default {
     unlimitedMessages: '无限消息请求',
     vectorStorage: '向量存储',
     webSearch: '智能联网查询',
+  },
+  payment: {
+    alert: {
+      description: '请在新窗口完成支付，支付完成后会自动跳转。请勿关闭此窗口。',
+      title: '支付提示',
+    },
+    alipay: '支付宝',
+    cancel: '取消支付',
+    close: '关闭',
+    comingSoon: '敬请期待',
+    creating: '正在创建订单...',
+    error: {
+      closed: '订单已关闭',
+      createFailed: '创建订单失败',
+      expired: '二维码已过期',
+      unknown: '支付失败',
+    },
+    expireIn: '有效期',
+    method: '支付方式',
+    monthlyBilling: '月付',
+    realAmount: '实付',
+    scanHint: {
+      alipay: '请使用支付宝扫码完成支付',
+      wechat: '请使用微信扫码完成支付',
+    },
+    subscribe: '订阅',
+    success: '支付成功！',
+    successHint: '正在跳转...',
+    wechat: '微信支付',
+    yearlyBilling: '年付',
   },
   personal: {
     lite: {

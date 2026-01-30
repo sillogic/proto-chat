@@ -10,7 +10,7 @@ import { Center, Flexbox } from 'react-layout-kit';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
 
-import type { PlanData } from '../../../hooks/useSubscriptionPlans';
+import type { PlanData } from '../../hooks/useSubscriptionPlans';
 import type { BillingCycle } from './BillingToggle';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
@@ -118,6 +118,9 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
 }));
 
 const planIcons = {
+  enterprise: {
+    icon: Atom,
+  },
   free: {
     icon: Sparkles,
   },
@@ -130,17 +133,29 @@ const planIcons = {
   ultra: {
     icon: Atom,
   },
-  enterprise: {
-    icon: Atom,
-  },
+};
+
+// Helper functions
+const formatStorage = (mb: number) => {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${mb} MB`;
+};
+
+const formatNumber = (num: number | string) => {
+  const n = typeof num === 'string' ? parseFloat(num) : num;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+  return n.toString();
 };
 
 interface PlanCardProps {
   billingCycle: BillingCycle;
+  currentPlanSlug?: string;
+  currentSubscriptionType?: string;
   plan: PlanData;
 }
 
-const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
+const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, currentSubscriptionType }) => {
   const { t } = useTranslation('subscription');
   const { styles, theme } = useStyles();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -161,20 +176,35 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
   const hasYearlyOption = yearlyPrice !== null;
   const showYearlyDiscount = isYearly && yearlyPrice && yearlyPrice < monthlyPrice * 12;
 
-  // Format storage and vector limits
-  const formatStorage = (mb: number) => {
-    if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
-    return `${mb} MB`;
+  // Determine button text and style based on current subscription
+  // BUG FIX: Compare planSlug + billingInterval + subscriptionType
+  const currentBillingInterval = isYearly ? 'year' : 'month';
+  const isCurrentPlan =
+    currentPlanSlug === plan.slug &&
+    currentSubscriptionType === 'recurring' &&
+    currentBillingInterval === (isYearly ? 'year' : 'month');
+  const isUpgrade = currentPlanSlug && !isCurrentPlan && currentPrice > 0; // TODO: Add price comparison logic
+
+  const getButtonText = () => {
+    if (isCurrentPlan) {
+      return t('cta.currentSubscription', '我的订阅');
+    }
+    if (isUpgrade) {
+      return t('cta.upgradeSubscription', '订阅升级');
+    }
+    return t('cta.upgrade', '升级');
   };
 
-  const formatNumber = (num: number | string) => {
-    const n = typeof num === 'string' ? parseFloat(num) : num;
-    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-    if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
-    return n.toString();
+  const getButtonType = () => {
+    if (isCurrentPlan) {
+      return 'default';
+    }
+    if (isUpgrade || plan.isPopular) {
+      return 'primary';
+    }
+    return 'default';
   };
 
-  // Get support level display text
   return (
     <Flexbox className={styles.card}>
       {plan.isPopular && <div className={styles.popularBadge}>{t('cta.popular', '推荐')}</div>}
@@ -215,16 +245,16 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
         {/* Upgrade Button */}
         <Button
           block
-          disabled={!hasYearlyOption && isYearly}
+          disabled={isCurrentPlan || (!hasYearlyOption && isYearly)}
           onClick={() => setPaymentModalOpen(true)}
           style={
-            plan.isPopular
+            isUpgrade || (plan.isPopular && !isCurrentPlan)
               ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
               : undefined
           }
-          type={plan.isPopular ? 'primary' : 'default'}
+          type={getButtonType()}
         >
-          {t('cta.upgrade', '升级')}
+          {getButtonText()}
         </Button>
       </Flexbox>
 
@@ -243,7 +273,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
           </span>
           <Flexbox gap={6}>
             {(plan.features?.display?.model_estimates || []).map((estimate, index) => (
-              <Flexbox key={index} align={'center'} gap={8} horizontal>
+              <Flexbox align={'center'} gap={8} horizontal key={index}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>{estimate.model}</span>
                 <span className={styles.featureValue}>{estimate.count}</span>
@@ -336,6 +366,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle }) => {
         open={paymentModalOpen}
         planId={plan.id}
         planName={plan.name}
+        subscriptionType="recurring"
       />
     </Flexbox>
   );

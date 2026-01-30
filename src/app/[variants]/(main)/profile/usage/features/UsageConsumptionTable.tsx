@@ -137,17 +137,11 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
     return true;
   }) || [];
 
-  // Determine which columns to use
-  const columns = activeTab === 'image' ? imageColumns : tokenColumns;
-
   return (
     <Tabs
       activeKey={activeTab}
-      onChange={setActiveTab}
       items={[
         {
-          key: 'all',
-          label: '全部',
           children: (
             <Table
               columns={tokenColumns}
@@ -170,10 +164,10 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
               size="small"
             />
           ),
+          key: 'all',
+          label: '全部',
         },
         {
-          key: 'text',
-          label: '文本/向量',
           children: (
             <Table
               columns={tokenColumns}
@@ -196,10 +190,10 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
               size="small"
             />
           ),
+          key: 'text',
+          label: '文本/向量',
         },
         {
-          key: 'image',
-          label: '图片生成',
           children: (
             <Table
               columns={imageColumns}
@@ -222,8 +216,11 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
               size="small"
             />
           ),
+          key: 'image',
+          label: '图片生成',
         },
       ]}
+      onChange={setActiveTab}
     />
   );
 });

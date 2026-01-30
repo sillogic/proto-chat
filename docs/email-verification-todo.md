@@ -211,5 +211,58 @@ SMTP_SECURE=false
 
 ---
 
+## 🧹 定期清理未验证用户
+
+为防止恶意注册产生的垃圾数据，建议设置定期清理任务。
+
+### 清理逻辑
+
+只删除满足**所有**以下条件的用户：
+1. 未验证邮箱 (`emailVerified = false`)
+2. 创建时间超过 7 天
+3. 没有 `user_extensions` 记录（未初始化，说明未完成验证）
+
+### 方式 1：手动执行脚本
+
+```bash
+# 清理 7 天前的未验证用户
+npx tsx scripts/cleanup-unverified-users.ts
+
+# 自定义保留天数（如 3 天）
+npx tsx scripts/cleanup-unverified-users.ts 3
+```
+
+### 方式 2：定时 Cron API
+
+API 地址：`/api/cron/cleanup-unverified-users`
+
+**本地测试：**
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3010/api/cron/cleanup-unverified-users
+```
+
+**生产环境：**
+使用 cron 服务（如 [cron-job.org](https://cron-job.org)、Vercel Cron）每天调用一次：
+- URL: `https://your-domain.com/api/cron/cleanup-unverified-users`
+- Method: GET
+- Header: `Authorization: Bearer YOUR_CRON_SECRET`
+
+### Vercel Cron 配置（可选）
+
+在 `vercel.json` 中添加：
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-unverified-users",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
+```
+这将在每天凌晨 3 点自动清理。
+
+---
+
 **任务创建时间：** 2026-01-29
 **预计完成时间：** 明天（2026-01-30）

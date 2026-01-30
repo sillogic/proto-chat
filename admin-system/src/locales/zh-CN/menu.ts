@@ -52,6 +52,7 @@ export default {
   'menu.users': '用户管理',
   'menu.plans': '订阅方案',
   'menu.subscriptionRecords': '订阅记录',
+  'menu.paymentOrders': '支付订单',
   'menu.modelPricing': '模型价格',
   'menu.apiKeys': '模型供应商配置',
   'menu.aiProviders': 'AI服务商',

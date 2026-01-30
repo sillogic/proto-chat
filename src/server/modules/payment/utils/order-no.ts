@@ -18,7 +18,7 @@ export function generateOrderNo(): string {
   const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
 
   // 6-digit random number
-  const random = Math.floor(100000 + Math.random() * 900000);
+  const random = Math.floor(100_000 + Math.random() * 900_000);
 
   return `PC${timestamp}${random}`;
 }

@@ -13,7 +13,7 @@ import {
   userSubscriptionHistory,
   userTransactions,
 } from '@lobechat/database';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { WeChatNativeChannel } from '@/server/modules/payment/channels/wechat-native';
@@ -27,13 +27,22 @@ function buildXmlResponse(returnCode: 'SUCCESS' | 'FAIL', returnMsg?: string): s
 }
 
 // Helper to calculate expiration date
-function calculateExpiresAt(billingInterval: 'month' | 'year'): Date {
+function calculateExpiresAt(
+  subscriptionType: 'recurring' | 'onetime',
+  billingInterval: 'month' | 'year',
+  durationMonths?: number | null,
+): Date {
   const now = new Date();
   const expiresAt = new Date(now);
 
-  if (billingInterval === 'year') {
+  if (subscriptionType === 'onetime') {
+    // One-time payment: add duration months
+    expiresAt.setMonth(expiresAt.getMonth() + (durationMonths || 1));
+  } else if (billingInterval === 'year') {
+    // Yearly recurring subscription
     expiresAt.setFullYear(expiresAt.getFullYear() + 1);
   } else {
+    // Monthly recurring subscription
     expiresAt.setMonth(expiresAt.getMonth() + 1);
   }
 
@@ -55,9 +64,9 @@ export async function POST(request: NextRequest) {
 
     // 2. Initialize WeChat channel for signature verification
     const wechatConfig = {
+      apiKey: process.env.WECHAT_PAY_API_KEY || '',
       appId: process.env.WECHAT_PAY_APP_ID || '',
       mchId: process.env.WECHAT_PAY_MCH_ID || '',
-      apiKey: process.env.WECHAT_PAY_API_KEY || '',
       notifyUrl: process.env.WECHAT_PAY_NOTIFY_URL || '',
     };
 
@@ -141,9 +150,9 @@ export async function POST(request: NextRequest) {
       await tx
         .update(paymentOrders)
         .set({
-          status: 'paid',
-          paidAt: paidAt || new Date(),
           channelOrderNo,
+          paidAt: paidAt || new Date(),
+          status: 'paid',
           updatedAt: new Date(),
         })
         .where(eq(paymentOrders.orderNo, orderNo));
@@ -163,8 +172,13 @@ export async function POST(request: NextRequest) {
 
       // 7c. Calculate dates
       const now = new Date();
-      const expiresAt = calculateExpiresAt(order.planInterval);
-      const nextCreditGrantAt = calculateNextCreditGrantAt();
+      const subscriptionType = (order.subscriptionType || 'recurring') as 'recurring' | 'onetime';
+      const durationMonths = order.durationMonths;
+      const planInterval = order.planInterval as 'month' | 'year';
+      const expiresAt = calculateExpiresAt(subscriptionType, planInterval, durationMonths);
+
+      // For one-time payments, don't set nextCreditGrantAt (no auto-renewal)
+      const nextCreditGrantAt = subscriptionType === 'recurring' ? calculateNextCreditGrantAt() : null;
 
       // 7d. Update or insert user_extensions
       const existingUserExt = await tx
@@ -178,43 +192,50 @@ export async function POST(request: NextRequest) {
         await tx
           .update(userExtensions)
           .set({
-            currentPlan: plan.slug,
-            planId: plan.id,
-            planExpiresAt: expiresAt,
             billingInterval: order.planInterval,
+            currentPlan: plan.slug,
+            durationMonths,
             nextCreditGrantAt,
+            planExpiresAt: expiresAt,
+            planId: plan.id,
+            subscriptionType,
             updatedAt: now,
           })
           .where(eq(userExtensions.userId, order.userId));
       } else {
         // Insert new record
         await tx.insert(userExtensions).values({
-          id: crypto.randomUUID(),
-          userId: order.userId,
-          currentPlan: plan.slug,
-          planId: plan.id,
-          planExpiresAt: expiresAt,
           billingInterval: order.planInterval,
-          nextCreditGrantAt,
           createdAt: now,
+          currentPlan: plan.slug,
+          durationMonths,
+          id: crypto.randomUUID(),
+          nextCreditGrantAt,
+          planExpiresAt: expiresAt,
+          planId: plan.id,
+          subscriptionType,
           updatedAt: now,
+          userId: order.userId,
         });
       }
 
       // 7e. Write subscription history
       const price = order.planInterval === 'year' ? plan.yearlyPrice : plan.monthlyPrice;
       await tx.insert(userSubscriptionHistory).values({
-        id: crypto.randomUUID(),
-        userId: order.userId,
-        planId: plan.id,
-        planSlug: plan.slug,
-        status: 'active',
-        price: price || order.amount,
         billingInterval: order.planInterval,
-        orderNo,
-        startDate: now,
-        endDate: expiresAt,
         createdAt: now,
+        durationMonths,
+        endDate: expiresAt,
+        id: crypto.randomUUID(),
+        orderNo,
+        planId: plan.id,
+        planName: plan.name,
+        planSlug: plan.slug,
+        price: price || order.amount,
+        startDate: now,
+        status: 'active',
+        subscriptionType,
+        userId: order.userId,
       });
 
       // 7f. Grant credits - Reset balance to plan credits
@@ -238,29 +259,29 @@ export async function POST(request: NextRequest) {
       } else {
         // Insert new balance
         await tx.insert(userBalances).values({
-          id: crypto.randomUUID(),
-          userId: order.userId,
           balance: credits,
           createdAt: now,
+          id: crypto.randomUUID(),
           updatedAt: now,
+          userId: order.userId,
         });
       }
 
       // 7g. Write transaction record
       await tx.insert(userTransactions).values({
-        id: crypto.randomUUID(),
-        userId: order.userId,
-        type: 'SUBSCRIPTION_GRANT',
-        category: 'SUBSCRIPTION_PURCHASE',
         amount: credits,
         balanceAfter: credits,
+        category: 'SUBSCRIPTION_PURCHASE',
+        createdAt: now,
+        id: crypto.randomUUID(),
         metadata: {
+          billingInterval: order.planInterval,
           orderNo,
           planId: plan.id,
           planSlug: plan.slug,
-          billingInterval: order.planInterval,
         },
-        createdAt: now,
+        type: 'SUBSCRIPTION_GRANT',
+        userId: order.userId,
       });
     });
 

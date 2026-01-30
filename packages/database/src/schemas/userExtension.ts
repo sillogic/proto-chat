@@ -21,6 +21,12 @@ export const userExtensions = pgTable(
         // 当前计费周期 'month' | 'year'，free 用户为 NULL
         billingInterval: text('billing_interval'),
 
+        // 订阅类型：'recurring' (自动续订) | 'onetime' (一次性付费)
+        subscriptionType: text('subscription_type').default('recurring'),
+
+        // 一次性付费的持续月数 (1, 3, 6, 12)，循环订阅为 NULL
+        durationMonths: integer('duration_months'),
+
 
 
 
@@ -286,6 +292,12 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
 
     // 计费周期
     billingInterval: text('billing_interval'),
+
+    // 订阅类型：'recurring' (自动续订) | 'onetime' (一次性付费)
+    subscriptionType: text('subscription_type').default('recurring'),
+
+    // 一次性付费的持续月数 (1, 3, 6, 12)，循环订阅为 NULL
+    durationMonths: integer('duration_months'),
 
     // 关联订单号
     orderNo: varchar('order_no', { length: 64 }),

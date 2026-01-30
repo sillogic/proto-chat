@@ -1,5 +1,5 @@
 import { Icon } from '@lobehub/ui';
-import { BadgeCentIcon, ChartColumnBigIcon, KeyIcon, ShieldCheck, UserCircle } from 'lucide-react';
+import { BadgeCentIcon, ChartColumnBigIcon, KeyIcon, Receipt, ShieldCheck, UserCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -39,6 +39,15 @@ export const useCategory = () => {
       label: (
         <Link onClick={(e) => e.preventDefault()} to={'/profile/stats'}>
           {t('tab.stats')}
+        </Link>
+      ),
+    },
+    {
+      icon: <Icon icon={Receipt} />,
+      key: ProfileTabs.Orders,
+      label: (
+        <Link onClick={(e) => e.preventDefault()} to={'/profile/orders'}>
+          订单记录
         </Link>
       ),
     },

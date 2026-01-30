@@ -64,6 +64,12 @@ export default [
     component: './Subscription/Records',
   },
   {
+    path: '/payment-orders',
+    name: 'paymentOrders',
+    icon: 'TransactionOutlined',
+    component: './Payments/Orders',
+  },
+  {
     path: '/model-pricing',
     name: 'modelPricing',
     icon: 'DollarOutlined',
