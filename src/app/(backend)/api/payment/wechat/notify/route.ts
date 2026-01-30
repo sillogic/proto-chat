@@ -3,10 +3,10 @@
  * Handles payment success notifications from WeChat Pay
  */
 
-import { serverDB } from '@/database/client';
 import {
   paymentNotifications,
   paymentOrders,
+  serverDB,
   subscriptionPlans,
   userBalances,
   userExtensions,
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 7. Process payment success in a transaction
-    await serverDB.transaction(async (tx) => {
+    await serverDB.transaction(async (tx: typeof serverDB) => {
       // 7a. Update payment order
       await tx
         .update(paymentOrders)
@@ -222,17 +222,17 @@ export async function POST(request: NextRequest) {
       // 7e. Write subscription history
       const price = order.planInterval === 'year' ? plan.yearlyPrice : plan.monthlyPrice;
       await tx.insert(userSubscriptionHistory).values({
-        billingInterval: order.planInterval,
         createdAt: now,
         durationMonths,
-        endDate: expiresAt,
+        endedAt: expiresAt,
         id: crypto.randomUUID(),
         orderNo,
         planId: plan.id,
         planName: plan.name,
-        planSlug: plan.slug,
+        planType: plan.type,
         price: price || order.amount,
-        startDate: now,
+        slug: plan.slug,
+        startedAt: now,
         status: 'active',
         subscriptionType,
         userId: order.userId,
@@ -252,16 +252,15 @@ export async function POST(request: NextRequest) {
         await tx
           .update(userBalances)
           .set({
-            balance: credits,
+            balance: String(credits),
             updatedAt: now,
           })
           .where(eq(userBalances.userId, order.userId));
       } else {
         // Insert new balance
         await tx.insert(userBalances).values({
-          balance: credits,
+          balance: String(credits),
           createdAt: now,
-          id: crypto.randomUUID(),
           updatedAt: now,
           userId: order.userId,
         });
@@ -269,8 +268,8 @@ export async function POST(request: NextRequest) {
 
       // 7g. Write transaction record
       await tx.insert(userTransactions).values({
-        amount: credits,
-        balanceAfter: credits,
+        amount: String(credits),
+        balanceAfter: String(credits),
         category: 'SUBSCRIPTION_PURCHASE',
         createdAt: now,
         id: crypto.randomUUID(),

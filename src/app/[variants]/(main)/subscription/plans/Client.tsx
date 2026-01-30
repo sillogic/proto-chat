@@ -126,7 +126,7 @@ const Client = memo<ClientProps>(() => {
               // One-time payment cards
               individualPlans.map((plan) => (
                 <OnetimePlanCard
-                  currentPlanSlug={currentPlan?.planSlug}
+                  currentPlanSlug={currentPlan?.planSlug || undefined}
                   currentSubscriptionType={currentPlan?.subscriptionType || undefined}
                   key={plan.id}
                   plan={plan}
@@ -137,7 +137,7 @@ const Client = memo<ClientProps>(() => {
               individualPlans.map((plan) => (
                 <PlanCard
                   billingCycle={billingCycle}
-                  currentPlanSlug={currentPlan?.planSlug}
+                  currentPlanSlug={currentPlan?.planSlug || undefined}
                   currentSubscriptionType={currentPlan?.subscriptionType || undefined}
                   key={plan.id}
                   plan={plan}
@@ -170,7 +170,7 @@ const Client = memo<ClientProps>(() => {
             {teamPlans.map((plan) => (
               <PlanCard
                 billingCycle={billingCycle}
-                currentPlanSlug={currentPlan?.planSlug}
+                currentPlanSlug={currentPlan?.planSlug || undefined}
                 currentSubscriptionType={currentPlan?.subscriptionType || undefined}
                 key={plan.id}
                 plan={plan}

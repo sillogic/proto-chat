@@ -44,7 +44,7 @@ async function backfill() {
                         planType: freePlan.type,
                         slug: freePlan.slug,
                         features: freePlan.features || {},
-                        price: freePlan.price,
+                        price: freePlan.monthlyPrice || 0,
                         isActive: true,
                         startedAt: now,
                         createdAt: now

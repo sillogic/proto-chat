@@ -9,8 +9,8 @@
  * Vercel Cron: "5 0 * * *"
  */
 
-import { serverDB } from '@/database/client';
 import {
+  serverDB,
   subscriptionPlans,
   userBalances,
   userExtensions,
@@ -78,7 +78,7 @@ async function grantMonthlyCredits() {
 
       const credits = Number.parseInt(plan[0].credits, 10);
 
-      await serverDB.transaction(async (tx) => {
+      await serverDB.transaction(async (tx: typeof serverDB) => {
         // Reset user balance
         const existingBalance = await tx
           .select()
@@ -90,15 +90,14 @@ async function grantMonthlyCredits() {
           await tx
             .update(userBalances)
             .set({
-              balance: credits,
+              balance: String(credits),
               updatedAt: now,
             })
             .where(eq(userBalances.userId, user.userId));
         } else {
           await tx.insert(userBalances).values({
-            balance: credits,
+            balance: String(credits),
             createdAt: now,
-            id: crypto.randomUUID(),
             updatedAt: now,
             userId: user.userId,
           });
@@ -106,8 +105,8 @@ async function grantMonthlyCredits() {
 
         // Write transaction record
         await tx.insert(userTransactions).values({
-          amount: credits,
-          balanceAfter: credits,
+          amount: String(credits),
+          balanceAfter: String(credits),
           category: 'MONTHLY_GRANT',
           createdAt: now,
           id: crypto.randomUUID(),
@@ -188,7 +187,7 @@ async function processExpirations() {
 
   for (const user of expiredUsers) {
     try {
-      await serverDB.transaction(async (tx) => {
+      await serverDB.transaction(async (tx: typeof serverDB) => {
         // Update user to free plan
         await tx
           .update(userExtensions)
@@ -203,14 +202,15 @@ async function processExpirations() {
 
         // Write expiration record to subscription history
         await tx.insert(userSubscriptionHistory).values({
-          billingInterval: null,
           createdAt: now,
-          endDate: now,
+          endedAt: now,
           id: crypto.randomUUID(),
           planId: user.planId!,
-          planSlug: user.currentPlan!,
+          planName: 'Expired Plan',
+          planType: 'individual',
           price: 0,
-          startDate: user.planExpiresAt!,
+          slug: user.currentPlan!,
+          startedAt: user.planExpiresAt!,
           status: 'expired',
           userId: user.userId,
         });
@@ -221,15 +221,15 @@ async function processExpirations() {
         await tx
           .update(userBalances)
           .set({
-            balance: freeCredits,
+            balance: String(freeCredits),
             updatedAt: now,
           })
           .where(eq(userBalances.userId, user.userId));
 
         // Write transaction record
         await tx.insert(userTransactions).values({
-          amount: freeCredits,
-          balanceAfter: freeCredits,
+          amount: String(freeCredits),
+          balanceAfter: String(freeCredits),
           category: 'SUBSCRIPTION_EXPIRED',
           createdAt: now,
           id: crypto.randomUUID(),
