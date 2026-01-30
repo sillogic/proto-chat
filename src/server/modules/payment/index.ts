@@ -3,8 +3,8 @@
  * Orchestrates payment operations across different channels
  */
 
-import type { DrizzleClient } from '@lobechat/database/client';
 import { paymentOrders, subscriptionPlans } from '@lobechat/database';
+import type { LobeChatDatabase } from '@lobechat/database';
 import { eq, and } from 'drizzle-orm';
 
 import type { PaymentChannel, PaymentConfig, CreateOrderInput, PaymentOrder } from './types';
@@ -14,9 +14,9 @@ import { generateOrderNo } from './utils/order-no';
 
 export class PaymentService {
   private channels: Map<string, PaymentChannel> = new Map();
-  private db: DrizzleClient;
+  private db: LobeChatDatabase;
 
-  constructor(db: DrizzleClient, config: PaymentConfig) {
+  constructor(db: LobeChatDatabase, config: PaymentConfig) {
     this.db = db;
 
     // Register payment channels
@@ -87,7 +87,7 @@ export class PaymentService {
       }
     } else {
       // Recurring subscription pricing
-      amount = planInterval === 'year' ? planData.yearlyPrice : planData.monthlyPrice;
+      amount = (planInterval === 'year' ? planData.yearlyPrice : planData.monthlyPrice) || 0;
     }
 
     if (!amount || amount <= 0) {
@@ -113,7 +113,8 @@ export class PaymentService {
     if (existingOrder && existingOrder.length > 0) {
       const order = existingOrder[0];
       if (order.expiredAt > new Date()) {
-        const codeUrl = order.channelData?.code_url as string | undefined;
+        const channelData = (order.channelData as Record<string, unknown>) || {};
+        const codeUrl = channelData.code_url as string | undefined;
         return {
           amount: order.amount,
           codeUrl,

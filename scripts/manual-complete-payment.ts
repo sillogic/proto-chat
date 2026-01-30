@@ -10,9 +10,9 @@
  * bun run scripts/manual-complete-payment.ts PC20260130141216170611
  */
 
-import { serverDB } from '@/database/client';
 import {
   paymentOrders,
+  serverDB,
   subscriptionPlans,
   userBalances,
   userExtensions,
@@ -107,7 +107,7 @@ async function completePayment() {
   // 5. 执行事务
   console.log('💾 开始更新数据库...\n');
 
-  await serverDB.transaction(async (tx) => {
+  await serverDB.transaction(async (tx: typeof serverDB) => {
     // 5a. 更新订单状态
     await tx
       .update(paymentOrders)
@@ -164,13 +164,15 @@ async function completePayment() {
       id: crypto.randomUUID(),
       userId: order.userId,
       planId: plan.id,
-      planSlug: plan.slug,
+      slug: plan.slug,
+      planName: plan.name,
+      planType: plan.type,
       status: 'active',
       price: price || order.amount,
-      billingInterval: order.planInterval,
+      subscriptionType: 'recurring',
       orderNo,
-      startDate: now,
-      endDate: expiresAt,
+      startedAt: now,
+      endedAt: expiresAt,
       createdAt: now,
     });
 
@@ -188,7 +190,7 @@ async function completePayment() {
       await tx
         .update(userBalances)
         .set({
-          balance: credits,
+          balance: String(credits),
           updatedAt: now,
         })
         .where(eq(userBalances.userId, order.userId));
@@ -196,9 +198,8 @@ async function completePayment() {
       console.log(`✅ 积分余额已重置为 ${credits}`);
     } else {
       await tx.insert(userBalances).values({
-        id: crypto.randomUUID(),
         userId: order.userId,
-        balance: credits,
+        balance: String(credits),
         createdAt: now,
         updatedAt: now,
       });
@@ -212,8 +213,8 @@ async function completePayment() {
       userId: order.userId,
       type: 'SUBSCRIPTION_GRANT',
       category: 'SUBSCRIPTION_PURCHASE',
-      amount: credits,
-      balanceAfter: credits,
+      amount: String(credits),
+      balanceAfter: String(credits),
       metadata: {
         orderNo,
         planId: plan.id,

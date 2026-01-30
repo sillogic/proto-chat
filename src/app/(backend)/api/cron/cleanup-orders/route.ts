@@ -8,8 +8,7 @@
  * Paid orders are NEVER deleted (financial records)
  */
 
-import { serverDB } from '@/database/client';
-import { paymentOrders } from '@lobechat/database';
+import { paymentOrders, serverDB } from '@lobechat/database';
 import { and, lt, or, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
