@@ -21,6 +21,7 @@ import protochatRoutes from './routes/protochat';
 import systemDefaultModelRoutes from './routes/system-default-model';
 import systemEmbeddingRoutes from './routes/system-embedding';
 import analyticsRoutes from './routes/analytics';
+import paymentsRoutes from './routes/payments';
 import process from 'node:process';
 // 加载环境变量 - 必须在其他 import 之前
 dotenv.config({ override: true });
@@ -76,6 +77,7 @@ app.use('/api/admin/models/pricing', adminPricingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin/subscriptions', subscriptionRoutes);
+app.use('/api/admin/payments', paymentsRoutes);
 app.use('/api/admin/protochat', protochatRoutes);
 app.use('/api/admin/system-config/default-model', systemDefaultModelRoutes);
 app.use('/api/admin/system-embedding', systemEmbeddingRoutes);
