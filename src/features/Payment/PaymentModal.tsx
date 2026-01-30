@@ -1,9 +1,10 @@
 'use client';
 
 import { Icon } from '@lobehub/ui';
+import { AlipayOutlined, WechatOutlined } from '@ant-design/icons';
 import { Alert, Button, message, Modal, Segmented, Spin } from 'antd';
 import { createStyles } from 'antd-style';
-import { Alipay, CheckCircle, WechatPay, XCircle } from '@ant-design/icons';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
@@ -308,7 +309,7 @@ const PaymentModal = memo<PaymentModalProps>(
                 {
                   label: (
                     <Flexbox align="center" gap={8} horizontal style={{ padding: '4px 8px' }}>
-                      <Alipay style={{ fontSize: 20 }} />
+                      <AlipayOutlined style={{ fontSize: 20 }} />
                       <span>{t('payment.alipay', '支付宝')}</span>
                     </Flexbox>
                   ),
@@ -317,7 +318,7 @@ const PaymentModal = memo<PaymentModalProps>(
                 {
                   label: (
                     <Flexbox align="center" gap={8} horizontal style={{ padding: '4px 8px' }}>
-                      <WechatPay style={{ fontSize: 20 }} />
+                      <WechatOutlined style={{ fontSize: 20 }} />
                       <span>{t('payment.wechat', '微信支付')}</span>
                     </Flexbox>
                   ),

@@ -3,10 +3,10 @@
  * Handles payment success notifications from Alipay
  */
 
-import { serverDB } from '@/database/client';
 import {
   paymentNotifications,
   paymentOrders,
+  serverDB,
   subscriptionPlans,
   userBalances,
   userExtensions,
@@ -200,6 +200,7 @@ export async function POST(request: NextRequest) {
         id: crypto.randomUUID(),
         userId: order.userId,
         planId: plan.id,
+        planName: plan.name,
         planSlug: plan.slug,
         status: 'active',
         price: price || order.amount,

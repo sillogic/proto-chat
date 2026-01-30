@@ -12,18 +12,33 @@ const paymentProcedure = authedProcedure.use(serverDatabase);
 
 // Initialize payment service with config from environment
 function getPaymentService(serverDB: any) {
-  const config = {
-    wechat: {
-      appId: process.env.WECHAT_PAY_APP_ID || '',
-      mchId: process.env.WECHAT_PAY_MCH_ID || '',
-      apiKey: process.env.WECHAT_PAY_API_KEY || '',
-      notifyUrl: process.env.WECHAT_PAY_NOTIFY_URL || '',
-    },
-  };
+  const config: any = {};
 
-  // Validate WeChat config
-  if (!config.wechat.appId || !config.wechat.mchId || !config.wechat.apiKey) {
-    throw new Error('WeChat Pay configuration is incomplete. Please check environment variables.');
+  // WeChat Pay configuration (optional)
+  if (process.env.WECHAT_PAY_APP_ID && process.env.WECHAT_PAY_MCH_ID && process.env.WECHAT_PAY_API_KEY) {
+    config.wechat = {
+      appId: process.env.WECHAT_PAY_APP_ID,
+      mchId: process.env.WECHAT_PAY_MCH_ID,
+      apiKey: process.env.WECHAT_PAY_API_KEY,
+      notifyUrl: process.env.WECHAT_PAY_NOTIFY_URL || '',
+    };
+  }
+
+  // Alipay configuration (optional)
+  if (process.env.ALIPAY_APP_ID && process.env.ALIPAY_PRIVATE_KEY && process.env.ALIPAY_PUBLIC_KEY) {
+    config.alipay = {
+      appId: process.env.ALIPAY_APP_ID,
+      privateKey: process.env.ALIPAY_PRIVATE_KEY,
+      alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY,
+      notifyUrl: process.env.ALIPAY_NOTIFY_URL || '',
+      sandbox: process.env.ALIPAY_SANDBOX === 'true',
+      gatewayUrl: process.env.ALIPAY_GATEWAY_URL,
+    };
+  }
+
+  // Validate at least one payment method is configured
+  if (!config.wechat && !config.alipay) {
+    throw new Error('No payment method configured. Please configure WeChat Pay or Alipay in environment variables.');
   }
 
   return new PaymentService(serverDB, config);
@@ -41,7 +56,7 @@ export const paymentRouter = router({
         interval: z.enum(['month', 'year'], {
           errorMap: () => ({ message: 'Interval must be month or year' }),
         }),
-        payChannel: z.enum(['wechat_native']).default('wechat_native'),
+        payChannel: z.enum(['wechat_native', 'alipay_precreate']).default('alipay_precreate'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
