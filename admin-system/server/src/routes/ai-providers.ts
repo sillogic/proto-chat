@@ -184,8 +184,13 @@ router.post('/', authenticateToken, requirePermission('system.admin'), async (re
 
 // POST /api/admin/ai-providers/check - 连通性测试
 router.post('/check', authenticateToken, requirePermission('system.admin'), async (req, res) => {
+    // 在 try 块外声明变量，确保 catch 块中可访问
+    let id: string = '';
+    let model: string = '';
+    let inputKeyVaults: any;
+
     try {
-        const { id, model, keyVaults: inputKeyVaults } = req.body;
+        ({ id, model, keyVaults: inputKeyVaults } = req.body);
 
         if (!id || !model) {
             return res.status(400).json({
@@ -218,20 +223,24 @@ router.post('/check', authenticateToken, requirePermission('system.admin'), asyn
         // 使用 require 动态导入 ModelRuntime
         const { ModelRuntime } = require('@lobechat/model-runtime');
 
+        console.log(`[Connectivity Check] Provider: ${id}, Model: ${model}`);
+
         const runtime = ModelRuntime.initializeWithProvider(id as any, {
             apiKey: keyVaults.apiKey,
             baseURL: keyVaults.proxyUrl || keyVaults.endpoint,
         });
 
         // 进行简单的对话测试
+        // 注意：chat() 方法总是返回 Response 对象（流式响应）
         const response = await runtime.chat({
             messages: [{ content: 'hello', role: 'user' }],
             model: model,
-            stream: false,
+            stream: true, // 使用 streaming 模式，因为 chat 方法总是会返回流
         });
 
         if (response instanceof Response && !response.ok) {
             const error = await response.json().catch(() => ({}));
+            console.error(`[Connectivity Check] Response error:`, error);
             return res.status(response.status).json({
                 error,
                 message: '连通性测试失败',
@@ -239,30 +248,125 @@ router.post('/check', authenticateToken, requirePermission('system.admin'), asyn
             });
         }
 
+        // 如果是流响应，读取一小块数据来验证连接
+        if (response instanceof Response && response.body) {
+            const reader = response.body.getReader();
+            const { done } = await reader.read(); // 读取第一个 chunk
+            reader.releaseLock(); // 释放锁
+            if (done) {
+                return res.status(500).json({
+                    message: '连通性测试失败：未收到任何响应数据',
+                    success: false,
+                });
+            }
+        }
+
+        console.log(`[Connectivity Check] Success for ${id}/${model}`);
+
         return res.json({
             message: '连通性测试通过',
             success: true,
         });
     } catch (error: any) {
-        console.error('Connectivity check error:', error);
+        console.error('[Connectivity Check] Error:', error);
+
+        // 提取更详细的错误信息 - 处理各种可能的错误格式
+        let errorMessage = '未知错误';
+        let errorType = 'UnknownError';
+
+        if (typeof error === 'string') {
+            errorMessage = error;
+        } else if (error?.message) {
+            errorMessage = error.message;
+        } else if (error?.error?.message) {
+            errorMessage = error.error.message;
+            errorType = error.error.type || errorType;
+        } else if (error?.cause?.message) {
+            errorMessage = error.cause.message;
+        } else if (error?.toString && typeof error.toString === 'function') {
+            errorMessage = error.toString();
+        } else {
+            errorMessage = JSON.stringify(error);
+        }
+
+        errorType = error?.type || error?.name || error?.errorType || errorType;
+
+        console.error(`[Connectivity Check] Parsed error: ${errorType} - ${errorMessage}`);
+
+        // 检查是否是 API Key 相关错误
+        const isInvalidAPIKey = errorMessage.includes('401') ||
+                                errorMessage.includes('Unauthorized') ||
+                                errorMessage.includes('Invalid') ||
+                                errorType.includes('InvalidAPIKey') ||
+                                errorType.includes('InvalidProviderAPIKey');
+
+        if (isInvalidAPIKey) {
+            return res.status(401).json({
+                message: 'API Key 无效或已过期',
+                success: false,
+            });
+        }
 
         // 检查是否是模型不存在/已下架的错误
-        const is404Error = error?.error?.code === 404 || error?.statusCode === 404;
-        const isModelNotFound = error?.error?.message?.includes('No endpoints found') ||
-                                error?.message?.includes('not found') ||
-                                error?.message?.includes('model not found');
+        const is404Error = error?.error?.code === 404 ||
+                            error?.statusCode === 404 ||
+                            errorMessage.includes('404');
+        const isModelNotFound = errorMessage.includes('No endpoints found') ||
+                                errorMessage.includes('not found') ||
+                                errorMessage.includes('model not found') ||
+                                errorMessage.includes('does not exist');
 
         if (is404Error || isModelNotFound) {
             return res.status(404).json({
-                error: error.message || error,
-                message: '该模型可能已经下架或不存在，请尽快更新模型列表',
+                message: `模型 "${model}" 不存在或已下架，请更新模型列表`,
+                success: false,
+            });
+        }
+
+        // 检查是否是不支持的供应商类型
+        const isProviderNotSupported = errorMessage.includes('Cannot find runtime') ||
+                                      errorMessage.includes('No provider found') ||
+                                      error?.cause?.message?.includes('provider');
+
+        if (isProviderNotSupported) {
+            return res.status(400).json({
+                message: `暂不支持该供应商 "${id}" 的连通性测试`,
+                success: false,
+            });
+        }
+
+        // 检查是否是网络连接错误
+        const isNetworkError = errorMessage.includes('ECONNREFUSED') ||
+                               errorMessage.includes('ENOTFOUND') ||
+                               errorMessage.includes('fetch failed') ||
+                               errorMessage.includes('Network error');
+
+        if (isNetworkError) {
+            return res.status(503).json({
+                message: '网络连接失败，请检查 API 地址是否正确',
+                success: false,
+            });
+        }
+
+        // 检查是否是余额不足错误
+        const isInsufficientBalance = errorMessage.includes('余额不足') ||
+                                      errorMessage.includes('无可用') ||
+                                      errorMessage.includes('insufficient') ||
+                                      errorMessage.includes('balance') ||
+                                      errorMessage.includes('quota') ||
+                                      errorType.includes('InsufficientBalance') ||
+                                      errorType.includes('QuotaExceeded');
+
+        if (isInsufficientBalance) {
+            return res.status(402).json({
+                message: errorMessage,
                 success: false,
             });
         }
 
         return res.status(500).json({
-            error: error.message || error,
-            message: '连通性测试发生异常',
+            message: errorMessage,
+            error: errorType,
             success: false,
         });
     }
@@ -332,8 +436,8 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
     }
 });
 
-// POST /api/admin/providers/:id/test-api - 测试 API（不写入数据库）
-router.post('/providers/:id/test-api', authenticateToken, requirePermission('system.admin'), async (req, res) => {
+// POST /:id/test-api - 测试 API（不写入数据库）
+router.post('/:id/test-api', authenticateToken, requirePermission('system.admin'), async (req, res) => {
     try {
         const { id } = req.params;
         const { apiUrl } = req.body;
@@ -401,8 +505,8 @@ router.post('/providers/:id/test-api', authenticateToken, requirePermission('sys
     }
 });
 
-// POST /api/admin/providers/:id/sync - 同步模型列表
-router.post('/providers/:id/sync', authenticateToken, requirePermission('system.admin'), async (req, res) => {
+// POST /:id/sync - 同步模型列表
+router.post('/:id/sync', authenticateToken, requirePermission('system.admin'), async (req, res) => {
     try {
         const { id } = req.params;
 
