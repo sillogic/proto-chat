@@ -19,13 +19,13 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     color: ${token.colorTextSecondary};
   `,
   section: css`
-    margin-bottom: 24px;
+    margin-block-end: 24px;
   `,
   sectionTitle: css`
+    margin-block-end: 16px;
     font-size: 16px;
     font-weight: 600;
     color: ${token.colorText};
-    margin-bottom: 16px;
   `,
 }));
 

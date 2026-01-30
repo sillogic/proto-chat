@@ -18,12 +18,12 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     padding: 24px;
   `,
   header: css`
-    margin-bottom: 24px;
+    margin-block-end: 24px;
   `,
   subtitle: css`
+    margin-block-start: 4px;
     font-size: 14px;
     color: ${token.colorTextSecondary};
-    margin-top: 4px;
   `,
   table: css`
     .ant-table {
