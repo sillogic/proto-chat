@@ -229,7 +229,7 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh, 
       </Card>
 
       <Card title="连通性检查" variant="outlined">
-        <Checker id={id} config={config} apiPrefix={apiPrefix} />
+        <Checker id={id} config={config} apiPrefix={apiPrefix} form={form} />
       </Card>
 
       <Card title="模型管理" variant="outlined">
