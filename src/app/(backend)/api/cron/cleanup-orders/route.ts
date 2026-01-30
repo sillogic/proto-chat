@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
     if (count === 0) {
       console.log('[Cleanup] No orders to clean up');
       return NextResponse.json({
-        success: true,
-        message: 'No orders to clean up',
         deleted: 0,
+        message: 'No orders to clean up',
+        success: true,
       });
     }
 
@@ -68,17 +68,17 @@ export async function POST(request: NextRequest) {
     console.log(`[Cleanup] Successfully deleted ${count} old orders`);
 
     return NextResponse.json({
-      success: true,
-      message: `Deleted ${count} old pending/closed orders`,
-      deleted: count,
       cutoffDate: cutoffDate.toISOString(),
+      deleted: count,
+      message: `Deleted ${count} old pending/closed orders`,
+      success: true,
     });
   } catch (error) {
     console.error('[Cleanup] Error cleaning up orders:', error);
     return NextResponse.json(
       {
-        success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
+        success: false,
       },
       { status: 500 },
     );

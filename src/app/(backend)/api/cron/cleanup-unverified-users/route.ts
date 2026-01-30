@@ -51,9 +51,9 @@ export async function GET(request: Request) {
     // These are users who registered but never verified their email
     const unverifiedUsers = await serverDB
       .select({
-        id: users.id,
-        email: users.email,
         createdAt: users.createdAt,
+        email: users.email,
+        id: users.id,
       })
       .from(users)
       .leftJoin(userExtensions, eq(users.id, userExtensions.userId))
@@ -67,8 +67,8 @@ export async function GET(request: Request) {
 
     if (unverifiedUsers.length === 0) {
       return NextResponse.json({
-        message: 'No unverified users to clean up',
         deleted: 0,
+        message: 'No unverified users to clean up',
       });
     }
 
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     // Due to CASCADE, related records in accounts, auth_sessions, etc. will be deleted automatically
     const userIds = unverifiedUsers.map((u) => u.id);
 
-    const result = await serverDB
+    await serverDB
       .delete(users)
       .where(
         and(
@@ -92,10 +92,10 @@ export async function GET(request: Request) {
     );
 
     return NextResponse.json({
-      message: `Successfully cleaned up ${unverifiedUsers.length} unverified users`,
+      cutoffDate: cutoffDate.toISOString(),
       deleted: unverifiedUsers.length,
       emails: unverifiedUsers.map((u) => u.email),
-      cutoffDate: cutoffDate.toISOString(),
+      message: `Successfully cleaned up ${unverifiedUsers.length} unverified users`,
     });
   } catch (error) {
     console.error('[Cron] Failed to clean up unverified users:', error);

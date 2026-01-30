@@ -67,8 +67,8 @@ export class UserService {
         .insert(userExtensions)
         .values({
           currentPlan: freePlan.slug,
-          planId: freePlan.id,
-          planExpiresAt: null, // Free plan has no expiration
+          planExpiresAt: null,
+          planId: freePlan.id, // Free plan has no expiration
           userId: user.id,
         })
         .onConflictDoNothing();

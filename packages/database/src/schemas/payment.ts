@@ -20,6 +20,11 @@ export const paymentOrders = pgTable('payment_orders', {
   amount: integer('amount').notNull(), // Amount in cents
   currency: varchar('currency', { length: 10 }).default('CNY').notNull(),
 
+  // Subscription type: 'recurring' (auto-renew) or 'onetime' (one-time payment)
+  subscriptionType: varchar('subscription_type', { length: 20 }).default('recurring').notNull(),
+  // Duration in months for one-time payments (1, 3, 6, 12), NULL for recurring
+  durationMonths: integer('duration_months'),
+
   // Payment channel
   payChannel: varchar('pay_channel', { length: 20 }).notNull(), // 'wechat_native' | 'alipay' | ...
   channelOrderNo: varchar('channel_order_no', { length: 128 }), // Channel order number

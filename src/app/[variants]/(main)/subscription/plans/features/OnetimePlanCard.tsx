@@ -1,17 +1,15 @@
 'use client';
 
 import { Icon, Tag } from '@lobehub/ui';
-import { Button, Tooltip } from 'antd';
+import { Button, Select, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'lucide-react';
 import { memo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
 
 import type { PlanData } from '../../hooks/useSubscriptionPlans';
-import type { BillingCycle } from './BillingToggle';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   card: css`
@@ -53,6 +51,11 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     font-size: 13px;
     line-height: 1.5;
     color: ${token.colorTextSecondary};
+  `,
+  discountTag: css`
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   `,
   featureItem: css`
     font-size: 13px;
@@ -97,11 +100,6 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   priceLabel: css`
     font-size: 13px;
     color: ${token.colorTextSecondary};
-  `,
-  priceOriginal: css`
-    font-size: 13px;
-    color: ${token.colorTextQuaternary};
-    text-decoration: line-through;
   `,
   sectionTitle: css`
     font-size: 12px;
@@ -148,66 +146,77 @@ const formatNumber = (num: number | string) => {
   return n.toString();
 };
 
-interface PlanCardProps {
-  billingCycle: BillingCycle;
+interface OnetimePlanCardProps {
   currentPlanSlug?: string;
   currentSubscriptionType?: string;
   plan: PlanData;
 }
 
-const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, currentSubscriptionType }) => {
-  const { t } = useTranslation('subscription');
+const OnetimePlanCard = memo<OnetimePlanCardProps>(({
+  plan,
+  currentPlanSlug,
+  currentSubscriptionType,
+}) => {
   const { styles, theme } = useStyles();
+  const [selectedDuration, setSelectedDuration] = useState<number>(3); // Default to 3 months
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const iconConfig = planIcons[plan.slug as keyof typeof planIcons] || planIcons.lite;
-  const isYearly = billingCycle === 'yearly';
 
   // Calculate prices in yuan (divide by 100 since backend stores in cents)
   const monthlyPrice = plan.monthlyPrice / 100;
   const yearlyPrice = plan.yearlyPrice ? plan.yearlyPrice / 100 : null;
 
-  // Determine displayed price
-  const currentPrice = isYearly && yearlyPrice ? Math.round(yearlyPrice / 12) : monthlyPrice;
-  const yearlyTotal = yearlyPrice;
+  // Calculate amount based on selected duration
+  const calculateAmount = (months: number) => {
+    if (months === 12 && yearlyPrice) {
+      return yearlyPrice;
+    }
+    return monthlyPrice * months;
+  };
+
+  // Calculate discount for 12 months
   const monthlyTotal = monthlyPrice * 12;
+  const yearlyDiscount = yearlyPrice && monthlyTotal > yearlyPrice
+    ? Math.round(((monthlyTotal - yearlyPrice) / monthlyTotal) * 100)
+    : 0;
 
-  // Check if yearly billing is available and has discount
-  const hasYearlyOption = yearlyPrice !== null;
-  const showYearlyDiscount = isYearly && yearlyPrice && yearlyPrice < monthlyPrice * 12;
+  const currentAmount = calculateAmount(selectedDuration);
 
-  // Determine button text and style based on current subscription
-  // BUG FIX: Compare planSlug + billingInterval + subscriptionType
-  const currentBillingInterval = isYearly ? 'year' : 'month';
+  // Check if this is the current plan
   const isCurrentPlan =
-    currentPlanSlug === plan.slug &&
-    currentSubscriptionType === 'recurring' &&
-    currentBillingInterval === (isYearly ? 'year' : 'month');
-  const isUpgrade = currentPlanSlug && !isCurrentPlan && currentPrice > 0; // TODO: Add price comparison logic
+    currentPlanSlug === plan.slug && currentSubscriptionType === 'onetime';
 
   const getButtonText = () => {
     if (isCurrentPlan) {
-      return t('cta.currentSubscription', '我的订阅');
+      return '当前方案';
     }
-    if (isUpgrade) {
-      return t('cta.upgradeSubscription', '订阅升级');
-    }
-    return t('cta.upgrade', '升级');
+    return '立即购买';
   };
 
-  const getButtonType = () => {
-    if (isCurrentPlan) {
-      return 'default';
-    }
-    if (isUpgrade || plan.isPopular) {
-      return 'primary';
-    }
-    return 'default';
-  };
+  // Duration options
+  const durationOptions = [
+    { label: `1个月 - ¥${monthlyPrice}`, value: 1 },
+    { label: `3个月 - ¥${monthlyPrice * 3}`, value: 3 },
+    { label: `6个月 - ¥${monthlyPrice * 6}`, value: 6 },
+    {
+      label: (
+        <Flexbox align={'center'} gap={6} horizontal>
+          <span>12个月 - ¥{yearlyPrice}</span>
+          {yearlyDiscount > 0 && (
+            <Tag className={styles.discountTag} size={'small'}>
+              省{yearlyDiscount}%
+            </Tag>
+          )}
+        </Flexbox>
+      ),
+      value: 12,
+    },
+  ];
 
   return (
     <Flexbox className={styles.card}>
-      {plan.isPopular && <div className={styles.popularBadge}>{t('cta.popular', '推荐')}</div>}
+      {plan.isPopular && <div className={styles.popularBadge}>推荐</div>}
 
       {/* Header */}
       <Flexbox className={styles.cardHeader} gap={16}>
@@ -221,55 +230,61 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
           </Flexbox>
         </Flexbox>
 
-        {/* Price */}
+        {/* Duration Selector */}
         <Flexbox gap={4}>
-          <Flexbox align={'baseline'} gap={4} horizontal>
-            <span className={styles.price}>¥{currentPrice}</span>
-            <span className={styles.priceLabel}>/月</span>
-          </Flexbox>
-          {showYearlyDiscount && (
-            <Flexbox align={'center'} gap={8} horizontal>
-              <span className={styles.priceOriginal}>¥{monthlyTotal}/年</span>
-              <Tag color="blue" size={'small'}>
-                {t('billingCycle.yearlyDiscount', '年付优惠')}
-              </Tag>
-            </Flexbox>
-          )}
-          {isYearly && yearlyTotal && (
-            <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
-              实付 ¥{yearlyTotal}/年
-            </span>
-          )}
+          <span style={{ color: theme.colorTextSecondary, fontSize: 13 }}>
+            选择购买时长
+          </span>
+          <Select
+            onChange={setSelectedDuration}
+            options={durationOptions}
+            size="large"
+            style={{ width: '100%' }}
+            value={selectedDuration}
+          />
         </Flexbox>
 
-        {/* Upgrade Button */}
+        {/* Total Price */}
+        <Flexbox gap={4}>
+          <Flexbox align={'baseline'} gap={4} horizontal>
+            <span className={styles.price}>¥{currentAmount}</span>
+            <span className={styles.priceLabel}>总计</span>
+          </Flexbox>
+          <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
+            {selectedDuration === 12 && yearlyDiscount > 0
+              ? `立省 ¥${monthlyTotal - (yearlyPrice || 0)}`
+              : '无需自动续订'}
+          </span>
+        </Flexbox>
+
+        {/* Purchase Button */}
         <Button
           block
-          disabled={isCurrentPlan || (!hasYearlyOption && isYearly)}
+          disabled={isCurrentPlan}
           onClick={() => setPaymentModalOpen(true)}
           style={
-            isUpgrade || (plan.isPopular && !isCurrentPlan)
+            plan.isPopular && !isCurrentPlan
               ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
               : undefined
           }
-          type={getButtonType()}
+          type={plan.isPopular && !isCurrentPlan ? 'primary' : 'default'}
         >
           {getButtonText()}
         </Button>
       </Flexbox>
 
-      {/* Body */}
+      {/* Body - Same features as PlanCard */}
       <Flexbox className={styles.cardBody} gap={20}>
         {/* Credits Section */}
         <Flexbox gap={8}>
           <Flexbox align={'center'} gap={4} horizontal>
-            <span className={styles.sectionTitle}>{t('features.credits', '计算积分')}</span>
+            <span className={styles.sectionTitle}>计算积分</span>
             <Tooltip title="计算积分用于调用 AI 模型">
               <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
             </Tooltip>
           </Flexbox>
           <span style={{ color: theme.colorText, fontSize: 15, fontWeight: 600 }}>
-            {formatNumber(plan.credits)} {t('features.creditsPerMonth', '/月')}
+            {formatNumber(plan.credits)} /月
           </span>
           <Flexbox gap={6}>
             {(plan.features?.display?.model_estimates || []).map((estimate, index) => (
@@ -284,18 +299,16 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
 
         {/* Files Section */}
         <Flexbox gap={8}>
-          <span className={styles.sectionTitle}>{t('features.files', '文件存储')}</span>
+          <span className={styles.sectionTitle}>文件存储</span>
           <Flexbox gap={6}>
             <Flexbox align={'center'} gap={8} horizontal>
               <Icon className={styles.checkIcon} icon={Check} size={14} />
-              <span className={styles.featureItem}>{t('features.fileStorage', '文件存储')}</span>
+              <span className={styles.featureItem}>文件存储</span>
               <span className={styles.featureValue}>{formatStorage(plan.storageLimit)}</span>
             </Flexbox>
             <Flexbox align={'center'} gap={8} horizontal>
               <Icon className={styles.checkIcon} icon={Check} size={14} />
-              <span className={styles.featureItem}>
-                {t('features.vectorStorage', '向量存储')}
-              </span>
+              <span className={styles.featureItem}>向量存储</span>
               <span className={styles.featureValue}>
                 {formatNumber(plan.vectorLimit)} 条{' '}
                 <span style={{ color: theme.colorTextQuaternary, fontSize: 12 }}>
@@ -306,36 +319,32 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
           </Flexbox>
         </Flexbox>
 
-        {/* Cloud Services - Capabilities */}
+        {/* Cloud Services */}
         <Flexbox gap={8}>
-          <span className={styles.sectionTitle}>{t('features.cloudService', '云服务')}</span>
+          <span className={styles.sectionTitle}>云服务</span>
           <Flexbox gap={6}>
             {plan.features?.cloud_services?.unlimited_history && (
               <Flexbox align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>
-                  {t('features.unlimitedHistory', '无限历史记录')}
-                </span>
+                <span className={styles.featureItem}>无限历史记录</span>
               </Flexbox>
             )}
             {plan.features?.cloud_services?.global_sync && (
               <Flexbox align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>
-                  {t('features.globalSync', '全球同步')}
-                </span>
+                <span className={styles.featureItem}>全球同步</span>
               </Flexbox>
             )}
             {plan.features?.cloud_services?.web_search && (
               <Flexbox align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>{t('features.webSearch', '联网搜索')}</span>
+                <span className={styles.featureItem}>联网搜索</span>
               </Flexbox>
             )}
             {plan.features?.capabilities?.custom_api && (
               <Flexbox align={'center'} gap={8} horizontal>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
-                <span className={styles.featureItem}>{t('features.customApi', '自定义 API')}</span>
+                <span className={styles.featureItem}>自定义 API</span>
               </Flexbox>
             )}
           </Flexbox>
@@ -343,7 +352,7 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
 
         {/* Support */}
         <Flexbox gap={8}>
-          <span className={styles.sectionTitle}>{t('features.support', '技术支持')}</span>
+          <span className={styles.sectionTitle}>技术支持</span>
           <Flexbox align={'center'} gap={8} horizontal>
             <Icon className={styles.checkIcon} icon={Check} size={14} />
             <span className={styles.featureItem}>
@@ -355,23 +364,23 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
 
       {/* Payment Modal */}
       <PaymentModal
-        amount={isYearly && plan.yearlyPrice ? plan.yearlyPrice : plan.monthlyPrice}
-        billingCycle={isYearly ? 'year' : 'month'}
+        amount={calculateAmount(selectedDuration) * 100} // Convert back to cents
+        billingCycle="month" // Use month as base interval
+        durationMonths={selectedDuration}
         onClose={() => setPaymentModalOpen(false)}
         onSuccess={() => {
           setPaymentModalOpen(false);
-          // TODO: Refresh user state or redirect
           window.location.reload();
         }}
         open={paymentModalOpen}
         planId={plan.id}
         planName={plan.name}
-        subscriptionType="recurring"
+        subscriptionType="onetime"
       />
     </Flexbox>
   );
 });
 
-PlanCard.displayName = 'PlanCard';
+OnetimePlanCard.displayName = 'OnetimePlanCard';
 
-export default PlanCard;
+export default OnetimePlanCard;

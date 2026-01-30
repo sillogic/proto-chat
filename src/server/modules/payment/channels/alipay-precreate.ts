@@ -18,11 +18,12 @@ import type {
 } from '../types';
 
 interface AlipayConfig {
-  appId: string;
-  privateKey: string; // RSA2 private key
-  alipayPublicKey: string; // Alipay public key for signature verification
+  // RSA2 private key
+  alipayPublicKey: string;
+  appId: string; 
+  gatewayUrl?: string; // Alipay public key for signature verification
   notifyUrl: string;
-  gatewayUrl?: string; // Optional, defaults to production gateway
+  privateKey: string; // Optional, defaults to production gateway
   sandbox?: boolean; // Whether to use sandbox environment
 }
 
@@ -54,9 +55,9 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
   private formatPrivateKey(key: string): string {
     // Remove existing headers/footers and whitespace
     const cleanKey = key
-      .replace(/-----BEGIN.*?-----/g, '')
-      .replace(/-----END.*?-----/g, '')
-      .replace(/\s/g, '');
+      .replaceAll(/-----BEGIN.*?-----/g, '')
+      .replaceAll(/-----END.*?-----/g, '')
+      .replaceAll(/\s/g, '');
 
     // Detect format by checking the beginning of the Base64 string
     // PKCS1 starts with MIIEowIBAAKCAQEA or similar
@@ -80,9 +81,9 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
   private formatPublicKey(key: string): string {
     // Remove existing headers/footers and whitespace
     const cleanKey = key
-      .replace(/-----BEGIN.*?-----/g, '')
-      .replace(/-----END.*?-----/g, '')
-      .replace(/\s/g, '');
+      .replaceAll(/-----BEGIN.*?-----/g, '')
+      .replaceAll(/-----END.*?-----/g, '')
+      .replaceAll(/\s/g, '');
 
     // Add public key headers
     return `-----BEGIN PUBLIC KEY-----\n${cleanKey.match(/.{1,64}/g)?.join('\n')}\n-----END PUBLIC KEY-----`;
@@ -93,22 +94,37 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
    */
   async createPayment(order: PaymentOrder): Promise<ChannelPaymentResult> {
     try {
+      // Generate friendly subject for the order
+      // Priority: use slug (English, no encoding issues) > fallback to planId
+      const planDisplay = order.planSlug
+        ? order.planSlug.charAt(0).toUpperCase() + order.planSlug.slice(1)
+        : order.planId;
+      const intervalDisplay = order.planInterval === 'year' ? 'Annual' : 'Monthly';
+
+      // For onetime payments, show duration
+      let subjectSuffix = '';
+      if (order.subscriptionType === 'onetime' && order.durationMonths) {
+        subjectSuffix = ` - ${order.durationMonths}mo`;
+      }
+
       const bizContent = {
         out_trade_no: order.orderNo,
-        total_amount: (order.amount / 100).toFixed(2), // Convert cents to yuan
-        subject: `Subscription Plan ${order.planId}`, // Use English to avoid encoding issues
-        timeout_express: '120m', // 2 hours
+        // Convert cents to yuan
+        subject: `${planDisplay} ${intervalDisplay} Plan${subjectSuffix}`,
+        // Use English to avoid encoding issues
+        timeout_express: '120m',
+        total_amount: (order.amount / 100).toFixed(2), // 2 hours
       };
 
       const params = this.buildCommonParams('alipay.trade.precreate', bizContent);
       const signedParams = this.signParams(params);
 
       const response = await fetch(this.gatewayUrl, {
-        method: 'POST',
+        body: new URLSearchParams(signedParams).toString(),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams(signedParams).toString(),
+        method: 'POST',
       });
 
       const responseText = await response.text();
@@ -117,8 +133,8 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
       const responseKey = 'alipay_trade_precreate_response';
       if (!result[responseKey]) {
         return {
-          success: false,
           errorMessage: 'Invalid response from Alipay',
+          success: false,
         };
       }
 
@@ -126,8 +142,8 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
 
       if (tradeResponse.code !== '10000') {
         return {
-          success: false,
           errorMessage: tradeResponse.sub_msg || tradeResponse.msg || 'Payment creation failed',
+          success: false,
         };
       }
 
@@ -140,8 +156,8 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
       if (responseKeyStart === -1) {
         console.error('Cannot find response key in text');
         return {
-          success: false,
           errorMessage: 'Invalid response format',
+          success: false,
         };
       }
 
@@ -162,32 +178,30 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
         }
       }
 
-      const signContent = responseText.substring(contentStart, contentEnd);
+      const signContent = responseText.slice(contentStart, contentEnd);
 
       // In sandbox mode, signature verification might fail due to key mismatch
       // Skip verification in sandbox for testing (enable strict mode in production)
-      if (!this.config.sandbox) {
-        if (!this.verifySignature(signContent, sign)) {
+      if (!this.config.sandbox && !this.verifySignature(signContent, sign)) {
           console.error('Signature verification failed');
           return {
-            success: false,
             errorMessage: 'Invalid response signature',
+            success: false,
           };
         }
-      }
 
       return {
-        success: true,
-        channelOrderNo: tradeResponse.trade_no,
         channelData: {
           code_url: tradeResponse.qr_code, // Unified field name with WeChat (was qr_code)
           out_trade_no: tradeResponse.out_trade_no,
         },
+        channelOrderNo: tradeResponse.trade_no,
+        success: true,
       };
     } catch (error) {
       return {
-        success: false,
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        success: false,
       };
     }
   }
@@ -197,10 +211,9 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
    */
   async parseNotification(
     rawBody: string | Buffer,
-    _headers?: Record<string, any>,
   ): Promise<NotificationResult> {
     try {
-      const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf-8') : rawBody;
+      const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
       const params = new URLSearchParams(bodyStr);
       const data: Record<string, string> = {};
 
@@ -214,45 +227,46 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
 
       if (!sign || signType !== 'RSA2') {
         return {
-          success: false,
-          orderNo: data.out_trade_no || '',
           errorMessage: 'Invalid signature type',
+          orderNo: data.out_trade_no || '',
+          success: false,
         };
       }
 
       // Remove sign and sign_type for verification
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { sign: _sign, sign_type: _signType, ...paramsToVerify } = data;
       const signContent = this.buildSignContent(paramsToVerify);
 
       if (!this.verifySignature(signContent, sign)) {
         return {
-          success: false,
-          orderNo: data.out_trade_no || '',
           errorMessage: 'Invalid signature',
+          orderNo: data.out_trade_no || '',
+          success: false,
         };
       }
 
       // Check trade status
       if (data.trade_status !== 'TRADE_SUCCESS' && data.trade_status !== 'TRADE_FINISHED') {
         return {
-          success: false,
-          orderNo: data.out_trade_no || '',
           errorMessage: `Trade status is ${data.trade_status}`,
+          orderNo: data.out_trade_no || '',
+          success: false,
         };
       }
 
       return {
-        success: true,
-        orderNo: data.out_trade_no,
+        amount: Math.round(parseFloat(data.total_amount) * 100),
         channelOrderNo: data.trade_no,
+        orderNo: data.out_trade_no,
         paidAt: data.gmt_payment ? new Date(data.gmt_payment) : new Date(),
-        amount: Math.round(parseFloat(data.total_amount) * 100), // Convert yuan to cents
+        success: true, // Convert yuan to cents
       };
     } catch (error) {
       return {
-        success: false,
-        orderNo: '',
         errorMessage: error instanceof Error ? error.message : 'Parse error',
+        orderNo: '',
+        success: false,
       };
     }
   }
@@ -270,11 +284,11 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
       const signedParams = this.signParams(params);
 
       const response = await fetch(this.gatewayUrl, {
-        method: 'POST',
+        body: new URLSearchParams(signedParams).toString(),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams(signedParams).toString(),
+        method: 'POST',
       });
 
       const responseText = await response.text();
@@ -302,11 +316,11 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
       const status = this.mapTradeStatus(tradeResponse.trade_status);
 
       return {
-        orderNo,
-        status,
         channelOrderNo: tradeResponse.trade_no,
+        orderNo,
         paidAt:
           tradeResponse.send_pay_date ? new Date(tradeResponse.send_pay_date) : undefined,
+        status,
       };
     } catch {
       return {
@@ -328,11 +342,11 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
     const signedParams = this.signParams(params);
 
     await fetch(this.gatewayUrl, {
-      method: 'POST',
+      body: new URLSearchParams(signedParams).toString(),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams(signedParams).toString(),
+      method: 'POST',
     });
 
     // Alipay close order API may fail if order is already paid/closed
@@ -345,14 +359,14 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
   private buildCommonParams(method: string, bizContent: Record<string, any>): Record<string, string> {
     return {
       app_id: this.config.appId,
-      method,
+      biz_content: JSON.stringify(bizContent),
+      charset: 'utf8',
       format: 'JSON',
-      charset: 'utf-8',
+      method,
+      notify_url: this.config.notifyUrl,
       sign_type: 'RSA2',
       timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
       version: '1.0',
-      notify_url: this.config.notifyUrl,
-      biz_content: JSON.stringify(bizContent),
     };
   }
 
@@ -381,7 +395,7 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
    */
   private generateSignature(content: string): string {
     const sign = crypto.createSign('RSA-SHA256');
-    sign.update(content, 'utf-8');
+    sign.update(content, 'utf8');
     return sign.sign(this.formattedPrivateKey, 'base64');
   }
 
@@ -391,7 +405,7 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
   private verifySignature(content: string, signature: string): boolean {
     try {
       const verify = crypto.createVerify('RSA-SHA256');
-      verify.update(content, 'utf-8');
+      verify.update(content, 'utf8');
       return verify.verify(this.formattedAlipayPublicKey, signature, 'base64');
     } catch {
       return false;
@@ -404,13 +418,15 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
   private mapTradeStatus(tradeStatus: string): PaymentStatus {
     switch (tradeStatus) {
       case 'TRADE_SUCCESS':
-      case 'TRADE_FINISHED':
+      case 'TRADE_FINISHED': {
         return 'paid';
-      case 'TRADE_CLOSED':
+      }
+      case 'TRADE_CLOSED': {
         return 'closed';
-      case 'WAIT_BUYER_PAY':
-      default:
+      }
+      default: {
         return 'pending';
+      }
     }
   }
 }

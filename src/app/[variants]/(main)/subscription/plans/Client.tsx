@@ -11,6 +11,7 @@ import { Center, Flexbox } from 'react-layout-kit';
 import { useSubscriptionPlans } from '../hooks/useSubscriptionPlans';
 import BillingToggle, { type BillingCycle } from './features/BillingToggle';
 import ComparisonTable from './features/ComparisonTable';
+import OnetimePlanCard from './features/OnetimePlanCard';
 import PlanCard from './features/PlanCard';
 import TeamPlan from './features/TeamPlan';
 
@@ -113,22 +114,36 @@ const Client = memo<ClientProps>(() => {
           <div className={styles.cardsContainer}>
             {[1, 2, 3].map((i) => (
               <Skeleton.Node
-                key={i}
                 active
-                style={{ width: 300, height: 500, borderRadius: 12 }}
+                key={i}
+                style={{ borderRadius: 12, height: 500, width: 300 }}
               />
             ))}
           </div>
         ) : (
           <div className={styles.cardsContainer}>
-            {individualPlans.map((plan) => (
-              <PlanCard
-                key={plan.id}
-                billingCycle={billingCycle}
-                currentPlanSlug={currentPlan?.planSlug}
-                plan={plan}
-              />
-            ))}
+            {billingCycle === 'onetime' ? (
+              // One-time payment cards
+              individualPlans.map((plan) => (
+                <OnetimePlanCard
+                  currentPlanSlug={currentPlan?.planSlug}
+                  currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                  key={plan.id}
+                  plan={plan}
+                />
+              ))
+            ) : (
+              // Recurring subscription cards
+              individualPlans.map((plan) => (
+                <PlanCard
+                  billingCycle={billingCycle}
+                  currentPlanSlug={currentPlan?.planSlug}
+                  currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                  key={plan.id}
+                  plan={plan}
+                />
+              ))
+            )}
           </div>
         )}
       </Flexbox>
@@ -154,9 +169,10 @@ const Client = memo<ClientProps>(() => {
           <div className={styles.cardsContainer}>
             {teamPlans.map((plan) => (
               <PlanCard
-                key={plan.id}
                 billingCycle={billingCycle}
                 currentPlanSlug={currentPlan?.planSlug}
+                currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                key={plan.id}
                 plan={plan}
               />
             ))}

@@ -834,6 +834,8 @@ table payment_orders {
   plan_interval varchar(10) [not null]
   amount integer [not null]
   currency varchar(10) [not null, default: 'CNY']
+  subscription_type varchar(20) [not null, default: 'recurring']
+  duration_months integer
   pay_channel varchar(20) [not null]
   channel_order_no varchar(128)
   status varchar(20) [not null, default: 'pending']
@@ -850,8 +852,6 @@ table protochat_model_pricing {
   model_id varchar(200) [not null]
   cost_input_price "numeric(15, 4)" [not null]
   cost_output_price "numeric(15, 4)" [not null]
-  user_input_price "numeric(15, 4)" [not null]
-  user_output_price "numeric(15, 4)" [not null]
   currency varchar(10) [default: 'USD']
   price_source varchar(50)
   is_free boolean [default: false]
@@ -895,6 +895,7 @@ table protochat_providers {
   type varchar(50) [not null]
   enabled boolean [not null, default: true]
   priority integer [default: 0]
+  alias varchar(10)
   api_key text
   base_url varchar(500)
   api_endpoint varchar(500)
@@ -907,6 +908,7 @@ table protochat_providers {
   indexes {
     enabled [name: 'protochat_providers_enabled_idx']
     priority [name: 'protochat_providers_priority_idx']
+    alias [name: 'protochat_providers_alias_unique', unique]
   }
 }
 
@@ -1430,6 +1432,8 @@ table user_extensions {
   accessed_at timestamp [default: `now()`]
   admin_notes text
   billing_interval text
+  subscription_type text [default: 'recurring']
+  duration_months integer
   clerk_created_at timestamp
   created_at timestamp [not null, default: `now()`]
   current_plan text [default: 'free']
@@ -1468,6 +1472,8 @@ table user_subscription_history {
   plan_type text [not null]
   price integer [default: 0]
   billing_interval text
+  subscription_type text [default: 'recurring']
+  duration_months integer
   order_no varchar(64)
   slug text
   started_at timestamp [not null, default: `now()`]
