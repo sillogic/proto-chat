@@ -202,7 +202,7 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }
               <Button
                 type="link"
                 icon={<LucideSettings size={14} />}
-                onClick={() => navigate('/protochat/providers')}
+                onClick={() => navigate('/protochat')}
                 style={{ paddingLeft: 0 }}
               >
                 前往 ProtoChat 管理后台配置底层供应商和模型
@@ -273,7 +273,7 @@ const ProviderDetail: React.FC<ProviderDetailProps> = ({ id, config, onRefresh }
       </Card>
 
       <Card title="连通性检查" variant="outlined">
-        <Checker id={id} config={config} />
+        <Checker id={id} config={config} form={form} />
       </Card>
 
       <ModelList

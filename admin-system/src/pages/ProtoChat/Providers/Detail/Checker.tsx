@@ -1,4 +1,4 @@
-import { Button, message, Space, Typography, Select } from 'antd';
+import { Button, message, Space, Typography, Select, FormInstance } from 'antd';
 import { LucideShieldCheck, LucideActivity, LucideAlertCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { request } from '@umijs/max';
@@ -11,9 +11,10 @@ interface CheckerProps {
   id: string;
   config?: AiProviderConfig;
   apiPrefix?: string;
+  form?: FormInstance;
 }
 
-const Checker: React.FC<CheckerProps> = ({ id, config, apiPrefix = '/api/admin' }) => {
+const Checker: React.FC<CheckerProps> = ({ id, config, apiPrefix = '/api/admin', form }) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -51,14 +52,50 @@ const Checker: React.FC<CheckerProps> = ({ id, config, apiPrefix = '/api/admin' 
       return;
     }
 
+    // 准备 keyVaults - 优先使用表单值，其次使用已保存的配置
+    let keyVaults: Record<string, any> | undefined;
+
+    if (form) {
+      // 从表单获取当前的 API Key 和代理地址
+      const formApiKey = form.getFieldValue('apiKey');
+      const formProxyUrl = form.getFieldValue('proxyUrl');
+      if (formApiKey) {
+        keyVaults = {
+          apiKey: formApiKey,
+          proxyUrl: formProxyUrl,
+        };
+      }
+    }
+
+    // 如果表单没有值，使用已保存的配置（后端会从数据库获取）
+    if (!keyVaults && config?.keyVaults?.apiKey) {
+      keyVaults = {
+        apiKey: config.keyVaults.apiKey,
+        proxyUrl: config.keyVaults.proxyUrl || config.settings?.baseUrl,
+      };
+    }
+
+    // 如果还是没有 API Key，提示用户
+    if (!keyVaults?.apiKey) {
+      message.error('请先填写并保存 API Key，或直接保存配置后再测试');
+      setStatus('error');
+      setErrorMsg('缺少 API Key 配置');
+      return;
+    }
+
     setLoading(true);
     setStatus('idle');
     try {
+      // 获取选中的模型对象，包含 originalId
+      const selectedModelObj = availableModels.find((m: any) => m.id === selectedModel);
+
       const res = await request<{ success: boolean; message?: string; error?: any }>(`${apiPrefix}/ai-providers/check`, {
         method: 'POST',
         data: {
           id,
           model: selectedModel,
+          originalId: selectedModelObj?.originalId,
+          keyVaults,
         },
       });
 
@@ -71,7 +108,8 @@ const Checker: React.FC<CheckerProps> = ({ id, config, apiPrefix = '/api/admin' 
       }
     } catch (e: any) {
       setStatus('error');
-      setErrorMsg(e.message || '网络连接异常');
+      const errorMessage = e.response?.data?.message || e.message || '网络连接异常';
+      setErrorMsg(errorMessage);
     } finally {
       setLoading(false);
     }
