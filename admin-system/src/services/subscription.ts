@@ -27,6 +27,9 @@ export interface ModelPricing {
     subProvider?: string | null; // 子供应商（仅 ProtoChat 使用）
     inputPrice: number | string;
     outputPrice: number | string;
+    perRequestPrice?: number | string | null; // 按次计费（用于图片生成等模型）
+    userInputPrice?: number | string; // 提示词用户价
+    userOutputPrice?: number | string; // 补全用户价
     memo?: string;
     updatedAt: string;
 }

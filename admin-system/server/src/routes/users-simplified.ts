@@ -2,6 +2,10 @@ import express from 'express';
 import { z } from 'zod';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 import { usageService } from '../services/usage-service';
+import { db } from '../config/database';
+import { users } from '../db/schema';
+import { userExtensions } from '../db/user-extensions-schema';
+import { eq } from 'drizzle-orm';
 
 const router: express.Router = express.Router();
 
@@ -207,6 +211,73 @@ router.get('/limits/check', requirePermission('users.read'), async (req: Authent
     return res.status(500).json({
       success: false,
       message: '检查用户限制失败',
+    });
+  }
+});
+
+// PUT /api/users/:userId/status - 更新用户状态（封禁/解封）
+router.put('/:userId/status', requirePermission('users.write'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { userId } = req.params;
+    const { banned, banReason } = req.body;
+
+    // 验证输入
+    if (typeof banned !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'banned 参数必须是布尔值',
+      });
+    }
+
+    // 检查用户是否存在
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (userResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在',
+      });
+    }
+
+    const now = new Date();
+
+    // 更新 users 表的 banned 状态
+    await db
+      .update(users)
+      .set({
+        banned,
+        updatedAt: now,
+      })
+      .where(eq(users.id, userId));
+
+    // 同步更新 user_extensions 表的暂停状态
+    await db
+      .update(userExtensions)
+      .set({
+        isSuspended: banned,
+        suspendReason: banned ? (banReason || '管理员操作') : null,
+        suspendedAt: banned ? now : null,
+        updatedAt: now,
+      })
+      .where(eq(userExtensions.userId, userId));
+
+    return res.json({
+      success: true,
+      message: banned ? '用户已封禁' : '用户已解封',
+      data: {
+        banned,
+        userId,
+      },
+    });
+  } catch (error) {
+    console.error('Update user status error:', error);
+    return res.status(500).json({
+      success: false,
+      message: '更新用户状态失败',
     });
   }
 });
