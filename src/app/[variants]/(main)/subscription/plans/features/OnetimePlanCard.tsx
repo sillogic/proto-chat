@@ -4,13 +4,15 @@ import { Icon, Tag } from '@lobehub/ui';
 import { Button, Select, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'lucide-react';
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Center, Flexbox } from 'react-layout-kit';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
+import UpgradePaymentModal from '@/features/Payment/UpgradePaymentModal';
 
 import type { PlanData } from '../../hooks/useSubscriptionPlans';
+import { checkUpgradeEligibility, type PlanLevelParams } from '../../utils/planLevel';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   card: css`
@@ -48,15 +50,42 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     flex-shrink: 0;
     color: ${token.colorSuccess};
   `,
+  currentTag: css`
+    padding-inline: 6px;
+    border-radius: 4px;
+
+    font-size: 11px;
+    color: ${token.colorPrimary};
+
+    background: ${token.colorPrimaryBg};
+  `,
   desc: css`
     font-size: 13px;
     line-height: 1.5;
     color: ${token.colorTextSecondary};
   `,
+  disabledTag: css`
+    padding-inline: 6px;
+    border-radius: 4px;
+
+    font-size: 11px;
+    color: ${token.colorTextQuaternary};
+
+    background: ${isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'};
+  `,
   discountTag: css`
     border: none;
     border-radius: 10px;
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  `,
+  upgradeTag: css`
+    padding-inline: 6px;
+    border-radius: 4px;
+
+    font-size: 11px;
+    color: ${token.colorSuccess};
+
+    background: ${token.colorSuccessBg};
   `,
   featureItem: css`
     font-size: 13px;
@@ -148,8 +177,13 @@ const formatNumber = (num: number | string) => {
 };
 
 interface OnetimePlanCardProps {
+  currentBillingInterval?: 'month' | 'year' | null;
+  currentDurationMonths?: number | null;
+  currentPaidAmount?: number; // 当前套餐实付金额（分）
+  currentPlanExpiresAt?: Date | null;
+  currentPlanName?: string;
   currentPlanSlug?: string;
-  currentSubscriptionType?: string;
+  currentSubscriptionType?: 'recurring' | 'onetime' | null;
   plan: PlanData;
 }
 
@@ -157,6 +191,11 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
   plan,
   currentPlanSlug,
   currentSubscriptionType,
+  currentBillingInterval,
+  currentDurationMonths,
+  currentPaidAmount,
+  currentPlanExpiresAt,
+  currentPlanName,
 }) => {
   const { styles, theme } = useStyles();
   const navigate = useNavigate();
@@ -183,33 +222,149 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
     ? Math.round(((monthlyTotal - yearlyPrice) / monthlyTotal) * 100)
     : 0;
 
+  // Calculate discount amount for 12-month one-time payment (in cents)
+  const yearlyDiscountAmount = selectedDuration === 12 && plan.yearlyPrice && plan.monthlyPrice * 12 > plan.yearlyPrice
+    ? plan.monthlyPrice * 12 - plan.yearlyPrice
+    : 0;
+
+  const discount = yearlyDiscountAmount > 0
+    ? {
+        amount: yearlyDiscountAmount,
+        label: '年付优惠',
+      }
+    : undefined;
+
   const currentAmount = calculateAmount(selectedDuration);
 
-  // Check if this is the current plan
-  const isCurrentPlan =
-    currentPlanSlug === plan.slug && currentSubscriptionType === 'onetime';
+  // Build current user plan params for level comparison
+  const currentPlanParams: PlanLevelParams | null = currentPlanSlug
+    ? {
+        billingInterval: currentBillingInterval,
+        durationMonths: currentDurationMonths,
+        planSlug: currentPlanSlug,
+        subscriptionType: currentSubscriptionType || 'recurring',
+      }
+    : null;
+
+  // Calculate eligibility for each duration option
+  const durationEligibility = useMemo(() => {
+    const durations = [1, 3, 6, 12] as const;
+    return durations.reduce(
+      (acc, duration) => {
+        const targetParams: PlanLevelParams = {
+          billingInterval: null,
+          durationMonths: duration,
+          planSlug: plan.slug,
+          subscriptionType: 'onetime',
+        };
+        acc[duration] = checkUpgradeEligibility(currentPlanParams, targetParams);
+        return acc;
+      },
+      {} as Record<number, ReturnType<typeof checkUpgradeEligibility>>,
+    );
+  }, [currentPlanParams, plan.slug]);
+
+  // Get eligibility for selected duration
+  const { canUpgrade, isCurrentPlan, isSameLevelOrLower } =
+    durationEligibility[selectedDuration] || {
+      canUpgrade: true,
+      isCurrentPlan: false,
+      isSameLevelOrLower: false,
+    };
+
+  // Button disabled state
+  const isButtonDisabled = isCurrentPlan || isSameLevelOrLower;
 
   const getButtonText = () => {
     if (isCurrentPlan) {
-      return '当前方案';
+      return '我的订阅';
     }
-    return '立即购买';
+    if (canUpgrade) {
+      return '订阅升级';
+    }
+    return '订阅';
   };
 
-  // Duration options
+  const getButtonType = () => {
+    if (isCurrentPlan || isSameLevelOrLower) {
+      return 'default';
+    }
+    if (canUpgrade || plan.isPopular) {
+      return 'primary';
+    }
+    return 'default';
+  };
+
+  // Tooltip for disabled lower-level plans
+  const getTooltipTitle = () => {
+    if (isSameLevelOrLower && !isCurrentPlan) {
+      return '您已开通同级或更高等级订阅，无需再订阅此套餐';
+    }
+    return '';
+  };
+
+  // Helper function to get status tag for duration option
+  const getStatusTag = (duration: number) => {
+    const eligibility = durationEligibility[duration];
+    if (!eligibility) return null;
+
+    if (eligibility.isCurrentPlan) {
+      return <span className={styles.currentTag}>当前方案</span>;
+    }
+    if (eligibility.canUpgrade) {
+      return <span className={styles.upgradeTag}>可升级</span>;
+    }
+    if (eligibility.isSameLevelOrLower) {
+      return <span className={styles.disabledTag}>不可用</span>;
+    }
+    return null;
+  };
+
+  // Duration options with status labels
   const durationOptions = [
-    { label: `1个月 - ¥${monthlyPrice}`, value: 1 },
-    { label: `3个月 - ¥${monthlyPrice * 3}`, value: 3 },
-    { label: `6个月 - ¥${monthlyPrice * 6}`, value: 6 },
     {
+      disabled: durationEligibility[1]?.isSameLevelOrLower && !durationEligibility[1]?.isCurrentPlan,
       label: (
-        <Flexbox align={'center'} gap={6} horizontal>
-          <span>12个月 - ¥{yearlyPrice}</span>
-          {yearlyDiscount > 0 && (
-            <Tag className={styles.discountTag} size={'small'}>
-              省{yearlyDiscount}%
-            </Tag>
-          )}
+        <Flexbox align={'center'} gap={6} horizontal justify={'space-between'} style={{ width: '100%' }}>
+          <span>1个月 - ¥{monthlyPrice}</span>
+          {getStatusTag(1)}
+        </Flexbox>
+      ),
+      value: 1,
+    },
+    {
+      disabled: durationEligibility[3]?.isSameLevelOrLower && !durationEligibility[3]?.isCurrentPlan,
+      label: (
+        <Flexbox align={'center'} gap={6} horizontal justify={'space-between'} style={{ width: '100%' }}>
+          <span>3个月 - ¥{monthlyPrice * 3}</span>
+          {getStatusTag(3)}
+        </Flexbox>
+      ),
+      value: 3,
+    },
+    {
+      disabled: durationEligibility[6]?.isSameLevelOrLower && !durationEligibility[6]?.isCurrentPlan,
+      label: (
+        <Flexbox align={'center'} gap={6} horizontal justify={'space-between'} style={{ width: '100%' }}>
+          <span>6个月 - ¥{monthlyPrice * 6}</span>
+          {getStatusTag(6)}
+        </Flexbox>
+      ),
+      value: 6,
+    },
+    {
+      disabled: durationEligibility[12]?.isSameLevelOrLower && !durationEligibility[12]?.isCurrentPlan,
+      label: (
+        <Flexbox align={'center'} gap={6} horizontal justify={'space-between'} style={{ width: '100%' }}>
+          <Flexbox align={'center'} gap={6} horizontal>
+            <span>12个月 - ¥{yearlyPrice}</span>
+            {yearlyDiscount > 0 && (
+              <Tag className={styles.discountTag} size={'small'}>
+                省{yearlyDiscount}%
+              </Tag>
+            )}
+          </Flexbox>
+          {getStatusTag(12)}
         </Flexbox>
       ),
       value: 12,
@@ -260,19 +415,30 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
         </Flexbox>
 
         {/* Purchase Button */}
-        <Button
-          block
-          disabled={isCurrentPlan}
-          onClick={() => setPaymentModalOpen(true)}
-          style={
-            plan.isPopular && !isCurrentPlan
-              ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
-              : undefined
-          }
-          type={plan.isPopular && !isCurrentPlan ? 'primary' : 'default'}
-        >
-          {getButtonText()}
-        </Button>
+        <Tooltip title={getTooltipTitle()}>
+          <span style={{ display: 'block' }}>
+            <Button
+              block
+              disabled={isButtonDisabled && !isCurrentPlan}
+              onClick={() => !isCurrentPlan && setPaymentModalOpen(true)}
+              style={
+                isCurrentPlan
+                  ? {
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      borderColor: 'rgba(59, 130, 246, 0.3)',
+                      color: '#1d4ed8',
+                      cursor: 'default',
+                    }
+                  : canUpgrade || (plan.isPopular && !isButtonDisabled)
+                    ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
+                    : undefined
+              }
+              type={isCurrentPlan ? 'default' : getButtonType()}
+            >
+              {getButtonText()}
+            </Button>
+          </span>
+        </Tooltip>
       </Flexbox>
 
       {/* Body - Same features as PlanCard */}
@@ -364,22 +530,52 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
         </Flexbox>
       </Flexbox>
 
-      {/* Payment Modal */}
-      <PaymentModal
-        amount={calculateAmount(selectedDuration) * 100} // Convert back to cents
-        billingCycle="month" // Use month as base interval
-        durationMonths={selectedDuration}
-        onClose={() => setPaymentModalOpen(false)}
-        onSuccess={() => {
-          setPaymentModalOpen(false);
-          // Navigate to profile to see updated subscription
-          navigate('/profile');
-        }}
-        open={paymentModalOpen}
-        planId={plan.id}
-        planName={plan.name}
-        subscriptionType="onetime"
-      />
+      {/* Payment Modal - Use UpgradePaymentModal for upgrades, PaymentModal for new subscriptions */}
+      {canUpgrade && currentPlanSlug && currentPlanSlug !== 'free' ? (
+        <UpgradePaymentModal
+          currentPlan={{
+            billingInterval: currentBillingInterval,
+            durationMonths: currentDurationMonths,
+            paidAmount: currentPaidAmount,
+            planExpiresAt: currentPlanExpiresAt,
+            planName: currentPlanName || currentPlanSlug,
+            planSlug: currentPlanSlug,
+            subscriptionType: currentSubscriptionType || 'recurring',
+          }}
+          discount={discount}
+          newPlan={{
+            billingInterval: 'month',
+            durationMonths: selectedDuration,
+            // 原价始终按月价计算（不含折扣），折扣单独显示
+            originalPrice: plan.monthlyPrice * selectedDuration,
+            planId: plan.id,
+            planName: plan.name,
+            planSlug: plan.slug,
+            subscriptionType: 'onetime',
+          }}
+          onClose={() => setPaymentModalOpen(false)}
+          onSuccess={() => {
+            setPaymentModalOpen(false);
+            navigate('/profile');
+          }}
+          open={paymentModalOpen}
+        />
+      ) : (
+        <PaymentModal
+          amount={calculateAmount(selectedDuration) * 100}
+          billingCycle="month"
+          durationMonths={selectedDuration}
+          onClose={() => setPaymentModalOpen(false)}
+          onSuccess={() => {
+            setPaymentModalOpen(false);
+            navigate('/profile');
+          }}
+          open={paymentModalOpen}
+          planId={plan.id}
+          planName={plan.name}
+          subscriptionType="onetime"
+        />
+      )}
     </Flexbox>
   );
 });

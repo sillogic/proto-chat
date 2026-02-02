@@ -272,7 +272,7 @@ export default {
   },
   tab: {
     apikey: 'API Key 管理',
-    orders: '订单记录',
+    billing: '账单管理',
     profile: '个人资料',
     security: '安全',
     stats: '数据统计',

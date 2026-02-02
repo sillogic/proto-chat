@@ -61,14 +61,22 @@ export class UserService {
         'Free plan not found in database. User subscription not initialized.',
       );
     } else {
-      // For free plan, no expiration (or set to far future)
-      // Free plan doesn't expire, set to null
+      // Calculate next credit grant date (1 month from now)
+      // Free plan users also get monthly credit grants
+      const now = new Date();
+      const nextCreditGrantAt = new Date(now);
+      nextCreditGrantAt.setMonth(nextCreditGrantAt.getMonth() + 1);
+
+      // For free plan, no expiration (set to null)
+      // But set nextCreditGrantAt so free users get monthly credit reset
       await this.db
         .insert(userExtensions)
         .values({
           currentPlan: freePlan.slug,
-          planExpiresAt: null,
-          planId: freePlan.id, // Free plan has no expiration
+          nextCreditGrantAt, // Free plan also gets monthly credit reset
+          planExpiresAt: null, // Free plan doesn't expire
+          planId: freePlan.id,
+          subscriptionType: 'recurring', // Treat as recurring for credit grant purposes
           userId: user.id,
         })
         .onConflictDoNothing();

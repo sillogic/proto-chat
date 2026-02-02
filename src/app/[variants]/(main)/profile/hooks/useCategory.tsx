@@ -44,10 +44,10 @@ export const useCategory = () => {
     },
     {
       icon: <Icon icon={Receipt} />,
-      key: ProfileTabs.Orders,
+      key: ProfileTabs.Billing,
       label: (
-        <Link onClick={(e) => e.preventDefault()} to={'/profile/orders'}>
-          订单记录
+        <Link onClick={(e) => e.preventDefault()} to={'/profile/billing'}>
+          {t('tab.billing')}
         </Link>
       ),
     },

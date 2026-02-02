@@ -10,8 +10,10 @@ import { useNavigate } from 'react-router-dom';
 import { Center, Flexbox } from 'react-layout-kit';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
+import UpgradePaymentModal from '@/features/Payment/UpgradePaymentModal';
 
 import type { PlanData } from '../../hooks/useSubscriptionPlans';
+import { checkUpgradeEligibility, type PlanLevelParams } from '../../utils/planLevel';
 import type { BillingCycle } from './BillingToggle';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
@@ -151,12 +153,27 @@ const formatNumber = (num: number | string) => {
 
 interface PlanCardProps {
   billingCycle: BillingCycle;
+  currentBillingInterval?: 'month' | 'year' | null;
+  currentDurationMonths?: number | null;
+  currentPaidAmount?: number; // 当前套餐实付金额（分）
+  currentPlanExpiresAt?: Date | null;
+  currentPlanName?: string;
   currentPlanSlug?: string;
-  currentSubscriptionType?: string;
+  currentSubscriptionType?: 'recurring' | 'onetime' | null;
   plan: PlanData;
 }
 
-const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, currentSubscriptionType }) => {
+const PlanCard = memo<PlanCardProps>(({
+  plan,
+  billingCycle,
+  currentPlanSlug,
+  currentSubscriptionType,
+  currentBillingInterval,
+  currentDurationMonths,
+  currentPaidAmount,
+  currentPlanExpiresAt,
+  currentPlanName,
+}) => {
   const { t } = useTranslation('subscription');
   const { styles, theme } = useStyles();
   const navigate = useNavigate();
@@ -178,33 +195,71 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
   const hasYearlyOption = yearlyPrice !== null;
   const showYearlyDiscount = isYearly && yearlyPrice && yearlyPrice < monthlyPrice * 12;
 
-  // Determine button text and style based on current subscription
-  // BUG FIX: Compare planSlug + billingInterval + subscriptionType
-  const currentBillingInterval = isYearly ? 'year' : 'month';
-  const isCurrentPlan =
-    currentPlanSlug === plan.slug &&
-    currentSubscriptionType === 'recurring' &&
-    currentBillingInterval === (isYearly ? 'year' : 'month');
-  const isUpgrade = currentPlanSlug && !isCurrentPlan && currentPrice > 0; // TODO: Add price comparison logic
+  // Calculate discount for yearly subscriptions (only recurring yearly has discount)
+  const yearlyDiscountAmount = isYearly && plan.yearlyPrice && plan.monthlyPrice * 12 > plan.yearlyPrice
+    ? plan.monthlyPrice * 12 - plan.yearlyPrice
+    : 0;
+
+  const discount = yearlyDiscountAmount > 0
+    ? {
+        amount: yearlyDiscountAmount,
+        label: '年付优惠',
+      }
+    : undefined;
+
+  // Build current user plan params for level comparison
+  const currentPlanParams: PlanLevelParams | null = currentPlanSlug
+    ? {
+        billingInterval: currentBillingInterval,
+        durationMonths: currentDurationMonths,
+        planSlug: currentPlanSlug,
+        subscriptionType: currentSubscriptionType || 'recurring',
+      }
+    : null;
+
+  // Build target plan params (this card's plan with recurring subscription)
+  const targetPlanParams: PlanLevelParams = {
+    billingInterval: isYearly ? 'year' : 'month',
+    durationMonths: null,
+    planSlug: plan.slug,
+    subscriptionType: 'recurring',
+  };
+
+  // Check upgrade eligibility using the utility function
+  const { canUpgrade, isCurrentPlan, isSameLevelOrLower } = checkUpgradeEligibility(
+    currentPlanParams,
+    targetPlanParams,
+  );
+
+  // Button disabled state
+  const isButtonDisabled = isCurrentPlan || isSameLevelOrLower || (!hasYearlyOption && isYearly);
 
   const getButtonText = () => {
     if (isCurrentPlan) {
       return t('cta.currentSubscription', '我的订阅');
     }
-    if (isUpgrade) {
+    if (canUpgrade) {
       return t('cta.upgradeSubscription', '订阅升级');
     }
-    return t('cta.upgrade', '升级');
+    return t('cta.subscribe', '订阅');
   };
 
   const getButtonType = () => {
-    if (isCurrentPlan) {
+    if (isCurrentPlan || isSameLevelOrLower) {
       return 'default';
     }
-    if (isUpgrade || plan.isPopular) {
+    if (canUpgrade || plan.isPopular) {
       return 'primary';
     }
     return 'default';
+  };
+
+  // Tooltip for disabled lower-level plans
+  const getTooltipTitle = () => {
+    if (isSameLevelOrLower && !isCurrentPlan) {
+      return '您已开通同级或更高等级订阅，无需再订阅此套餐';
+    }
+    return '';
   };
 
   return (
@@ -245,19 +300,30 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
         </Flexbox>
 
         {/* Upgrade Button */}
-        <Button
-          block
-          disabled={isCurrentPlan || (!hasYearlyOption && isYearly)}
-          onClick={() => setPaymentModalOpen(true)}
-          style={
-            isUpgrade || (plan.isPopular && !isCurrentPlan)
-              ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
-              : undefined
-          }
-          type={getButtonType()}
-        >
-          {getButtonText()}
-        </Button>
+        <Tooltip title={getTooltipTitle()}>
+          <span style={{ display: 'block' }}>
+            <Button
+              block
+              disabled={isButtonDisabled && !isCurrentPlan}
+              onClick={() => !isCurrentPlan && setPaymentModalOpen(true)}
+              style={
+                isCurrentPlan
+                  ? {
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      borderColor: 'rgba(59, 130, 246, 0.3)',
+                      color: '#1d4ed8',
+                      cursor: 'default',
+                    }
+                  : canUpgrade || (plan.isPopular && !isButtonDisabled)
+                    ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
+                    : undefined
+              }
+              type={isCurrentPlan ? 'default' : getButtonType()}
+            >
+              {getButtonText()}
+            </Button>
+          </span>
+        </Tooltip>
       </Flexbox>
 
       {/* Body */}
@@ -355,21 +421,50 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
         </Flexbox>
       </Flexbox>
 
-      {/* Payment Modal */}
-      <PaymentModal
-        amount={isYearly && plan.yearlyPrice ? plan.yearlyPrice : plan.monthlyPrice}
-        billingCycle={isYearly ? 'year' : 'month'}
-        onClose={() => setPaymentModalOpen(false)}
-        onSuccess={() => {
-          setPaymentModalOpen(false);
-          // Navigate to profile to see updated subscription
-          navigate('/profile');
-        }}
-        open={paymentModalOpen}
-        planId={plan.id}
-        planName={plan.name}
-        subscriptionType="recurring"
-      />
+      {/* Payment Modal - Use UpgradePaymentModal for upgrades, PaymentModal for new subscriptions */}
+      {canUpgrade && currentPlanSlug && currentPlanSlug !== 'free' ? (
+        <UpgradePaymentModal
+          currentPlan={{
+            billingInterval: currentBillingInterval,
+            durationMonths: currentDurationMonths,
+            paidAmount: currentPaidAmount,
+            planExpiresAt: currentPlanExpiresAt,
+            planName: currentPlanName || currentPlanSlug,
+            planSlug: currentPlanSlug,
+            subscriptionType: currentSubscriptionType || 'recurring',
+          }}
+          discount={discount}
+          newPlan={{
+            billingInterval: isYearly ? 'year' : 'month',
+            // 原价：年付按月价*12计算（不含折扣），折扣单独显示
+            originalPrice: isYearly ? plan.monthlyPrice * 12 : plan.monthlyPrice,
+            planId: plan.id,
+            planName: plan.name,
+            planSlug: plan.slug,
+            subscriptionType: 'recurring',
+          }}
+          onClose={() => setPaymentModalOpen(false)}
+          onSuccess={() => {
+            setPaymentModalOpen(false);
+            navigate('/profile');
+          }}
+          open={paymentModalOpen}
+        />
+      ) : (
+        <PaymentModal
+          amount={isYearly && plan.yearlyPrice ? plan.yearlyPrice : plan.monthlyPrice}
+          billingCycle={isYearly ? 'year' : 'month'}
+          onClose={() => setPaymentModalOpen(false)}
+          onSuccess={() => {
+            setPaymentModalOpen(false);
+            navigate('/profile');
+          }}
+          open={paymentModalOpen}
+          planId={plan.id}
+          planName={plan.name}
+          subscriptionType="recurring"
+        />
+      )}
     </Flexbox>
   );
 });

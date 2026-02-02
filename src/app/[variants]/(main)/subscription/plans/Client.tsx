@@ -126,8 +126,13 @@ const Client = memo<ClientProps>(() => {
               // One-time payment cards
               individualPlans.map((plan) => (
                 <OnetimePlanCard
+                  currentBillingInterval={currentPlan?.billingInterval as 'month' | 'year' | null}
+                  currentDurationMonths={currentPlan?.durationMonths}
+                  currentPaidAmount={currentPlan?.paidAmount}
+                  currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
+                  currentPlanName={currentPlan?.planName}
                   currentPlanSlug={currentPlan?.planSlug || undefined}
-                  currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                  currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                   key={plan.id}
                   plan={plan}
                 />
@@ -137,8 +142,13 @@ const Client = memo<ClientProps>(() => {
               individualPlans.map((plan) => (
                 <PlanCard
                   billingCycle={billingCycle}
+                  currentBillingInterval={currentPlan?.billingInterval as 'month' | 'year' | null}
+                  currentDurationMonths={currentPlan?.durationMonths}
+                  currentPaidAmount={currentPlan?.paidAmount}
+                  currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
+                  currentPlanName={currentPlan?.planName}
                   currentPlanSlug={currentPlan?.planSlug || undefined}
-                  currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                  currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                   key={plan.id}
                   plan={plan}
                 />
@@ -170,8 +180,13 @@ const Client = memo<ClientProps>(() => {
             {teamPlans.map((plan) => (
               <PlanCard
                 billingCycle={billingCycle}
+                currentBillingInterval={currentPlan?.billingInterval as 'month' | 'year' | null}
+                currentDurationMonths={currentPlan?.durationMonths}
+                currentPaidAmount={currentPlan?.paidAmount}
+                currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
+                currentPlanName={currentPlan?.planName}
                 currentPlanSlug={currentPlan?.planSlug || undefined}
-                currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                 key={plan.id}
                 plan={plan}
               />

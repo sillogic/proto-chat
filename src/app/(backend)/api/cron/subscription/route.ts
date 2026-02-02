@@ -24,13 +24,14 @@ const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
 
 /**
  * Grant monthly credits to active subscribers
+ * Includes both paid plans and free plan (free plan also gets monthly credit reset)
  */
 async function grantMonthlyCredits() {
   const now = new Date();
 
   console.log('[Cron] Starting monthly credit grant...');
 
-  // Find users due for credit grant
+  // Find users due for credit grant (includes free plan users)
   const usersToGrant = await serverDB
     .select({
       currentPlan: userExtensions.currentPlan,
@@ -44,7 +45,6 @@ async function grantMonthlyCredits() {
       and(
         lte(userExtensions.nextCreditGrantAt, now),
         eq(userExtensions.isSuspended, false),
-        ne(userExtensions.currentPlan, 'free'),
       ),
     );
 
@@ -187,15 +187,24 @@ async function processExpirations() {
 
   for (const user of expiredUsers) {
     try {
+      // Calculate next credit grant date (1 month from now, same day each month)
+      const nextCreditGrantAt = new Date(now);
+      nextCreditGrantAt.setMonth(nextCreditGrantAt.getMonth() + 1);
+
       await serverDB.transaction(async (tx: typeof serverDB) => {
         // Update user to free plan
+        // Note: Set nextCreditGrantAt so free users continue to get monthly credit reset
+        // Clear planExpiresAt since free plan doesn't expire
         await tx
           .update(userExtensions)
           .set({
             billingInterval: null,
             currentPlan: 'free',
-            nextCreditGrantAt: null,
+            durationMonths: null,
+            nextCreditGrantAt, // Free plan also gets monthly credit reset
+            planExpiresAt: null, // Free plan doesn't expire
             planId: freePlan.id,
+            subscriptionType: 'recurring', // Free is treated as recurring for credit grant
             updatedAt: now,
           })
           .where(eq(userExtensions.userId, user.userId));
