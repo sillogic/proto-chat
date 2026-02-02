@@ -8,6 +8,7 @@ import {
   ArrowRight,
   CheckCircle,
   CircleHelp,
+  RefreshCw,
   ShieldCheck,
   XCircle,
 } from 'lucide-react';
@@ -211,6 +212,12 @@ interface UpgradePaymentModalProps {
 type PaymentMethod = 'alipay_precreate' | 'wechat_native';
 type PaymentStatus = 'confirm' | 'loading' | 'qrcode' | 'success' | 'error';
 
+// Agreement polling result type
+interface AgreementInfo {
+  agreementId: string;
+  externalAgreementNo: string;
+}
+
 // Helper function
 const formatTime = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
@@ -282,10 +289,14 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
     const [status, setStatus] = useState<PaymentStatus>('confirm');
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+    const [agreementInfo, setAgreementInfo] = useState<AgreementInfo | null>(null);
 
     const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const timerIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevOrderRef = useRef<string>('');
+
+    // Is this a recurring subscription (uses sign + pay flow)
+    const isRecurring = newPlan.subscriptionType === 'recurring';
 
     // 计算价格
     const residualValue = calculateResidualValue(
@@ -308,6 +319,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         setExpiredAt(null);
         setErrorMessage('');
         setRemainingSeconds(0);
+        setAgreementInfo(null);
         prevOrderRef.current = '';
       }
     }, [open]);
@@ -357,8 +369,8 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         setStatus('loading');
         setErrorMessage('');
 
-        // Close previous order if exists
-        if (prevOrderRef.current) {
+        // Close previous order if exists (only for onetime orders)
+        if (!isRecurring && prevOrderRef.current) {
           try {
             await lambdaClient.payment.closeOrder.mutate({ orderNo: prevOrderRef.current });
           } catch (error) {
@@ -366,27 +378,49 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
           }
         }
 
-        const result = await lambdaClient.payment.createOrder.mutate({
-          durationMonths: newPlan.durationMonths,
-          interval: newPlan.billingInterval,
-          payChannel: paymentMethod,
-          planId: newPlan.planId,
-          subscriptionType: newPlan.subscriptionType,
-        });
+        if (isRecurring) {
+          // Recurring subscription: use sign + pay flow (周期扣款签约扣款一体化)
+          const result = await lambdaClient.payment.createSignPaymentOrder.mutate({
+            billingInterval: newPlan.billingInterval,
+            planId: newPlan.planId,
+          });
 
-        prevOrderRef.current = result.orderNo;
-        setOrderNo(result.orderNo);
-        setCodeUrl(result.codeUrl || '');
-        setExpiredAt(new Date(result.expiredAt));
-        setStatus('qrcode');
+          prevOrderRef.current = result.orderNo;
+          setOrderNo(result.orderNo);
+          setCodeUrl(result.codeUrl || '');
+          setExpiredAt(new Date(result.expiredAt));
+          setAgreementInfo({
+            agreementId: result.agreementId,
+            externalAgreementNo: result.externalAgreementNo,
+          });
+          setStatus('qrcode');
 
-        startPolling(result.orderNo);
+          // For recurring, poll the order status (callback will update it to paid)
+          startPolling(result.orderNo);
+        } else {
+          // One-time payment: use standard order flow
+          const result = await lambdaClient.payment.createOrder.mutate({
+            durationMonths: newPlan.durationMonths,
+            interval: newPlan.billingInterval,
+            payChannel: paymentMethod,
+            planId: newPlan.planId,
+            subscriptionType: newPlan.subscriptionType,
+          });
+
+          prevOrderRef.current = result.orderNo;
+          setOrderNo(result.orderNo);
+          setCodeUrl(result.codeUrl || '');
+          setExpiredAt(new Date(result.expiredAt));
+          setStatus('qrcode');
+
+          startPolling(result.orderNo);
+        }
       } catch (error) {
         console.error('Failed to create order:', error);
         setStatus('error');
         setErrorMessage(error instanceof Error ? error.message : '创建订单失败');
       }
-    }, [newPlan, paymentMethod, startPolling]);
+    }, [isRecurring, newPlan, paymentMethod, startPolling]);
 
     // Countdown timer
     useEffect(() => {
@@ -428,8 +462,8 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
       // Stop polling immediately for responsive UI
       stopPolling();
 
-      // Close order in background (fire-and-forget)
-      if (prevOrderRef.current && (status === 'qrcode' || status === 'loading')) {
+      // Close order in background (fire-and-forget) - only for onetime payments
+      if (!isRecurring && prevOrderRef.current && (status === 'qrcode' || status === 'loading')) {
         const orderToClose = prevOrderRef.current;
         lambdaClient.payment.closeOrder.mutate({ orderNo: orderToClose }).catch((error) => {
           console.error('Failed to close order:', error);
@@ -437,33 +471,40 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
       }
 
       onClose();
-    }, [status, onClose, stopPolling]);
+    }, [isRecurring, status, onClose, stopPolling]);
 
     // Go back to confirm step
     const handleBack = useCallback(() => {
       // Stop polling immediately for responsive UI
       stopPolling();
 
-      // Close order in background (fire-and-forget)
-      if (prevOrderRef.current) {
+      // Close order in background (fire-and-forget) - only for onetime payments
+      if (!isRecurring && prevOrderRef.current) {
         const orderToClose = prevOrderRef.current;
         lambdaClient.payment.closeOrder.mutate({ orderNo: orderToClose }).catch((error) => {
           console.error('Failed to close order:', error);
         });
-        prevOrderRef.current = '';
       }
+      prevOrderRef.current = '';
 
       // Update UI immediately
       setStatus('confirm');
       setOrderNo('');
       setCodeUrl('');
       setExpiredAt(null);
-    }, [stopPolling]);
+      setAgreementInfo(null);
+    }, [isRecurring, stopPolling]);
 
     // 一次性付费提示
     const onetimeTips = [
       '本次为一次性付费，到期后将自动降级为免费版。',
       '到期前可随时升级至更高方案。',
+    ];
+
+    // 连续订阅提示
+    const recurringTips = [
+      '签约后将按周期自动续费。',
+      '您可随时在「账户设置」中取消自动续费。',
     ];
 
     // Render plan comparison section
@@ -639,6 +680,15 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
           </span>
         </Flexbox>
 
+        {/* Auto-renewal notice for recurring */}
+        {isRecurring && (
+          <Alert
+            description={`签约后将按${newPlan.billingInterval === 'year' ? '年' : '月'}自动续费，您可随时在账户设置中取消`}
+            showIcon
+            type="warning"
+          />
+        )}
+
         {/* Confirm Button */}
         <Button
           block
@@ -646,7 +696,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
           onClick={handleConfirmPayment}
           type="primary"
         >
-          去支付 ¥{(finalAmount / 100).toFixed(2)}
+          {isRecurring ? `签约并支付 ¥${(finalAmount / 100).toFixed(2)}` : `去支付 ¥${(finalAmount / 100).toFixed(2)}`}
         </Button>
       </Flexbox>
     );
@@ -675,10 +725,21 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
           <Flexbox align="center" gap={8} horizontal>
             <Image alt="Alipay" height={20} src="/images/payment/alipay-logo.png" width={20} />
             <span style={{ fontSize: 14 }}>
-              请使用支付宝扫码支付{' '}
-              <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
-                ¥{(finalAmount / 100).toFixed(2)}
-              </Typography.Text>
+              {isRecurring ? (
+                <>
+                  请使用支付宝扫码签约并支付{' '}
+                  <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
+                    ¥{(finalAmount / 100).toFixed(2)}
+                  </Typography.Text>
+                </>
+              ) : (
+                <>
+                  请使用支付宝扫码支付{' '}
+                  <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
+                    ¥{(finalAmount / 100).toFixed(2)}
+                  </Typography.Text>
+                </>
+              )}
             </span>
           </Flexbox>
           {remainingSeconds > 0 && (
@@ -695,17 +756,27 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         <Alert
           description={
             <Flexbox gap={4}>
-              {onetimeTips.map((tip, index) => (
+              {(isRecurring ? recurringTips : onetimeTips).map((tip, index) => (
                 <div className={styles.tipItem} key={index}>
                   • {tip}
                 </div>
               ))}
             </Flexbox>
           }
-          message="支付提示"
+          message={isRecurring ? '签约提示' : '支付提示'}
           showIcon
           type="info"
         />
+
+        {/* Auto-renewal notice for recurring */}
+        {isRecurring && (
+          <Flexbox align="center" gap={6} horizontal style={{ justifyContent: 'center' }}>
+            <Icon color={theme.colorTextTertiary} icon={RefreshCw} size={14} />
+            <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
+              签约后可随时在「账户设置」中取消自动续费
+            </span>
+          </Flexbox>
+        )}
       </Flexbox>
     );
 
@@ -770,7 +841,13 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         {/* Header */}
         <div className={styles.header}>
           <span className={styles.title}>
-            {status === 'confirm' ? '确认升级' : status === 'qrcode' ? '扫码支付' : '订阅升级'}
+            {status === 'confirm'
+              ? '确认升级'
+              : status === 'qrcode'
+                ? isRecurring
+                  ? '签约扣款'
+                  : '扫码支付'
+                : '订阅升级'}
           </span>
         </div>
 
@@ -780,14 +857,32 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         {/* Footer */}
         {status === 'confirm' && (
           <div className={styles.footer}>
-            支付即视为您同意
-            <Typography.Link href="/terms" target="_blank">
-              《服务协议》
-            </Typography.Link>
-            <Typography.Link href="/subscription-terms" target="_blank">
-              《订阅协议》
-            </Typography.Link>
-            ，虚拟商品一经支付不支持退款
+            {isRecurring ? (
+              <>
+                签约即视为您同意
+                <Typography.Link href="/terms" target="_blank">
+                  《服务协议》
+                </Typography.Link>
+                <Typography.Link href="/subscription-terms" target="_blank">
+                  《订阅协议》
+                </Typography.Link>
+                <Typography.Link href="/auto-debit-terms" target="_blank">
+                  《自动扣款授权协议》
+                </Typography.Link>
+                ，到期自动续费，可随时取消
+              </>
+            ) : (
+              <>
+                支付即视为您同意
+                <Typography.Link href="/terms" target="_blank">
+                  《服务协议》
+                </Typography.Link>
+                <Typography.Link href="/subscription-terms" target="_blank">
+                  《订阅协议》
+                </Typography.Link>
+                ，虚拟商品一经支付不支持退款
+              </>
+            )}
           </div>
         )}
       </Modal>

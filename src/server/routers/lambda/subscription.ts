@@ -96,7 +96,11 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
         const paidAmount = recentOrder.length > 0 ? recentOrder[0].amount : 0;
 
         return {
+          autoRenew: user.autoRenew ?? false,
           billingInterval: user.billingInterval,
+          currentAgreementId: user.currentAgreementId,
+          downgradeAt: user.downgradeAt,
+          downgradeReason: user.downgradeReason,
           durationMonths: user.durationMonths,
           features: plan[0].features,
           nextCreditGrantAt: user.nextCreditGrantAt,
@@ -106,6 +110,8 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
           planName: plan[0].name,
           planSlug: user.currentPlan,
           planType: plan[0].type,
+          previousPlanName: user.previousPlanName,
+          previousPlanSlug: user.previousPlanSlug,
           subscriptionType: user.subscriptionType || 'recurring',
         };
       }
@@ -113,7 +119,11 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
 
     // Fallback: user doesn't have a plan or plan not found
     return {
+      autoRenew: user.autoRenew ?? false,
       billingInterval: null,
+      currentAgreementId: user.currentAgreementId,
+      downgradeAt: user.downgradeAt,
+      downgradeReason: user.downgradeReason,
       durationMonths: null,
       features: {},
       nextCreditGrantAt: null,
@@ -123,6 +133,8 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
       planName: 'Free',
       planSlug: user.currentPlan || 'free',
       planType: 'individual',
+      previousPlanName: user.previousPlanName,
+      previousPlanSlug: user.previousPlanSlug,
       subscriptionType: 'recurring',
     };
   }),

@@ -64,4 +64,5 @@ export default {
   'menu.systemConfig': '系统配置',
   'menu.systemConfig.defaultModel': '默认模型配置',
   'menu.systemConfig.embedding': 'Embedding配置',
+  'menu.systemConfig.rules': '系统规则',
 };

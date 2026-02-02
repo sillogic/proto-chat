@@ -1,7 +1,7 @@
 'use client';
 
 import { Icon, Tag } from '@lobehub/ui';
-import { Alert, Button, Card, Empty, Pagination, Table, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Empty, message, Modal, Pagination, Table, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { createStyles } from 'antd-style';
 import {
@@ -11,14 +11,15 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  RefreshCw,
   XCircle,
   XCircle as XIcon,
 } from 'lucide-react';
-import { memo, useState } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Flexbox } from 'react-layout-kit';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { lambdaClient } from '@/libs/trpc/client';
 import { useSubscriptionPlans, PlanFeatures } from '@/app/[variants]/(main)/subscription/hooks/useSubscriptionPlans';
@@ -239,13 +240,56 @@ const getFeaturesList = (features: PlanFeatures, slug: string) => {
 const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
   const { styles, theme } = useStyles();
   const { t } = useTranslation('common');
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   // Fetch current plan and plans list
   const { currentPlan, plans, isLoading: plansLoading } = useSubscriptionPlans();
+
+  // Handle cancel auto-renewal
+  const handleCancelAutoRenewal = useCallback(async () => {
+    if (!currentPlan?.currentAgreementId) {
+      message.error('没有找到有效的自动续费协议');
+      return;
+    }
+
+    Modal.confirm({
+      cancelText: '再想想',
+      content: (
+        <div>
+          <p>取消自动续费后：</p>
+          <ul style={{ marginLeft: 20, marginTop: 8 }}>
+            <li>当前订阅将继续有效至到期日</li>
+            <li>到期后将自动降级为免费版</li>
+            <li>您可以随时重新订阅</li>
+          </ul>
+        </div>
+      ),
+      okText: '确认取消',
+      okType: 'danger',
+      onOk: async () => {
+        setCancelLoading(true);
+        try {
+          await lambdaClient.payment.cancelAutoRenewal.mutate({
+            agreementId: currentPlan.currentAgreementId!,
+          });
+          message.success('已成功取消自动续费');
+          // Refresh current plan data
+          queryClient.invalidateQueries({ queryKey: ['subscription', 'currentPlan'] });
+        } catch (error) {
+          console.error('Failed to cancel auto-renewal:', error);
+          message.error(error instanceof Error ? error.message : '取消自动续费失败');
+        } finally {
+          setCancelLoading(false);
+        }
+      },
+      title: '确认取消自动续费？',
+    });
+  }, [currentPlan?.currentAgreementId, queryClient]);
 
   // Fetch orders from backend
   const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
@@ -376,11 +420,23 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
       <Card className={styles.card}>
         <Flexbox horizontal justify="space-between" align="center">
           <div className={styles.sectionTitle}>当前套餐</div>
-          <Link to="/subscription/plans">
-            <Button className={styles.upgradeButton} type="primary">
-              升 级
-            </Button>
-          </Link>
+          <Flexbox gap={8} horizontal>
+            {/* Cancel auto-renewal button */}
+            {currentPlan?.autoRenew && currentPlan?.currentAgreementId && (
+              <Button
+                danger
+                loading={cancelLoading}
+                onClick={handleCancelAutoRenewal}
+              >
+                取消自动续费
+              </Button>
+            )}
+            <Link to="/subscription/plans">
+              <Button className={styles.upgradeButton} type="primary">
+                {currentPlan?.planSlug === 'free' || !currentPlan?.autoRenew ? '订 阅' : '升 级'}
+              </Button>
+            </Link>
+          </Flexbox>
         </Flexbox>
         <Flexbox gap={16} style={{ marginTop: 16 }}>
           {/* Plan header */}
@@ -402,6 +458,18 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
                     )}
                   </Tag>
                 )}
+                {/* Auto-renewal status tag */}
+                {currentPlan?.subscriptionType === 'recurring' && currentPlan?.planSlug !== 'free' && (
+                  currentPlan?.autoRenew ? (
+                    <Tag color="green" icon={<Icon icon={RefreshCw} size={12} />}>
+                      自动续费已开启
+                    </Tag>
+                  ) : (
+                    <Tag color="orange">
+                      自动续费已关闭
+                    </Tag>
+                  )
+                )}
               </Flexbox>
               <div className={styles.planDescription}>
                 {getPlanDescription(currentPlan?.planSlug || 'free')}
@@ -413,6 +481,16 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
               </div>
             </Flexbox>
           </Flexbox>
+
+          {/* Downgrade notice */}
+          {currentPlan?.downgradeReason && currentPlan?.previousPlanName && (
+            <Alert
+              description={`您的 ${currentPlan.previousPlanName} 订阅因${currentPlan.downgradeReason === 'deduct_failed' ? '扣款失败' : currentPlan.downgradeReason === 'user_unsign' ? '您取消了自动续费' : '已到期'}已降级为免费版。您可以随时重新订阅。`}
+              message="订阅已变更"
+              showIcon
+              type="warning"
+            />
+          )}
 
           {/* Features list */}
           <Flexbox

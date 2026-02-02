@@ -3,10 +3,14 @@
  *
  * Handles:
  * 1. Monthly credit grants for active subscribers
- * 2. Subscription expiration processing
+ * 2. Subscription expiration processing (for one-time payments)
  *
- * Run frequency: Daily at 00:05 UTC
- * Vercel Cron: "5 0 * * *"
+ * IMPORTANT: This must run AFTER auto-deduct cron job!
+ * - Auto-deduct runs at 09:00 and 12:00 Beijing time
+ * - This job should run at 14:00 Beijing time (06:00 UTC)
+ *
+ * Run frequency: Daily at 06:00 UTC (14:00 Beijing time)
+ * Vercel Cron: "0 6 * * *"
  */
 
 import {

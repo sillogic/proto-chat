@@ -129,6 +129,11 @@ export default [
         component: './SystemConfig/Embedding',
       },
       {
+        path: '/system-config/rules',
+        name: 'rules',
+        component: './SystemConfig/Rules',
+      },
+      {
         path: '/system-config',
         redirect: '/system-config/default-model',
       },

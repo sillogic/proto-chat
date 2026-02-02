@@ -1,10 +1,10 @@
 'use client';
 
 import { Icon } from '@lobehub/ui';
-import { AlipayOutlined, WechatOutlined } from '@ant-design/icons';
+import { WechatOutlined } from '@ant-design/icons';
 import { Alert, Button, message, Modal, Radio, Spin, Typography } from 'antd';
 import { createStyles } from 'antd-style';
-import { CheckCircle, ShieldCheck, XCircle } from 'lucide-react';
+import { CheckCircle, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -157,6 +157,12 @@ interface PaymentModalProps {
 type PaymentMethod = 'alipay_precreate' | 'wechat_native';
 type PaymentStatus = 'confirm' | 'loading' | 'qrcode' | 'success' | 'error';
 
+// Agreement polling result type
+interface AgreementInfo {
+  agreementId: string;
+  externalAgreementNo: string;
+}
+
 const formatTime = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -202,10 +208,14 @@ const PaymentModal = memo<PaymentModalProps>(
     const [status, setStatus] = useState<PaymentStatus>('confirm');
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+    const [agreementInfo, setAgreementInfo] = useState<AgreementInfo | null>(null);
 
     const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const timerIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevOrderRef = useRef<string>('');
+
+    // Is this a recurring subscription (uses sign + pay flow)
+    const isRecurring = subscriptionType === 'recurring';
 
     // Reset state when modal closes
     useEffect(() => {
@@ -216,6 +226,7 @@ const PaymentModal = memo<PaymentModalProps>(
         setExpiredAt(null);
         setErrorMessage('');
         setRemainingSeconds(0);
+        setAgreementInfo(null);
         prevOrderRef.current = '';
       }
     }, [open]);
@@ -268,8 +279,8 @@ const PaymentModal = memo<PaymentModalProps>(
         setStatus('loading');
         setErrorMessage('');
 
-        // Close previous order if exists
-        if (prevOrderRef.current) {
+        // Close previous order if exists (only for onetime orders)
+        if (prevOrderRef.current && !isRecurring) {
           try {
             await lambdaClient.payment.closeOrder.mutate({ orderNo: prevOrderRef.current });
           } catch (error) {
@@ -277,27 +288,49 @@ const PaymentModal = memo<PaymentModalProps>(
           }
         }
 
-        const result = await lambdaClient.payment.createOrder.mutate({
-          durationMonths,
-          interval: billingCycle,
-          payChannel: paymentMethod,
-          planId,
-          subscriptionType,
-        });
+        if (isRecurring) {
+          // Recurring subscription: use sign + pay flow (周期扣款签约扣款一体化)
+          const result = await lambdaClient.payment.createSignPaymentOrder.mutate({
+            billingInterval: billingCycle,
+            planId,
+          });
 
-        prevOrderRef.current = result.orderNo;
-        setOrderNo(result.orderNo);
-        setCodeUrl(result.codeUrl || '');
-        setExpiredAt(new Date(result.expiredAt));
-        setStatus('qrcode');
+          prevOrderRef.current = result.orderNo;
+          setOrderNo(result.orderNo);
+          setCodeUrl(result.codeUrl || '');
+          setExpiredAt(new Date(result.expiredAt));
+          setAgreementInfo({
+            agreementId: result.agreementId,
+            externalAgreementNo: result.externalAgreementNo,
+          });
+          setStatus('qrcode');
 
-        startPolling(result.orderNo);
+          // For recurring, poll the order status (callback will update it to paid)
+          startPolling(result.orderNo);
+        } else {
+          // One-time payment: use standard order flow
+          const result = await lambdaClient.payment.createOrder.mutate({
+            durationMonths,
+            interval: billingCycle,
+            payChannel: paymentMethod,
+            planId,
+            subscriptionType,
+          });
+
+          prevOrderRef.current = result.orderNo;
+          setOrderNo(result.orderNo);
+          setCodeUrl(result.codeUrl || '');
+          setExpiredAt(new Date(result.expiredAt));
+          setStatus('qrcode');
+
+          startPolling(result.orderNo);
+        }
       } catch (error) {
         console.error('Failed to create order:', error);
         setStatus('error');
         setErrorMessage(error instanceof Error ? error.message : '创建订单失败');
       }
-    }, [billingCycle, durationMonths, paymentMethod, planId, startPolling, subscriptionType]);
+    }, [billingCycle, durationMonths, isRecurring, paymentMethod, planId, startPolling, subscriptionType]);
 
     // Countdown timer
     useEffect(() => {
@@ -339,8 +372,9 @@ const PaymentModal = memo<PaymentModalProps>(
       // Stop polling immediately for responsive UI
       stopPolling();
 
-      // Close order in background (fire-and-forget)
-      if (prevOrderRef.current && (status === 'qrcode' || status === 'loading')) {
+      // Close order in background (fire-and-forget) - only for onetime payments
+      // Recurring subscriptions use agreements, not standard orders
+      if (!isRecurring && prevOrderRef.current && (status === 'qrcode' || status === 'loading')) {
         const orderToClose = prevOrderRef.current;
         lambdaClient.payment.closeOrder.mutate({ orderNo: orderToClose }).catch((error) => {
           console.error('Failed to close order:', error);
@@ -348,28 +382,29 @@ const PaymentModal = memo<PaymentModalProps>(
       }
 
       onClose();
-    }, [status, onClose, stopPolling]);
+    }, [isRecurring, status, onClose, stopPolling]);
 
     // Go back to confirm step
     const handleBack = useCallback(() => {
       // Stop polling immediately for responsive UI
       stopPolling();
 
-      // Close order in background (fire-and-forget)
-      if (prevOrderRef.current) {
+      // Close order in background (fire-and-forget) - only for onetime payments
+      if (!isRecurring && prevOrderRef.current) {
         const orderToClose = prevOrderRef.current;
         lambdaClient.payment.closeOrder.mutate({ orderNo: orderToClose }).catch((error) => {
           console.error('Failed to close order:', error);
         });
-        prevOrderRef.current = '';
       }
+      prevOrderRef.current = '';
 
       // Update UI immediately
       setStatus('confirm');
       setOrderNo('');
       setCodeUrl('');
       setExpiredAt(null);
-    }, [stopPolling]);
+      setAgreementInfo(null);
+    }, [isRecurring, stopPolling]);
 
     // Render confirm step
     const renderConfirmStep = () => (
@@ -450,6 +485,15 @@ const PaymentModal = memo<PaymentModalProps>(
           </span>
         </Flexbox>
 
+        {/* Auto-renewal notice for recurring */}
+        {isRecurring && (
+          <Alert
+            description={`签约后将按${billingCycle === 'year' ? '年' : '月'}自动续费，您可随时在账户设置中取消`}
+            showIcon
+            type="warning"
+          />
+        )}
+
         {/* Confirm Button */}
         <Button
           block
@@ -457,7 +501,7 @@ const PaymentModal = memo<PaymentModalProps>(
           onClick={handleConfirmPayment}
           type="primary"
         >
-          去支付 ¥{(amount / 100).toFixed(2)}
+          {isRecurring ? `签约并支付 ¥${(amount / 100).toFixed(2)}` : `去支付 ¥${(amount / 100).toFixed(2)}`}
         </Button>
       </Flexbox>
     );
@@ -483,10 +527,21 @@ const PaymentModal = memo<PaymentModalProps>(
           <Flexbox align="center" gap={8} horizontal>
             <Image alt="Alipay" height={20} src="/images/payment/alipay-logo.png" width={20} />
             <span style={{ fontSize: 14 }}>
-              请使用支付宝扫码支付{' '}
-              <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
-                ¥{(amount / 100).toFixed(2)}
-              </Typography.Text>
+              {isRecurring ? (
+                <>
+                  请使用支付宝扫码签约并支付{' '}
+                  <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
+                    ¥{(amount / 100).toFixed(2)}
+                  </Typography.Text>
+                </>
+              ) : (
+                <>
+                  请使用支付宝扫码支付{' '}
+                  <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
+                    ¥{(amount / 100).toFixed(2)}
+                  </Typography.Text>
+                </>
+              )}
             </span>
           </Flexbox>
           {remainingSeconds > 0 && (
@@ -501,11 +556,25 @@ const PaymentModal = memo<PaymentModalProps>(
 
         {/* Tips */}
         <Alert
-          description="请在支付宝 App 中完成支付，支付完成后页面会自动跳转。"
-          message="支付提示"
+          description={
+            isRecurring
+              ? '请在支付宝 App 中完成签约并支付首期费用，完成后页面会自动跳转。签约后将按周期自动扣款续费。'
+              : '请在支付宝 App 中完成支付，支付完成后页面会自动跳转。'
+          }
+          message={isRecurring ? '签约提示' : '支付提示'}
           showIcon
           type="info"
         />
+
+        {/* Auto-renewal notice for recurring */}
+        {isRecurring && (
+          <Flexbox align="center" gap={6} horizontal style={{ justifyContent: 'center' }}>
+            <Icon color={theme.colorTextTertiary} icon={RefreshCw} size={14} />
+            <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
+              签约后可随时在「账户设置」中取消自动续费
+            </span>
+          </Flexbox>
+        )}
       </Flexbox>
     );
 
@@ -570,7 +639,13 @@ const PaymentModal = memo<PaymentModalProps>(
         {/* Header */}
         <div className={styles.header}>
           <span className={styles.title}>
-            {status === 'confirm' ? '确认订单' : status === 'qrcode' ? '扫码支付' : '订阅支付'}
+            {status === 'confirm'
+              ? '确认订单'
+              : status === 'qrcode'
+                ? isRecurring
+                  ? '签约扣款'
+                  : '扫码支付'
+                : '订阅支付'}
           </span>
         </div>
 
@@ -580,14 +655,32 @@ const PaymentModal = memo<PaymentModalProps>(
         {/* Footer */}
         {status === 'confirm' && (
           <div className={styles.footer}>
-            支付即视为您同意
-            <Typography.Link href="/terms" target="_blank">
-              《服务协议》
-            </Typography.Link>
-            <Typography.Link href="/subscription-terms" target="_blank">
-              《订阅协议》
-            </Typography.Link>
-            ，虚拟商品一经支付不支持退款
+            {isRecurring ? (
+              <>
+                签约即视为您同意
+                <Typography.Link href="/terms" target="_blank">
+                  《服务协议》
+                </Typography.Link>
+                <Typography.Link href="/subscription-terms" target="_blank">
+                  《订阅协议》
+                </Typography.Link>
+                <Typography.Link href="/auto-debit-terms" target="_blank">
+                  《自动扣款授权协议》
+                </Typography.Link>
+                ，到期自动续费，可随时取消
+              </>
+            ) : (
+              <>
+                支付即视为您同意
+                <Typography.Link href="/terms" target="_blank">
+                  《服务协议》
+                </Typography.Link>
+                <Typography.Link href="/subscription-terms" target="_blank">
+                  《订阅协议》
+                </Typography.Link>
+                ，虚拟商品一经支付不支持退款
+              </>
+            )}
           </div>
         )}
       </Modal>
