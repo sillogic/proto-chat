@@ -6,7 +6,6 @@ dotenv.config();
 
 async function checkMigrations() {
     try {
-        // @ts-expect-error - pnpm duplicate drizzle-orm packages, runtime works fine
         const migrations = await db.execute(sql`
       SELECT id, hash, created_at
       FROM "drizzle"."__drizzle_migrations"

@@ -9,15 +9,15 @@
  * Vercel Cron: "5 0 * * *"
  */
 
-import { serverDB } from '@/database/client';
 import {
+  serverDB,
   subscriptionPlans,
   userBalances,
   userExtensions,
   userSubscriptionHistory,
   userTransactions,
 } from '@lobechat/database';
-import { and, eq, lte, ne, or, isNull } from 'drizzle-orm';
+import { and, eq, lte, ne } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
@@ -33,11 +33,11 @@ async function grantMonthlyCredits() {
   // Find users due for credit grant
   const usersToGrant = await serverDB
     .select({
-      userId: userExtensions.userId,
-      planId: userExtensions.planId,
-      nextCreditGrantAt: userExtensions.nextCreditGrantAt,
-      isSuspended: userExtensions.isSuspended,
       currentPlan: userExtensions.currentPlan,
+      isSuspended: userExtensions.isSuspended,
+      nextCreditGrantAt: userExtensions.nextCreditGrantAt,
+      planId: userExtensions.planId,
+      userId: userExtensions.userId,
     })
     .from(userExtensions)
     .where(
@@ -78,7 +78,7 @@ async function grantMonthlyCredits() {
 
       const credits = Number.parseInt(plan[0].credits, 10);
 
-      await serverDB.transaction(async (tx) => {
+      await serverDB.transaction(async (tx: typeof serverDB) => {
         // Reset user balance
         const existingBalance = await tx
           .select()
@@ -90,34 +90,33 @@ async function grantMonthlyCredits() {
           await tx
             .update(userBalances)
             .set({
-              balance: credits,
+              balance: String(credits),
               updatedAt: now,
             })
             .where(eq(userBalances.userId, user.userId));
         } else {
           await tx.insert(userBalances).values({
-            id: crypto.randomUUID(),
-            userId: user.userId,
-            balance: credits,
+            balance: String(credits),
             createdAt: now,
             updatedAt: now,
+            userId: user.userId,
           });
         }
 
         // Write transaction record
         await tx.insert(userTransactions).values({
-          id: crypto.randomUUID(),
-          userId: user.userId,
-          type: 'SUBSCRIPTION_GRANT',
+          amount: String(credits),
+          balanceAfter: String(credits),
           category: 'MONTHLY_GRANT',
-          amount: credits,
-          balanceAfter: credits,
+          createdAt: now,
+          id: crypto.randomUUID(),
           metadata: {
+            grantType: 'monthly',
             planId: user.planId,
             planSlug: user.currentPlan,
-            grantType: 'monthly',
           },
-          createdAt: now,
+          type: 'SUBSCRIPTION_GRANT',
+          userId: user.userId,
         });
 
         // Update next credit grant date (1 month later)
@@ -156,10 +155,10 @@ async function processExpirations() {
   // Find expired users
   const expiredUsers = await serverDB
     .select({
-      userId: userExtensions.userId,
-      planId: userExtensions.planId,
       currentPlan: userExtensions.currentPlan,
       planExpiresAt: userExtensions.planExpiresAt,
+      planId: userExtensions.planId,
+      userId: userExtensions.userId,
     })
     .from(userExtensions)
     .where(and(lte(userExtensions.planExpiresAt, now), ne(userExtensions.currentPlan, 'free')));
@@ -180,7 +179,7 @@ async function processExpirations() {
 
   if (!freePlanResult || freePlanResult.length === 0) {
     console.error('[Cron] Free plan not found, cannot process expirations');
-    return { expired: 0, error: 'Free plan not found' };
+    return { error: 'Free plan not found', expired: 0 };
   }
 
   const freePlan = freePlanResult[0];
@@ -188,31 +187,32 @@ async function processExpirations() {
 
   for (const user of expiredUsers) {
     try {
-      await serverDB.transaction(async (tx) => {
+      await serverDB.transaction(async (tx: typeof serverDB) => {
         // Update user to free plan
         await tx
           .update(userExtensions)
           .set({
-            currentPlan: 'free',
-            planId: freePlan.id,
             billingInterval: null,
+            currentPlan: 'free',
             nextCreditGrantAt: null,
+            planId: freePlan.id,
             updatedAt: now,
           })
           .where(eq(userExtensions.userId, user.userId));
 
         // Write expiration record to subscription history
         await tx.insert(userSubscriptionHistory).values({
-          id: crypto.randomUUID(),
-          userId: user.userId,
-          planId: user.planId!,
-          planSlug: user.currentPlan!,
-          status: 'expired',
-          price: 0,
-          billingInterval: null,
-          startDate: user.planExpiresAt!,
-          endDate: now,
           createdAt: now,
+          endedAt: now,
+          id: crypto.randomUUID(),
+          planId: user.planId!,
+          planName: 'Expired Plan',
+          planType: 'individual',
+          price: 0,
+          slug: user.currentPlan!,
+          startedAt: user.planExpiresAt!,
+          status: 'expired',
+          userId: user.userId,
         });
 
         // Reset balance to free plan credits
@@ -221,24 +221,24 @@ async function processExpirations() {
         await tx
           .update(userBalances)
           .set({
-            balance: freeCredits,
+            balance: String(freeCredits),
             updatedAt: now,
           })
           .where(eq(userBalances.userId, user.userId));
 
         // Write transaction record
         await tx.insert(userTransactions).values({
-          id: crypto.randomUUID(),
-          userId: user.userId,
-          type: 'SUBSCRIPTION_GRANT',
+          amount: String(freeCredits),
+          balanceAfter: String(freeCredits),
           category: 'SUBSCRIPTION_EXPIRED',
-          amount: freeCredits,
-          balanceAfter: freeCredits,
-          metadata: {
-            previousPlan: user.currentPlan,
-            newPlan: 'free',
-          },
           createdAt: now,
+          id: crypto.randomUUID(),
+          metadata: {
+            newPlan: 'free',
+            previousPlan: user.currentPlan,
+          },
+          type: 'SUBSCRIPTION_GRANT',
+          userId: user.userId,
         });
       });
 
@@ -275,17 +275,17 @@ export async function POST(request: NextRequest) {
     console.log('[Cron] Subscription maintenance completed');
 
     return NextResponse.json({
-      success: true,
       creditsGranted: creditsResult.granted,
       subscriptionsExpired: expirationsResult.expired,
+      success: true,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error('[Cron] Error in subscription maintenance:', error);
     return NextResponse.json(
       {
-        success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
+        success: false,
       },
       { status: 500 },
     );

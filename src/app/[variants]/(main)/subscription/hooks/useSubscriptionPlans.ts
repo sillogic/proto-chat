@@ -1,15 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
 // Features structure from backend
 export interface PlanFeatures {
+  capabilities?: {
+    custom_api?: boolean;
+    unlimited_messages?: boolean;
+  };
+  cloud_services?: {
+    global_sync?: boolean;
+    unlimited_history?: boolean;
+    web_search?: boolean;
+  };
   display?: {
     description?: string;
     model_estimates?: Array<{
-      model: string;
       count: string;
+      model: string;
     }>;
   };
   resources?: {
@@ -18,33 +26,24 @@ export interface PlanFeatures {
     vector_storage?: string;
     vector_storage_display?: string;
   };
-  cloud_services?: {
-    unlimited_history?: boolean;
-    global_sync?: boolean;
-    web_search?: boolean;
-  };
   support?: {
     level?: string;
-  };
-  capabilities?: {
-    custom_api?: boolean;
-    unlimited_messages?: boolean;
   };
 }
 
 export interface PlanData {
+  credits: string;
+  displayOrder: number;
+  features: PlanFeatures;
   id: string;
+  isPopular: boolean;
+  monthlyPrice: number;
   name: string;
   slug: string;
-  type: 'individual' | 'team';
-  monthlyPrice: number;
-  yearlyPrice: number | null;
-  credits: string;
   storageLimit: number;
+  type: 'individual' | 'team';
   vectorLimit: number;
-  features: PlanFeatures;
-  isPopular: boolean;
-  displayOrder: number;
+  yearlyPrice: number | null;
 }
 
 export const useSubscriptionPlans = () => {

@@ -11,6 +11,7 @@ import { Center, Flexbox } from 'react-layout-kit';
 import { useSubscriptionPlans } from '../hooks/useSubscriptionPlans';
 import BillingToggle, { type BillingCycle } from './features/BillingToggle';
 import ComparisonTable from './features/ComparisonTable';
+import OnetimePlanCard from './features/OnetimePlanCard';
 import PlanCard from './features/PlanCard';
 import TeamPlan from './features/TeamPlan';
 
@@ -75,7 +76,7 @@ const Client = memo<ClientProps>(() => {
   const { t } = useTranslation('subscription');
   const { styles, theme } = useStyles();
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
-  const { plans, isLoading } = useSubscriptionPlans();
+  const { plans, currentPlan, isLoading } = useSubscriptionPlans();
 
   // Filter plans: separate individual and team plans, exclude free plan from main list
   const { individualPlans, teamPlans } = useMemo(() => {
@@ -113,21 +114,36 @@ const Client = memo<ClientProps>(() => {
           <div className={styles.cardsContainer}>
             {[1, 2, 3].map((i) => (
               <Skeleton.Node
-                key={i}
                 active
-                style={{ width: 300, height: 500, borderRadius: 12 }}
+                key={i}
+                style={{ borderRadius: 12, height: 500, width: 300 }}
               />
             ))}
           </div>
         ) : (
           <div className={styles.cardsContainer}>
-            {individualPlans.map((plan) => (
-              <PlanCard
-                key={plan.id}
-                billingCycle={billingCycle}
-                plan={plan}
-              />
-            ))}
+            {billingCycle === 'onetime' ? (
+              // One-time payment cards
+              individualPlans.map((plan) => (
+                <OnetimePlanCard
+                  currentPlanSlug={currentPlan?.planSlug || undefined}
+                  currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                  key={plan.id}
+                  plan={plan}
+                />
+              ))
+            ) : (
+              // Recurring subscription cards
+              individualPlans.map((plan) => (
+                <PlanCard
+                  billingCycle={billingCycle}
+                  currentPlanSlug={currentPlan?.planSlug || undefined}
+                  currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                  key={plan.id}
+                  plan={plan}
+                />
+              ))
+            )}
           </div>
         )}
       </Flexbox>
@@ -153,8 +169,10 @@ const Client = memo<ClientProps>(() => {
           <div className={styles.cardsContainer}>
             {teamPlans.map((plan) => (
               <PlanCard
-                key={plan.id}
                 billingCycle={billingCycle}
+                currentPlanSlug={currentPlan?.planSlug || undefined}
+                currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                key={plan.id}
                 plan={plan}
               />
             ))}

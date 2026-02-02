@@ -3,19 +3,20 @@
  * Orchestrates payment operations across different channels
  */
 
-import type { DrizzleClient } from '@lobechat/database/client';
 import { paymentOrders, subscriptionPlans } from '@lobechat/database';
+import type { LobeChatDatabase } from '@lobechat/database';
 import { eq, and } from 'drizzle-orm';
 
 import type { PaymentChannel, PaymentConfig, CreateOrderInput, PaymentOrder } from './types';
 import { WeChatNativeChannel } from './channels/wechat-native';
+import { AlipayPrecreateChannel } from './channels/alipay-precreate';
 import { generateOrderNo } from './utils/order-no';
 
 export class PaymentService {
   private channels: Map<string, PaymentChannel> = new Map();
-  private db: DrizzleClient;
+  private db: LobeChatDatabase;
 
-  constructor(db: DrizzleClient, config: PaymentConfig) {
+  constructor(db: LobeChatDatabase, config: PaymentConfig) {
     this.db = db;
 
     // Register payment channels
@@ -23,10 +24,9 @@ export class PaymentService {
       this.channels.set('wechat_native', new WeChatNativeChannel(config.wechat));
     }
 
-    // Future: Register other channels (Alipay, etc.)
-    // if (config.alipay) {
-    //   this.channels.set('alipay', new AlipayChannel(config.alipay));
-    // }
+    if (config.alipay) {
+      this.channels.set('alipay_precreate', new AlipayPrecreateChannel(config.alipay));
+    }
   }
 
   /**
@@ -34,20 +34,33 @@ export class PaymentService {
    * Returns order info with payment QR code URL
    */
   async createOrder(input: CreateOrderInput): Promise<{
-    orderNo: string;
+    amount: number;
     codeUrl?: string;
     expiredAt: Date;
-    amount: number;
+    orderNo: string;
   }> {
-    const { userId, planId, planInterval, payChannel } = input;
+    const { userId, planId, planInterval, payChannel, subscriptionType, durationMonths } = input;
 
-    // 1. Get payment channel
+    // 1. Validate input parameters
+    if (subscriptionType === 'onetime' && !durationMonths) {
+      throw new Error('durationMonths is required for one-time payment');
+    }
+
+    if (subscriptionType === 'onetime' && ![1, 3, 6, 12].includes(durationMonths!)) {
+      throw new Error('durationMonths must be 1, 3, 6, or 12');
+    }
+
+    if (subscriptionType === 'recurring' && durationMonths) {
+      throw new Error('durationMonths should not be provided for recurring subscriptions');
+    }
+
+    // 2. Get payment channel
     const channel = this.channels.get(payChannel);
     if (!channel) {
       throw new Error(`Payment channel ${payChannel} not supported`);
     }
 
-    // 2. Query plan to determine amount (backend decides, don't trust frontend)
+    // 3. Query plan to determine amount (backend decides, don't trust frontend)
     const plan = await this.db
       .select()
       .from(subscriptionPlans)
@@ -59,13 +72,29 @@ export class PaymentService {
     }
 
     const planData = plan[0];
-    const amount = planInterval === 'year' ? planData.yearlyPrice : planData.monthlyPrice;
 
-    if (!amount || (planInterval === 'year' && !planData.yearlyPrice)) {
-      throw new Error(`Plan does not support ${planInterval} billing`);
+    // 4. Calculate amount based on subscription type
+    let amount: number;
+
+    if (subscriptionType === 'onetime') {
+      // One-time payment pricing
+      if (durationMonths === 12) {
+        // 12 months uses yearly price (same discount as yearly subscription)
+        amount = planData.yearlyPrice || 0;
+      } else {
+        // 1, 3, 6 months use monthly price × duration
+        amount = (planData.monthlyPrice || 0) * durationMonths!;
+      }
+    } else {
+      // Recurring subscription pricing
+      amount = (planInterval === 'year' ? planData.yearlyPrice : planData.monthlyPrice) || 0;
     }
 
-    // 3. Check for existing pending order (avoid duplicate orders)
+    if (!amount || amount <= 0) {
+      throw new Error(`Invalid amount calculated for plan ${planId}`);
+    }
+
+    // 5. Check for existing pending order (avoid duplicate orders)
     const existingOrder = await this.db
       .select()
       .from(paymentOrders)
@@ -74,6 +103,7 @@ export class PaymentService {
           eq(paymentOrders.userId, userId),
           eq(paymentOrders.planId, planId),
           eq(paymentOrders.planInterval, planInterval),
+          eq(paymentOrders.subscriptionType, subscriptionType),
           eq(paymentOrders.status, 'pending'),
         ),
       )
@@ -83,78 +113,87 @@ export class PaymentService {
     if (existingOrder && existingOrder.length > 0) {
       const order = existingOrder[0];
       if (order.expiredAt > new Date()) {
-        const codeUrl = order.channelData?.code_url as string | undefined;
+        const channelData = (order.channelData as Record<string, unknown>) || {};
+        const codeUrl = channelData.code_url as string | undefined;
         return {
-          orderNo: order.orderNo,
+          amount: order.amount,
           codeUrl,
           expiredAt: order.expiredAt,
-          amount: order.amount,
+          orderNo: order.orderNo,
         };
       }
     }
 
-    // 4. Generate new order number
+    // 6. Generate new order number
     const orderNo = generateOrderNo();
 
-    // 5. Set expiration time (2 hours)
+    // 7. Set expiration time (2 hours)
     const now = new Date();
     const expiredAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
-    // 6. Create order in database
+    // 8. Create order in database
     const newOrder: Omit<PaymentOrder, 'createdAt' | 'updatedAt'> = {
-      id: crypto.randomUUID(),
-      orderNo,
-      userId,
-      planId,
-      planInterval,
       amount,
       currency: 'CNY',
-      payChannel,
-      status: 'pending',
+      durationMonths,
       expiredAt,
+      id: crypto.randomUUID(),
+      orderNo,
+      payChannel,
+      planId,
+      planInterval,
+      status: 'pending',
+      subscriptionType,
+      userId,
     };
 
     await this.db.insert(paymentOrders).values({
-      id: newOrder.id,
-      orderNo: newOrder.orderNo,
-      userId: newOrder.userId,
-      planId: newOrder.planId,
-      planInterval: newOrder.planInterval,
       amount: newOrder.amount,
       currency: newOrder.currency,
-      payChannel: newOrder.payChannel,
-      status: newOrder.status,
+      durationMonths: newOrder.durationMonths,
       expiredAt: newOrder.expiredAt,
+      id: newOrder.id,
+      orderNo: newOrder.orderNo,
+      payChannel: newOrder.payChannel,
+      planId: newOrder.planId,
+      planInterval: newOrder.planInterval,
+      status: newOrder.status,
+      subscriptionType: newOrder.subscriptionType,
+      userId: newOrder.userId,
     });
 
-    // 7. Call payment channel to create payment
-    const channelResult = await channel.createPayment(newOrder as PaymentOrder);
+    // 9. Call payment channel to create payment with plan metadata
+    const channelResult = await channel.createPayment({
+      ...(newOrder as PaymentOrder),
+      planName: planData.name,
+      planSlug: planData.slug,
+    });
 
     if (!channelResult.success) {
       // Update order status to closed if channel creation failed
       await this.db
         .update(paymentOrders)
-        .set({ status: 'closed', closedAt: new Date() })
+        .set({ closedAt: new Date(), status: 'closed' })
         .where(eq(paymentOrders.orderNo, orderNo));
 
       throw new Error(channelResult.errorMessage || 'Failed to create payment');
     }
 
-    // 8. Update order with channel data
+    // 10. Update order with channel data
     await this.db
       .update(paymentOrders)
       .set({
-        channelOrderNo: channelResult.channelOrderNo,
         channelData: channelResult.channelData,
+        channelOrderNo: channelResult.channelOrderNo,
         updatedAt: new Date(),
       })
       .where(eq(paymentOrders.orderNo, orderNo));
 
     return {
-      orderNo,
+      amount,
       codeUrl: channelResult.channelData?.code_url as string | undefined,
       expiredAt,
-      amount,
+      orderNo,
     };
   }
 
@@ -162,10 +201,10 @@ export class PaymentService {
    * Query order status
    */
   async queryOrder(orderNo: string): Promise<{
-    orderNo: string;
-    status: string;
-    paidAt?: Date;
     amount: number;
+    orderNo: string;
+    paidAt?: Date;
+    status: string;
   }> {
     const order = await this.db
       .select()
@@ -180,10 +219,10 @@ export class PaymentService {
     const orderData = order[0];
 
     return {
-      orderNo: orderData.orderNo,
-      status: orderData.status,
-      paidAt: orderData.paidAt || undefined,
       amount: orderData.amount,
+      orderNo: orderData.orderNo,
+      paidAt: orderData.paidAt || undefined,
+      status: orderData.status,
     };
   }
 
@@ -223,8 +262,8 @@ export class PaymentService {
     await this.db
       .update(paymentOrders)
       .set({
-        status: 'closed',
         closedAt: new Date(),
+        status: 'closed',
         updatedAt: new Date(),
       })
       .where(eq(paymentOrders.orderNo, orderNo));

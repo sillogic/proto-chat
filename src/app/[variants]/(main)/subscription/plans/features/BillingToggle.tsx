@@ -4,7 +4,6 @@ import { Tag } from '@lobehub/ui';
 import { Segmented } from 'antd';
 import { createStyles } from 'antd-style';
 import { memo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -20,7 +19,7 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 }));
 
-export type BillingCycle = 'monthly' | 'yearly';
+export type BillingCycle = 'monthly' | 'yearly' | 'onetime';
 
 interface BillingToggleProps {
   onChange: (value: BillingCycle) => void;
@@ -28,7 +27,6 @@ interface BillingToggleProps {
 }
 
 const BillingToggle = memo<BillingToggleProps>(({ value, onChange }) => {
-  const { t } = useTranslation('subscription');
   const { styles } = useStyles();
 
   return (
@@ -39,17 +37,21 @@ const BillingToggle = memo<BillingToggleProps>(({ value, onChange }) => {
           {
             label: (
               <Flexbox align={'center'} gap={6} horizontal paddingInline={8}>
-                <span>{t('billingCycle.yearly')}</span>
+                <span>年订阅</span>
                 <Tag className={styles.discountTag} size={'small'}>
-                  {t('billingCycle.yearlyDiscount')}
+                  优惠
                 </Tag>
               </Flexbox>
             ),
             value: 'yearly',
           },
           {
-            label: t('billingCycle.monthly'),
+            label: '月订阅',
             value: 'monthly',
+          },
+          {
+            label: '一次性付费',
+            value: 'onetime',
           },
         ]}
         size="large"

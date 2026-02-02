@@ -152,10 +152,10 @@ router.post('/:userId/plan', requirePermission('plans.write'), async (req: Authe
 router.post('/:userId/plan/upgrade', requirePermission('plans.write'), async (req: AuthenticatedRequest, res) => {
   try {
     const { userId } = req.params;
-    const { planId } = req.body;
+    const { planId, billingInterval = 'month' } = req.body;
     if (!planId) return res.status(400).json({ success: false, message: 'planId required' });
 
-    const success = await usageService.executeUpgrade(userId, planId);
+    const success = await usageService.executeUpgrade(userId, planId, billingInterval);
     return res.json({ success, message: success ? '升级成功' : '升级失败' });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Internal error' });

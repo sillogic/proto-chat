@@ -6,7 +6,6 @@ dotenv.config();
 
 async function checkSchema() {
     try {
-        // @ts-expect-error - pnpm duplicate drizzle-orm packages, runtime works fine
         const columns = await db.execute(sql`
       SELECT column_name, data_type, numeric_precision, numeric_scale
       FROM information_schema.columns
