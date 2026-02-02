@@ -8,6 +8,7 @@ import * as aiProvidersSchema from '../db/ai-providers-schema';
 import * as subscriptionSchema from '../db/subscription-schema';
 import * as creditSchema from '../db/credit-schema';
 import * as protochatSchema from '../db/protochat-schema';
+import * as messagesSchema from '../db/messages-schema';
 
 dotenv.config({ override: true });
 
@@ -32,7 +33,8 @@ export const db = drizzle(client, {
     ...aiProvidersSchema,
     ...subscriptionSchema,
     ...creditSchema,
-    ...protochatSchema
+    ...protochatSchema,
+    ...messagesSchema
   }
 });
 

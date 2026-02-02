@@ -19,7 +19,7 @@ const RevenueOverview: React.FC = () => {
   // Fetch real-time exchange rate on mount (force refresh)
   const { loading: rateLoading, run: fetchRate } = useRequest(getExchangeRate, {
     onSuccess: (result) => {
-      const rate = result?.rate || 7.3;
+      const rate = result?.data?.rate || 7.3;
       setExchangeRate(rate);
     },
     defaultParams: [true],

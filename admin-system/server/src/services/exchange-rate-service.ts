@@ -10,6 +10,13 @@ interface RateCache {
   timestamp: number;
 }
 
+// API response type
+interface ExchangeRateResponse {
+  rates?: {
+    CNY?: number;
+  };
+}
+
 let rateCache: RateCache | null = null;
 
 /**
@@ -26,7 +33,7 @@ async function fetchUSDCNYRate(): Promise<number> {
       throw new Error(`Primary API failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as ExchangeRateResponse;
 
     if (data.rates && data.rates.CNY) {
       const rate = data.rates.CNY;
@@ -44,7 +51,7 @@ async function fetchUSDCNYRate(): Promise<number> {
       throw new Error(`Fallback API failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as ExchangeRateResponse;
 
     if (data.rates && data.rates.CNY) {
       const rate = data.rates.CNY;
