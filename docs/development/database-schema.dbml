@@ -1428,6 +1428,39 @@ table users {
   }
 }
 
+table user_agreements {
+  id text [pk, not null, default: `gen_random_uuid()`]
+  user_id text [not null]
+  agreement_no varchar(64)
+  external_agreement_no varchar(64) [not null, unique]
+  sign_scene varchar(64) [not null]
+  sign_channel varchar(20) [not null]
+  plan_id text [not null]
+  plan_slug varchar(32) [not null]
+  plan_name varchar(64) [not null]
+  billing_interval varchar(10) [not null]
+  single_amount integer [not null]
+  period_type varchar(10) [not null]
+  period integer [not null]
+  next_deduct_date date
+  status varchar(20) [not null, default: 'pending']
+  sign_time timestamp
+  unsign_time timestamp
+  unsign_reason varchar(32)
+  last_deduct_status varchar(20)
+  last_deduct_time timestamp
+  last_deduct_order_no varchar(64)
+  deduct_fail_count integer [default: 0]
+  deduct_fail_reason text
+  alipay_user_id varchar(64)
+  alipay_open_id varchar(128)
+  alipay_logon_id varchar(64)
+  first_order_no varchar(64)
+  metadata jsonb
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+}
+
 table user_extensions {
   accessed_at timestamp [default: `now()`]
   admin_notes text
@@ -1445,6 +1478,12 @@ table user_extensions {
   last_usage_reset timestamp [default: `now()`]
   next_credit_grant_at timestamp
   next_plan_id text
+  current_agreement_id text
+  auto_renew boolean [default: false]
+  downgrade_reason text
+  previous_plan_slug text
+  previous_plan_name text
+  downgrade_at timestamp
   onboarding jsonb
   plan_expires_at timestamp
   plan_id text

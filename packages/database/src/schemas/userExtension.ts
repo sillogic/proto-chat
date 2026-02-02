@@ -136,6 +136,22 @@ export const userExtensions = pgTable(
         // 下一个计费周期预设的方案 ID (用于中途降级或取消订阅)
         nextPlanId: text('next_plan_id'),
 
+        // ============ 签约信息 ============
+        // 当前生效的签约协议ID
+        currentAgreementId: text('current_agreement_id'),
+        // 自动续费状态: true=已开启, false=已关闭
+        autoRenew: boolean('auto_renew').default(false),
+
+        // ============ 降级信息 ============
+        // 降级原因: deduct_failed(扣款失败), user_unsign(用户解约), expired(到期未续费)
+        downgradeReason: text('downgrade_reason'),
+        // 降级前的套餐slug
+        previousPlanSlug: text('previous_plan_slug'),
+        // 降级前的套餐名称
+        previousPlanName: text('previous_plan_name'),
+        // 降级时间
+        downgradeAt: timestamp('downgrade_at'),
+
 
 
 

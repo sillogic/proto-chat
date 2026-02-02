@@ -2,10 +2,12 @@
  * Payment Orders Cleanup Cron Job
  *
  * Cleans up old pending/closed orders to prevent storage bloat
- * Run frequency: Weekly or monthly (e.g., every Sunday at 3 AM)
+ * Run frequency: Weekly (every Sunday at 3 AM Beijing time)
  *
- * Safety: Only deletes pending/closed orders older than RETENTION_DAYS
- * Paid orders are NEVER deleted (financial records)
+ * Retention policy:
+ * - pending orders: 7 days (QR code expires in 2 hours, 7 days is enough for debugging)
+ * - closed orders: 7 days (user cancelled or timeout, no financial value)
+ * - paid orders: NEVER deleted (financial/audit records)
  */
 
 import { paymentOrders, serverDB } from '@lobechat/database';
@@ -13,7 +15,7 @@ import { and, lt, or, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Configuration
-const RETENTION_DAYS = 90; // Keep orders for 90 days
+const RETENTION_DAYS = 7; // Keep pending/closed orders for 7 days
 const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
 
 export async function POST(request: NextRequest) {
@@ -91,10 +93,14 @@ export async function POST(request: NextRequest) {
  *   "crons": [
  *     {
  *       "path": "/api/cron/cleanup-orders",
- *       "schedule": "0 3 * * 0"
+ *       "schedule": "0 19 * * 6"
  *     }
  *   ]
  * }
  *
- * Schedule explanation: "0 3 * * 0" = Every Sunday at 3:00 AM UTC
+ * Schedule: "0 19 * * 6" = Every Saturday 19:00 UTC = Sunday 03:00 Beijing time
+ *
+ * Cleanup policy:
+ * - Deletes pending/closed orders older than 7 days
+ * - Paid orders are NEVER deleted (financial records)
  */
