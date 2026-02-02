@@ -7,7 +7,6 @@ import { createStyles } from 'antd-style';
 import { CheckCircle, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -37,9 +36,10 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   footer: css`
     padding-block: 16px;
     padding-inline: 32px;
+    border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+
     font-size: 12px;
     color: ${token.colorTextTertiary};
-    border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
   `,
   header: css`
     padding-block: 20px;
@@ -71,11 +71,15 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     color: ${token.colorText};
   `,
   paymentMethodCard: css`
-    padding: 12px 16px;
+    cursor: pointer;
+
+    padding-block: 12px;
+    padding-inline: 16px;
     border: 2px solid transparent;
     border-radius: 8px;
+
     background: ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'};
-    cursor: pointer;
+
     transition: all 0.2s;
 
     &:hover {
@@ -83,11 +87,14 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     }
   `,
   paymentMethodCardSelected: css`
-    padding: 12px 16px;
+    cursor: pointer;
+
+    padding-block: 12px;
+    padding-inline: 16px;
     border: 2px solid ${token.colorPrimary};
     border-radius: 8px;
+
     background: ${isDarkMode ? 'rgba(22, 119, 255, 0.1)' : 'rgba(22, 119, 255, 0.05)'};
-    cursor: pointer;
   `,
   price: css`
     font-size: 32px;
@@ -198,17 +205,16 @@ const PaymentModal = memo<PaymentModalProps>(
     onClose,
     onSuccess,
   }) => {
-    const { t } = useTranslation('subscription');
     const { styles, theme } = useStyles();
 
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('alipay_precreate');
-    const [orderNo, setOrderNo] = useState<string>('');
+    const [, setOrderNo] = useState<string>('');
     const [codeUrl, setCodeUrl] = useState<string>('');
     const [expiredAt, setExpiredAt] = useState<Date | null>(null);
     const [status, setStatus] = useState<PaymentStatus>('confirm');
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
-    const [agreementInfo, setAgreementInfo] = useState<AgreementInfo | null>(null);
+    const [, setAgreementInfo] = useState<AgreementInfo | null>(null);
 
     const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const timerIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -581,20 +587,23 @@ const PaymentModal = memo<PaymentModalProps>(
     // Render content based on status
     const renderContent = () => {
       switch (status) {
-        case 'confirm':
+        case 'confirm': {
           return renderConfirmStep();
+        }
 
-        case 'loading':
+        case 'loading': {
           return (
             <Center style={{ minHeight: 300 }}>
               <Spin size="large" tip="正在创建订单..." />
             </Center>
           );
+        }
 
-        case 'qrcode':
+        case 'qrcode': {
           return renderQRCodeStep();
+        }
 
-        case 'success':
+        case 'success': {
           return (
             <Center style={{ minHeight: 300 }}>
               <Flexbox align="center" gap={16}>
@@ -604,8 +613,9 @@ const PaymentModal = memo<PaymentModalProps>(
               </Flexbox>
             </Center>
           );
+        }
 
-        case 'error':
+        case 'error': {
           return (
             <Center style={{ minHeight: 300 }}>
               <Flexbox align="center" gap={16}>
@@ -620,9 +630,11 @@ const PaymentModal = memo<PaymentModalProps>(
               </Flexbox>
             </Center>
           );
+        }
 
-        default:
+        default: {
           return null;
+        }
       }
     };
 

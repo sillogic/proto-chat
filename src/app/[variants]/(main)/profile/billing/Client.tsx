@@ -33,13 +33,15 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   `,
   container: css`
     max-width: 1000px;
-    margin: 0 auto;
+    margin-block: 0;
+    margin-inline: auto;
     padding: 24px;
   `,
   featureItem: css`
     display: flex;
     gap: 8px;
     align-items: center;
+
     font-size: 14px;
     color: ${token.colorText};
   `,
@@ -47,6 +49,7 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     display: flex;
     gap: 8px;
     align-items: center;
+
     font-size: 14px;
     color: ${token.colorTextTertiary};
   `,
@@ -54,8 +57,8 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     margin-block-end: 24px;
   `,
   link: css`
-    color: ${token.colorPrimary};
     cursor: pointer;
+    color: ${token.colorPrimary};
 
     &:hover {
       text-decoration: underline;
@@ -69,11 +72,14 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     display: flex;
     align-items: center;
     justify-content: center;
+
     width: 40px;
     height: 40px;
-    font-size: 20px;
-    background: ${token.colorPrimaryBg};
     border-radius: 50%;
+
+    font-size: 20px;
+
+    background: ${token.colorPrimaryBg};
   `,
   planName: css`
     font-size: 18px;
@@ -130,15 +136,6 @@ interface OrderRecord {
   status: string;
   subscriptionType: string;
 }
-
-// Helper functions
-const renderPayChannel = (channel: string) => {
-  const channelMap = {
-    alipay_precreate: '支付宝',
-    wechat_native: '微信支付',
-  };
-  return channelMap[channel as keyof typeof channelMap] || channel;
-};
 
 // Status badge renderer
 const renderStatus = (status: string) => {
@@ -230,8 +227,7 @@ const getFeaturesList = (features: PlanFeatures, slug: string) => {
 
   // Free plan specific missing features
   if (slug === 'free') {
-    notIncluded.push('精选智能体市场');
-    notIncluded.push('专属高级插件');
+    notIncluded.push('精选智能体市场', '专属高级插件');
   }
 
   return { included, notIncluded };
@@ -248,7 +244,7 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
   const [cancelLoading, setCancelLoading] = useState(false);
 
   // Fetch current plan and plans list
-  const { currentPlan, plans, isLoading: plansLoading } = useSubscriptionPlans();
+  const { currentPlan, plans } = useSubscriptionPlans();
 
   // Handle cancel auto-renewal
   const handleCancelAutoRenewal = useCallback(async () => {
@@ -393,23 +389,23 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
             <div className={styles.priceLabel}>您的下次付款</div>
             <div className={styles.priceAmount}>¥{(nextPayment / 100).toFixed(2)}</div>
             {nextPayment > 0 && currentPlan?.planExpiresAt ? (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              <Typography.Text style={{ fontSize: 12 }} type="secondary">
                 下次付款时间：{new Date(currentPlan.planExpiresAt).toLocaleDateString('zh-CN')}
               </Typography.Text>
             ) : (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              <Typography.Text style={{ fontSize: 12 }} type="secondary">
                 {currentPlan?.subscriptionType === 'onetime'
                   ? '一次性付费，无后续扣款'
                   : '此金额仅包含订阅服务费用。'}
               </Typography.Text>
             )}
-            <Link to="/profile/usage" className={styles.link} style={{ fontSize: 12 }}>
+            <Link className={styles.link} style={{ fontSize: 12 }} to="/profile/usage">
               查看本月使用情况
             </Link>
           </Flexbox>
           <Flexbox flex={1} gap={8}>
             <div className={styles.priceLabel}>账单信息</div>
-            <Link to="/subscription/plans" className={styles.link}>
+            <Link className={styles.link} to="/subscription/plans">
               升级计划 <Icon icon={ArrowUpRight} size={14} />
             </Link>
           </Flexbox>
@@ -418,7 +414,7 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
 
       {/* 当前套餐 */}
       <Card className={styles.card}>
-        <Flexbox horizontal justify="space-between" align="center">
+        <Flexbox align="center" horizontal justify="space-between">
           <div className={styles.sectionTitle}>当前套餐</div>
           <Flexbox gap={8} horizontal>
             {/* Cancel auto-renewal button */}
@@ -440,12 +436,12 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
         </Flexbox>
         <Flexbox gap={16} style={{ marginTop: 16 }}>
           {/* Plan header */}
-          <Flexbox horizontal gap={12} align="center">
+          <Flexbox align="center" gap={12} horizontal>
             <div className={styles.planIcon}>
-              <CheckCircle2 size={24} color={theme.colorPrimary} />
+              <CheckCircle2 color={theme.colorPrimary} size={24} />
             </div>
             <Flexbox gap={2}>
-              <Flexbox horizontal gap={8} align="center">
+              <Flexbox align="center" gap={8} horizontal>
                 <div className={styles.planName}>
                   {currentPlan?.planName || '免费版'}
                 </div>
@@ -494,22 +490,22 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
 
           {/* Features list */}
           <Flexbox
-            horizontal={!mobile}
             gap={mobile ? 16 : 48}
+            horizontal={!mobile}
             style={{ marginTop: 8 }}
           >
             <Flexbox flex={1} gap={12}>
               {featuresList.included.map((feature, index) => (
-                <div key={index} className={styles.featureItem}>
-                  <Icon icon={CheckCircle2} size={16} color={theme.colorSuccess} />
+                <div className={styles.featureItem} key={index}>
+                  <Icon color={theme.colorSuccess} icon={CheckCircle2} size={16} />
                   {feature}
                 </div>
               ))}
             </Flexbox>
             <Flexbox flex={1} gap={12}>
               {featuresList.notIncluded.map((feature, index) => (
-                <div key={index} className={styles.featureItemDisabled}>
-                  <Icon icon={XIcon} size={16} color={theme.colorTextQuaternary} />
+                <div className={styles.featureItemDisabled} key={index}>
+                  <Icon color={theme.colorTextQuaternary} icon={XIcon} size={16} />
                   {feature}
                 </div>
               ))}

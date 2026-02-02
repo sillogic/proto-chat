@@ -85,7 +85,7 @@ async function processDeduction(
   agreement: any,
   plan: any,
   isRetry: boolean,
-): Promise<{ success: boolean; reason?: string }> {
+): Promise<{ reason?: string, success: boolean; }> {
   const orderNo = generateOrderNo();
   const amount = agreement.singleAmount;
 

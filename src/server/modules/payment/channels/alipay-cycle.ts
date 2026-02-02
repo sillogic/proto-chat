@@ -257,30 +257,33 @@ export class AlipayCycleChannel {
 
       // 根据结果码处理
       switch (tradeResponse.code) {
-        case '10000': // 支付成功
+        case '10000': { // 支付成功
           return {
             channelOrderNo: tradeResponse.trade_no,
             orderNo,
             status: 'success',
           };
+        }
 
         case '10003': // 等待用户付款
-        case '20000': // 未知异常
+        case '20000': { // 未知异常
           return {
             errorCode: tradeResponse.code,
             errorMessage: tradeResponse.sub_msg || tradeResponse.msg,
             orderNo,
             status: 'pending',
           };
+        }
 
-        case '40004': // 支付失败
-        default:
+        // case '40004' 支付失败 and other error cases
+        default: {
           return {
             errorCode: tradeResponse.sub_code || tradeResponse.code,
             errorMessage: tradeResponse.sub_msg || tradeResponse.msg || 'Deduct failed',
             orderNo,
             status: 'failed',
           };
+        }
       }
     } catch (error) {
       console.error('[AlipayCycle] Deduct payment error:', error);

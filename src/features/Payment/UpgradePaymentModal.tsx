@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -32,9 +31,11 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   `,
   currentPlanCard: css`
     flex: 1;
+
     padding: 16px;
     border: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
     border-radius: 8px;
+
     background: ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'};
   `,
   divider: css`
@@ -48,9 +49,10 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   footer: css`
     padding-block: 16px;
     padding-inline: 24px;
+    border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
+
     font-size: 12px;
     color: ${token.colorTextTertiary};
-    border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
   `,
   header: css`
     padding-block: 20px;
@@ -64,17 +66,23 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   `,
   newPlanCard: css`
     flex: 1;
+
     padding: 16px;
     border: 2px solid ${token.colorPrimary};
     border-radius: 8px;
+
     background: ${isDarkMode ? 'rgba(22, 119, 255, 0.1)' : 'rgba(22, 119, 255, 0.05)'};
   `,
   paymentMethodCard: css`
-    padding: 12px 16px;
+    cursor: pointer;
+
+    padding-block: 12px;
+    padding-inline: 16px;
     border: 2px solid transparent;
     border-radius: 8px;
+
     background: ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'};
-    cursor: pointer;
+
     transition: all 0.2s;
 
     &:hover {
@@ -82,11 +90,14 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     }
   `,
   paymentMethodCardSelected: css`
-    padding: 12px 16px;
+    cursor: pointer;
+
+    padding-block: 12px;
+    padding-inline: 16px;
     border: 2px solid ${token.colorPrimary};
     border-radius: 8px;
+
     background: ${isDarkMode ? 'rgba(22, 119, 255, 0.1)' : 'rgba(22, 119, 255, 0.05)'};
-    cursor: pointer;
   `,
   planName: css`
     font-size: 16px;
@@ -157,8 +168,8 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   `,
   tipItem: css`
     font-size: 13px;
-    color: ${token.colorTextSecondary};
     line-height: 1.8;
+    color: ${token.colorTextSecondary};
   `,
   title: css`
     font-size: 18px;
@@ -169,6 +180,7 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     display: flex;
     align-items: center;
     justify-content: space-between;
+
     padding-block: 12px;
     border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
   `,
@@ -273,23 +285,21 @@ const getPeriodText = (
     return billingInterval === 'year' ? '连续包年' : '连续包月';
   }
   // 一次性付费
-  const months = durationMonths || 1;
-  return `一次性 ${months} 个月`;
+  return `一次性 ${durationMonths ?? 1} 个月`;
 };
 
 const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
   ({ open, currentPlan, newPlan, discount, onClose, onSuccess }) => {
-    const { t } = useTranslation('subscription');
     const { styles, theme } = useStyles();
 
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('alipay_precreate');
-    const [orderNo, setOrderNo] = useState<string>('');
+    const [, setOrderNo] = useState<string>('');
     const [codeUrl, setCodeUrl] = useState<string>('');
     const [expiredAt, setExpiredAt] = useState<Date | null>(null);
     const [status, setStatus] = useState<PaymentStatus>('confirm');
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
-    const [agreementInfo, setAgreementInfo] = useState<AgreementInfo | null>(null);
+    const [, setAgreementInfo] = useState<AgreementInfo | null>(null);
 
     const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const timerIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -590,7 +600,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
           items={[
             {
               children: (
-                <Flexbox gap={4} style={{ fontSize: 12, color: theme.colorTextSecondary }}>
+                <Flexbox gap={4} style={{ color: theme.colorTextSecondary, fontSize: 12 }}>
                   <div>原价：¥{(newPlan.originalPrice / 100).toFixed(2)}</div>
                   {discountAmount > 0 && <div>优惠：-¥{(discountAmount / 100).toFixed(2)}</div>}
                   {residualValue > 0 && <div>残值抵扣：-¥{(residualValue / 100).toFixed(2)}</div>}
@@ -783,20 +793,23 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
     // Render content based on status
     const renderContent = () => {
       switch (status) {
-        case 'confirm':
+        case 'confirm': {
           return renderConfirmStep();
+        }
 
-        case 'loading':
+        case 'loading': {
           return (
             <Center style={{ minHeight: 300 }}>
               <Spin size="large" tip="正在创建订单..." />
             </Center>
           );
+        }
 
-        case 'qrcode':
+        case 'qrcode': {
           return renderQRCodeStep();
+        }
 
-        case 'success':
+        case 'success': {
           return (
             <Center style={{ minHeight: 300 }}>
               <Flexbox align="center" gap={16}>
@@ -806,8 +819,9 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
               </Flexbox>
             </Center>
           );
+        }
 
-        case 'error':
+        case 'error': {
           return (
             <Center style={{ minHeight: 300 }}>
               <Flexbox align="center" gap={16}>
@@ -822,9 +836,11 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
               </Flexbox>
             </Center>
           );
+        }
 
-        default:
+        default: {
           return null;
+        }
       }
     };
 

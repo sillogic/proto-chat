@@ -48,7 +48,30 @@ function getPaymentService(serverDB: any) {
 
 export const paymentRouter = router({
   
-  /**
+  
+/**
+   * Cancel auto-renewal (unsign agreement)
+   * User can cancel auto-renewal, subscription continues until expiry
+   */
+cancelAutoRenewal: paymentProcedure
+    .input(
+      z.object({
+        agreementId: z.string().min(1, 'Agreement ID is required'),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const paymentService = getPaymentService(ctx.serverDB);
+
+      const result = await paymentService.unsignAgreement(input.agreementId, ctx.userId);
+
+      return { success: result.success };
+    }),
+
+  
+  
+
+
+/**
    * Close an unpaid order
    * Called when user cancels payment or closes payment modal
    */
@@ -68,6 +91,9 @@ closeOrder: paymentProcedure
 
   
   
+
+
+
 /**
    * Create a new payment order
    * Returns order number and payment QR code URL
@@ -127,6 +153,44 @@ createOrder: paymentProcedure
 
   
   
+
+
+
+/**
+   * Create a sign + pay order for recurring subscriptions
+   * This initiates the signing process with first payment
+   */
+createSignPaymentOrder: paymentProcedure
+    .input(
+      z.object({
+        billingInterval: z.enum(['month', 'year'], {
+          errorMap: () => ({ message: 'Billing interval must be month or year' }),
+        }),
+        planId: z.string().min(1, 'Plan ID is required'),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const paymentService = getPaymentService(ctx.serverDB);
+
+      const result = await paymentService.createSignPaymentOrder({
+        billingInterval: input.billingInterval,
+        planId: input.planId,
+        userId: ctx.userId,
+      });
+
+      return {
+        agreementId: result.agreementId,
+        amount: result.amount,
+        codeUrl: result.codeUrl,
+        expiredAt: result.expiredAt.toISOString(),
+        externalAgreementNo: result.externalAgreementNo,
+        orderNo: result.orderNo,
+      };
+    }),
+
+  
+  
+
 /**
    * Get user's order history
    * Returns list of all payment orders for the current user
@@ -225,55 +289,5 @@ queryOrder: paymentProcedure
         paidAt: result.paidAt?.toISOString(),
         status: result.status,
       };
-    }),
-
-  /**
-   * Create a sign + pay order for recurring subscriptions
-   * This initiates the signing process with first payment
-   */
-  createSignPaymentOrder: paymentProcedure
-    .input(
-      z.object({
-        billingInterval: z.enum(['month', 'year'], {
-          errorMap: () => ({ message: 'Billing interval must be month or year' }),
-        }),
-        planId: z.string().min(1, 'Plan ID is required'),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const paymentService = getPaymentService(ctx.serverDB);
-
-      const result = await paymentService.createSignPaymentOrder({
-        billingInterval: input.billingInterval,
-        planId: input.planId,
-        userId: ctx.userId,
-      });
-
-      return {
-        agreementId: result.agreementId,
-        amount: result.amount,
-        codeUrl: result.codeUrl,
-        expiredAt: result.expiredAt.toISOString(),
-        externalAgreementNo: result.externalAgreementNo,
-        orderNo: result.orderNo,
-      };
-    }),
-
-  /**
-   * Cancel auto-renewal (unsign agreement)
-   * User can cancel auto-renewal, subscription continues until expiry
-   */
-  cancelAutoRenewal: paymentProcedure
-    .input(
-      z.object({
-        agreementId: z.string().min(1, 'Agreement ID is required'),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const paymentService = getPaymentService(ctx.serverDB);
-
-      const result = await paymentService.unsignAgreement(input.agreementId, ctx.userId);
-
-      return { success: result.success };
     }),
 });

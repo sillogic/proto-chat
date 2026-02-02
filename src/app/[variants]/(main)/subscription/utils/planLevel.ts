@@ -28,19 +28,30 @@ export const PLAN_TYPE_LEVEL: Record<string, number> = {
 
 // 付费周期优先级
 export const BILLING_CYCLE_PRIORITY = {
-  onetime_1: 1, // 一次性付费（1个月）
-  recurring_month: 2, // 连续包月
-  onetime_3: 3, // 一次性付费（3个月）
-  onetime_6: 4, // 一次性付费（6个月）
-  onetime_12: 5, // 一次性付费（12个月）
+  onetime_1: 1, 
+  
+// 一次性付费（6个月）
+onetime_12: 5, 
+  
+
+// 连续包月
+onetime_3: 3, 
+  
+
+// 一次性付费（3个月）
+onetime_6: 4, 
+  
+// 一次性付费（1个月）
+recurring_month: 2, // 一次性付费（12个月）
   recurring_year: 6, // 连续包年
 };
 
 export interface PlanLevelParams {
-  planSlug: string;
-  subscriptionType: 'recurring' | 'onetime';
-  billingInterval?: 'month' | 'year' | null; // 循环订阅时使用
-  durationMonths?: number | null; // 一次性付费时使用
+  billingInterval?: 'month' | 'year' | null;
+  // 循环订阅时使用
+  durationMonths?: number | null;
+  planSlug: string; 
+  subscriptionType: 'recurring' | 'onetime'; // 一次性付费时使用
 }
 
 /**
@@ -58,22 +69,27 @@ export function getBillingCyclePriority(
   }
 
   // 一次性付费
-  const months = durationMonths || 1;
-  switch (months) {
-    case 1:
+  switch (durationMonths ?? 1) {
+    case 1: {
       return BILLING_CYCLE_PRIORITY.onetime_1;
-    case 3:
+    }
+    case 3: {
       return BILLING_CYCLE_PRIORITY.onetime_3;
-    case 6:
+    }
+    case 6: {
       return BILLING_CYCLE_PRIORITY.onetime_6;
-    case 12:
+    }
+    case 12: {
       return BILLING_CYCLE_PRIORITY.onetime_12;
-    default:
+    }
+    default: {
       // 其他月数按最接近的向下取
+      const months = durationMonths!;
       if (months < 3) return BILLING_CYCLE_PRIORITY.onetime_1;
       if (months < 6) return BILLING_CYCLE_PRIORITY.onetime_3;
       if (months < 12) return BILLING_CYCLE_PRIORITY.onetime_6;
       return BILLING_CYCLE_PRIORITY.onetime_12;
+    }
   }
 }
 

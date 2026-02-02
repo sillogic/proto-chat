@@ -78,15 +78,6 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     border-radius: 10px;
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   `,
-  upgradeTag: css`
-    padding-inline: 6px;
-    border-radius: 4px;
-
-    font-size: 11px;
-    color: ${token.colorSuccess};
-
-    background: ${token.colorSuccessBg};
-  `,
   featureItem: css`
     font-size: 13px;
     color: ${token.colorTextSecondary};
@@ -142,6 +133,15 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     font-size: 18px;
     font-weight: 600;
     color: ${token.colorText};
+  `,
+  upgradeTag: css`
+    padding-inline: 6px;
+    border-radius: 4px;
+
+    font-size: 11px;
+    color: ${token.colorSuccess};
+
+    background: ${token.colorSuccessBg};
   `,
 }));
 
