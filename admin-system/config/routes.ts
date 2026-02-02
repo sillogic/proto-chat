@@ -37,7 +37,7 @@ export default [
     path: '/dashboard',
     name: 'dashboard',
     icon: 'DashboardOutlined',
-    component: './Dashboard',
+    component: './Dashboard/Enhanced',
   },
   {
     path: '/users',

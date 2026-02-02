@@ -6,6 +6,8 @@ import type {
   UserListResponse,
   UpdateUserPlanParams,
   DashboardStats,
+  EnhancedDashboardData,
+  DashboardPeriod,
 } from './api.d';
 
 // 管理员登录
@@ -191,3 +193,75 @@ export async function getUserManagementList(params: {
     params,
   });
 }
+
+// ============================================
+// 增强版仪表盘服务接口
+// ============================================
+
+/**
+ * 获取增强版仪表盘数据
+ * @param period 时间周期：7d | 30d | 90d
+ */
+export async function getEnhancedDashboard(
+  period: DashboardPeriod = '30d',
+): Promise<{ data: EnhancedDashboardData; success: boolean }> {
+  return request('/api/dashboard/enhanced', {
+    method: 'GET',
+    params: { period },
+  }) as Promise<{ data: EnhancedDashboardData; success: boolean }>;
+}
+/**
+ * 获取存量指标（快照数据，不受 period 影响）
+ * 包括：MRR、ARR、总用户数、活跃订阅数等
+ */
+export async function getSnapshotMetrics(): Promise<{
+  data: EnhancedDashboardData['snapshot'];
+  success: boolean;
+}> {
+  return request('/api/dashboard/snapshot', {
+    method: 'GET',
+  });
+}
+
+/**
+ * 获取流量指标（受 period 影响）
+ * @param period 时间周期：7d | 30d | 90d
+ */
+export async function getPeriodMetrics(
+  period: DashboardPeriod = '30d',
+): Promise<{ data: EnhancedDashboardData['period']; success: boolean }> {
+  return request('/api/dashboard/period-metrics', {
+    method: 'GET',
+    params: { period },
+  });
+}
+
+/**
+ * 获取 AI 使用统计
+ * @param period 时间周期：7d | 30d | 90d
+ */
+export async function getAIUsageStats(
+  period: DashboardPeriod = '30d',
+): Promise<{ data: EnhancedDashboardData['aiUsage']; success: boolean }> {
+  return request('/api/dashboard/ai-usage', {
+    method: 'GET',
+    params: { period },
+  });
+}
+
+/**
+ * 获取用户留存率队列数据
+ * @param days 显示最近多少天的队列（默认 30 天）
+ */
+export async function getRetentionCohorts(days: number = 30): Promise<{
+  data: EnhancedDashboardData['retentionCohorts'];
+  success: boolean;
+}> {
+  return request('/api/dashboard/retention', {
+    method: 'GET',
+    params: { days },
+  });
+}
+
+// 导出类型供组件使用
+export type { EnhancedDashboardData, DashboardPeriod };

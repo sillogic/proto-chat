@@ -4,10 +4,16 @@ import { users } from '../db/schema';
 import { desc, and, count, gte, lte, sql, ne } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
 
+// 导入增强版仪表盘路由
+import enhancedDashboardRouter from './dashboard.enhanced';
+
 const router: express.Router = express.Router();
 
 // 所有路由都需要认证
 router.use(authenticateToken);
+
+// 挂载增强版仪表盘路由
+router.use('/', enhancedDashboardRouter);
 
 // GET /api/dashboard/stats - 获取仪表盘统计数据
 router.get('/stats', requirePermission('stats.read'), async (req: AuthenticatedRequest, res) => {

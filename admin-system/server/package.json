@@ -9,6 +9,7 @@
     "build": "tsc",
     "lint": "eslint src --ext .ts",
     "test": "jest",
+    "test:dashboard": "tsx test-dashboard.ts",
     "create-tables": "tsx src/scripts/create-tables.ts",
     "init-db": "tsx src/scripts/create-tables.ts && tsx src/scripts/init-database.ts",
     "setup": "npm install && npm run init-db"

@@ -14,7 +14,6 @@ interface RateCache {
 interface ExchangeRateResponse {
   rates?: {
     CNY?: number;
-    [key: string]: number | undefined;
   };
 }
 
