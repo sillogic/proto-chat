@@ -166,6 +166,24 @@ const getPlanDescription = (slug: string) => {
   return descriptions[slug] || '';
 };
 
+// Get subscription type text
+const getSubscriptionTypeText = (
+  subscriptionType: string | null | undefined,
+  billingInterval: string | null | undefined,
+  durationMonths: number | null | undefined,
+): string => {
+  if (!subscriptionType || subscriptionType === 'recurring') {
+    if (billingInterval === 'year') return '连续包年';
+    if (billingInterval === 'month') return '连续包月';
+    return '';
+  }
+  // One-time payment
+  if (durationMonths) {
+    return `一次性 ${durationMonths} 个月`;
+  }
+  return '一次性付费';
+};
+
 // Get features list for display
 const getFeaturesList = (features: PlanFeatures, slug: string) => {
   const included: string[] = [];
@@ -330,12 +348,20 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
           <Flexbox flex={1} gap={8}>
             <div className={styles.priceLabel}>您的下次付款</div>
             <div className={styles.priceAmount}>¥{(nextPayment / 100).toFixed(2)}</div>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              此金额仅包含订阅服务费用。
-              <Link to="/profile/usage" className={styles.link}>
-                查看本月使用情况
-              </Link>
-            </Typography.Text>
+            {nextPayment > 0 && currentPlan?.planExpiresAt ? (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                下次付款时间：{new Date(currentPlan.planExpiresAt).toLocaleDateString('zh-CN')}
+              </Typography.Text>
+            ) : (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {currentPlan?.subscriptionType === 'onetime'
+                  ? '一次性付费，无后续扣款'
+                  : '此金额仅包含订阅服务费用。'}
+              </Typography.Text>
+            )}
+            <Link to="/profile/usage" className={styles.link} style={{ fontSize: 12 }}>
+              查看本月使用情况
+            </Link>
           </Flexbox>
           <Flexbox flex={1} gap={8}>
             <div className={styles.priceLabel}>账单信息</div>
@@ -363,11 +389,27 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
               <CheckCircle2 size={24} color={theme.colorPrimary} />
             </div>
             <Flexbox gap={2}>
-              <div className={styles.planName}>
-                {currentPlan?.planName || '免费版'}
-              </div>
+              <Flexbox horizontal gap={8} align="center">
+                <div className={styles.planName}>
+                  {currentPlan?.planName || '免费版'}
+                </div>
+                {currentPlan?.planSlug !== 'free' && (
+                  <Tag color="blue">
+                    {getSubscriptionTypeText(
+                      currentPlan?.subscriptionType,
+                      currentPlan?.billingInterval,
+                      currentPlan?.durationMonths,
+                    )}
+                  </Tag>
+                )}
+              </Flexbox>
               <div className={styles.planDescription}>
                 {getPlanDescription(currentPlan?.planSlug || 'free')}
+                {currentPlan?.planExpiresAt && currentPlan?.planSlug !== 'free' && (
+                  <span style={{ marginLeft: 8 }}>
+                    · 到期时间：{new Date(currentPlan.planExpiresAt).toLocaleDateString('zh-CN')}
+                  </span>
+                )}
               </div>
             </Flexbox>
           </Flexbox>
