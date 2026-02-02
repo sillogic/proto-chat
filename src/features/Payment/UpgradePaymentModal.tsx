@@ -1,15 +1,17 @@
 'use client';
 
 import { Icon } from '@lobehub/ui';
-import { AlipayOutlined, WechatOutlined } from '@ant-design/icons';
-import { Alert, Button, Collapse, message, Modal, Spin, Tag, Tooltip, Typography } from 'antd';
+import { WechatOutlined } from '@ant-design/icons';
+import { Alert, Button, Collapse, message, Modal, Radio, Spin, Tag, Tooltip, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import {
   ArrowRight,
   CheckCircle,
   CircleHelp,
+  ShieldCheck,
   XCircle,
 } from 'lucide-react';
+import Image from 'next/image';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
@@ -21,6 +23,11 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   body: css`
     padding-block: 24px;
     padding-inline: 24px;
+  `,
+  confirmButton: css`
+    height: 48px;
+    font-size: 16px;
+    font-weight: 500;
   `,
   currentPlanCard: css`
     flex: 1;
@@ -61,12 +68,24 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     border-radius: 8px;
     background: ${isDarkMode ? 'rgba(22, 119, 255, 0.1)' : 'rgba(22, 119, 255, 0.05)'};
   `,
-  paymentArea: css`
-    display: flex;
-    gap: 24px;
-    padding: 16px;
+  paymentMethodCard: css`
+    padding: 12px 16px;
+    border: 2px solid transparent;
     border-radius: 8px;
-    background: ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'};
+    background: ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'};
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: ${token.colorPrimaryBorderHover};
+    }
+  `,
+  paymentMethodCardSelected: css`
+    padding: 12px 16px;
+    border: 2px solid ${token.colorPrimary};
+    border-radius: 8px;
+    background: ${isDarkMode ? 'rgba(22, 119, 255, 0.1)' : 'rgba(22, 119, 255, 0.05)'};
+    cursor: pointer;
   `,
   planName: css`
     font-size: 16px;
@@ -107,19 +126,33 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     color: ${token.colorError};
   `,
   qrContainer: css`
-    flex-shrink: 0;
-    width: 160px;
-    height: 160px;
-    padding: 12px;
+    padding: 16px;
     border: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
     border-radius: 8px;
     background: #fff;
   `,
+  recommendTag: css`
+    padding-block: 2px;
+    padding-inline: 6px;
+    border-radius: 4px;
+
+    font-size: 10px;
+    color: #fff;
+
+    background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  `,
+  sectionTitle: css`
+    font-size: 14px;
+    font-weight: 500;
+    color: ${token.colorText};
+  `,
   successIcon: css`
     color: ${token.colorSuccess};
   `,
-  switchButton: css`
-    font-size: 13px;
+  timer: css`
+    font-size: 14px;
+    font-weight: 500;
+    color: ${token.colorWarning};
   `,
   tipItem: css`
     font-size: 13px;
@@ -137,6 +170,9 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     justify-content: space-between;
     padding-block: 12px;
     border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
+  `,
+  wechatIcon: css`
+    color: #07c160;
   `,
 }));
 
@@ -173,6 +209,7 @@ interface UpgradePaymentModalProps {
 }
 
 type PaymentMethod = 'alipay_precreate' | 'wechat_native';
+type PaymentStatus = 'confirm' | 'loading' | 'qrcode' | 'success' | 'error';
 
 // Helper function
 const formatTime = (seconds: number): string => {
@@ -242,9 +279,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
     const [orderNo, setOrderNo] = useState<string>('');
     const [codeUrl, setCodeUrl] = useState<string>('');
     const [expiredAt, setExpiredAt] = useState<Date | null>(null);
-    const [status, setStatus] = useState<'loading' | 'qrcode' | 'polling' | 'success' | 'error'>(
-      'loading',
-    );
+    const [status, setStatus] = useState<PaymentStatus>('confirm');
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
 
@@ -263,6 +298,19 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
 
     const discountAmount = discount?.amount || 0;
     const finalAmount = Math.max(0, newPlan.originalPrice - discountAmount - residualValue);
+
+    // Reset state when modal closes
+    useEffect(() => {
+      if (!open) {
+        setStatus('confirm');
+        setOrderNo('');
+        setCodeUrl('');
+        setExpiredAt(null);
+        setErrorMessage('');
+        setRemainingSeconds(0);
+        prevOrderRef.current = '';
+      }
+    }, [open]);
 
     // Stop polling function
     const stopPolling = useCallback(() => {
@@ -303,50 +351,42 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
       }, 3000);
     }, [onSuccess, stopPolling]);
 
-    // Create order when modal opens or payment method changes
-    useEffect(() => {
-      if (!open) return;
+    // Create order - only called when user confirms
+    const handleConfirmPayment = useCallback(async () => {
+      try {
+        setStatus('loading');
+        setErrorMessage('');
 
-      const createOrder = async () => {
-        try {
-          setStatus('loading');
-          setErrorMessage('');
-
-          if (prevOrderRef.current) {
-            try {
-              await lambdaClient.payment.closeOrder.mutate({ orderNo: prevOrderRef.current });
-            } catch (error) {
-              console.error('Failed to close previous order:', error);
-            }
+        // Close previous order if exists
+        if (prevOrderRef.current) {
+          try {
+            await lambdaClient.payment.closeOrder.mutate({ orderNo: prevOrderRef.current });
+          } catch (error) {
+            console.error('Failed to close previous order:', error);
           }
-
-          const result = await lambdaClient.payment.createOrder.mutate({
-            durationMonths: newPlan.durationMonths,
-            interval: newPlan.billingInterval,
-            payChannel: paymentMethod,
-            planId: newPlan.planId,
-            subscriptionType: newPlan.subscriptionType,
-          });
-
-          prevOrderRef.current = result.orderNo;
-          setOrderNo(result.orderNo);
-          setCodeUrl(result.codeUrl || '');
-          setExpiredAt(new Date(result.expiredAt));
-          setStatus('qrcode');
-
-          startPolling(result.orderNo);
-        } catch (error) {
-          console.error('Failed to create order:', error);
-          setStatus('error');
-          setErrorMessage(
-            error instanceof Error ? error.message : '创建订单失败',
-          );
         }
-      };
 
-      createOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, newPlan.planId, newPlan.billingInterval, paymentMethod, newPlan.subscriptionType, newPlan.durationMonths]);
+        const result = await lambdaClient.payment.createOrder.mutate({
+          durationMonths: newPlan.durationMonths,
+          interval: newPlan.billingInterval,
+          payChannel: paymentMethod,
+          planId: newPlan.planId,
+          subscriptionType: newPlan.subscriptionType,
+        });
+
+        prevOrderRef.current = result.orderNo;
+        setOrderNo(result.orderNo);
+        setCodeUrl(result.codeUrl || '');
+        setExpiredAt(new Date(result.expiredAt));
+        setStatus('qrcode');
+
+        startPolling(result.orderNo);
+      } catch (error) {
+        console.error('Failed to create order:', error);
+        setStatus('error');
+        setErrorMessage(error instanceof Error ? error.message : '创建订单失败');
+      }
+    }, [newPlan, paymentMethod, startPolling]);
 
     // Countdown timer
     useEffect(() => {
@@ -384,39 +424,41 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
       };
     }, [stopPolling]);
 
-    const handleClose = useCallback(async () => {
-      if (status === 'success') {
-        onClose();
-        return;
-      }
-
-      if (prevOrderRef.current && (status === 'qrcode' || status === 'polling')) {
-        try {
-          await lambdaClient.payment.closeOrder.mutate({ orderNo: prevOrderRef.current });
-        } catch (error) {
-          console.error('Failed to close order:', error);
-        }
-      }
-
+    const handleClose = useCallback(() => {
+      // Stop polling immediately for responsive UI
       stopPolling();
+
+      // Close order in background (fire-and-forget)
+      if (prevOrderRef.current && (status === 'qrcode' || status === 'loading')) {
+        const orderToClose = prevOrderRef.current;
+        lambdaClient.payment.closeOrder.mutate({ orderNo: orderToClose }).catch((error) => {
+          console.error('Failed to close order:', error);
+        });
+      }
+
       onClose();
     }, [status, onClose, stopPolling]);
 
-    const switchPaymentMethod = () => {
-      if (paymentMethod === 'alipay_precreate') {
-        message.info('微信支付敬请期待');
-      } else {
-        setPaymentMethod('alipay_precreate');
-      }
-    };
+    // Go back to confirm step
+    const handleBack = useCallback(() => {
+      // Stop polling immediately for responsive UI
+      stopPolling();
 
-    // 循环订阅提示
-    const recurringTips = [
-      `续订将按照「¥${(newPlan.originalPrice / 100).toFixed(0)}/${newPlan.billingInterval === 'year' ? '年' : '月'}」发起自动扣费。`,
-      `扣费优先级：优先扣除赠金，再扣余额，再采用${paymentMethod === 'alipay_precreate' ? '支付宝' : '微信'}扣费。`,
-      '每月将持续定期扣款，直至您根据我们的服务条款取消服务。',
-      '您可在续费日前至少1天，前往「我的编程套餐」关闭自动续费。',
-    ];
+      // Close order in background (fire-and-forget)
+      if (prevOrderRef.current) {
+        const orderToClose = prevOrderRef.current;
+        lambdaClient.payment.closeOrder.mutate({ orderNo: orderToClose }).catch((error) => {
+          console.error('Failed to close order:', error);
+        });
+        prevOrderRef.current = '';
+      }
+
+      // Update UI immediately
+      setStatus('confirm');
+      setOrderNo('');
+      setCodeUrl('');
+      setExpiredAt(null);
+    }, [stopPolling]);
 
     // 一次性付费提示
     const onetimeTips = [
@@ -424,55 +466,296 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
       '到期前可随时升级至更高方案。',
     ];
 
-    const tips = newPlan.subscriptionType === 'recurring' ? recurringTips : onetimeTips;
-
-    if (status === 'success') {
-      return (
-        <Modal
-          centered
-          className={styles.modal}
-          footer={null}
-          onCancel={handleClose}
-          open={open}
-          width={600}
-        >
-          <Center style={{ minHeight: 300, padding: 48 }}>
-            <Flexbox align="center" gap={16}>
-              <Icon className={styles.successIcon} icon={CheckCircle} size={64} />
-              <span style={{ fontSize: 20, fontWeight: 600 }}>支付成功！</span>
-              <span style={{ color: theme.colorTextSecondary, fontSize: 14 }}>
-                正在跳转...
-              </span>
+    // Render plan comparison section
+    const renderPlanComparison = () => (
+      <Flexbox gap={16} horizontal>
+        {/* Current Plan */}
+        <div className={styles.currentPlanCard}>
+          <Flexbox gap={8}>
+            <Flexbox align="center" gap={8} horizontal>
+              <span className={styles.planName}>{currentPlan.planName}</span>
+              <Tag>现有套餐</Tag>
             </Flexbox>
-          </Center>
-        </Modal>
-      );
-    }
+            <span className={styles.planPeriod}>
+              {getPeriodText(
+                currentPlan.subscriptionType,
+                currentPlan.billingInterval,
+                currentPlan.durationMonths,
+              )}
+            </span>
+            <span className={styles.planStatus}>失效时间：订阅升级后失效</span>
+          </Flexbox>
+        </div>
 
-    if (status === 'error') {
-      return (
-        <Modal
-          centered
-          className={styles.modal}
-          footer={null}
-          onCancel={handleClose}
-          open={open}
-          width={600}
-        >
-          <Center style={{ minHeight: 300, padding: 48 }}>
-            <Flexbox align="center" gap={16}>
-              <Icon className={styles.errorIcon} icon={XCircle} size={64} />
-              <span style={{ fontSize: 16, fontWeight: 500 }}>
-                {errorMessage || '支付失败'}
-              </span>
-              <Button onClick={handleClose} type="primary">
-                关闭
-              </Button>
+        {/* Arrow */}
+        <Center style={{ flexShrink: 0, width: 32 }}>
+          <Icon color={theme.colorPrimary} icon={ArrowRight} size={24} />
+        </Center>
+
+        {/* New Plan */}
+        <div className={styles.newPlanCard}>
+          <Flexbox gap={8}>
+            <Flexbox align="center" gap={8} horizontal>
+              <span className={styles.planName}>{newPlan.planName}</span>
+              <Tag color="blue">购买中</Tag>
             </Flexbox>
-          </Center>
-        </Modal>
-      );
-    }
+            <span className={styles.planPeriod}>
+              {getPeriodText(
+                newPlan.subscriptionType,
+                newPlan.billingInterval,
+                newPlan.durationMonths,
+              )}
+            </span>
+            <span className={styles.planStatus} style={{ color: theme.colorSuccess }}>
+              生效时间：升级后立即生效
+            </span>
+          </Flexbox>
+        </div>
+      </Flexbox>
+    );
+
+    // Render price details section
+    const renderPriceDetails = () => (
+      <Flexbox gap={0}>
+        <div className={styles.priceRow}>
+          <span className={styles.priceLabel}>新套餐原价</span>
+          <span className={styles.priceValue}>¥{(newPlan.originalPrice / 100).toFixed(2)}</span>
+        </div>
+
+        {discountAmount > 0 && (
+          <div className={styles.priceRow}>
+            <Flexbox align="center" gap={8} horizontal>
+              <span className={styles.priceLabel}>优惠活动</span>
+              <Tag color="red">{discount?.label}</Tag>
+            </Flexbox>
+            <span className={styles.priceValueDiscount}>-¥{(discountAmount / 100).toFixed(2)}</span>
+          </div>
+        )}
+
+        {residualValue > 0 && (
+          <div className={styles.priceRow}>
+            <Flexbox align="center" gap={4} horizontal>
+              <span className={styles.priceLabel}>现有套餐剩余价值</span>
+              <Tooltip title="现有套餐剩余价值是指您套餐中还没用完、按剩余天数折算出来的金额。">
+                <Icon icon={CircleHelp} size={14} style={{ color: theme.colorTextTertiary }} />
+              </Tooltip>
+            </Flexbox>
+            <span className={styles.priceValueDiscount}>-¥{(residualValue / 100).toFixed(2)}</span>
+          </div>
+        )}
+
+        <Collapse
+          ghost
+          items={[
+            {
+              children: (
+                <Flexbox gap={4} style={{ fontSize: 12, color: theme.colorTextSecondary }}>
+                  <div>原价：¥{(newPlan.originalPrice / 100).toFixed(2)}</div>
+                  {discountAmount > 0 && <div>优惠：-¥{(discountAmount / 100).toFixed(2)}</div>}
+                  {residualValue > 0 && <div>残值抵扣：-¥{(residualValue / 100).toFixed(2)}</div>}
+                </Flexbox>
+              ),
+              key: '1',
+              label: (
+                <div className={styles.priceRow} style={{ padding: 0 }}>
+                  <span className={styles.priceLabel}>套餐差价</span>
+                  <span className={styles.priceValue}>
+                    ¥{((newPlan.originalPrice - discountAmount - residualValue) / 100).toFixed(2)}
+                  </span>
+                </div>
+              ),
+            },
+          ]}
+          size="small"
+        />
+
+        <div className={styles.totalRow}>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>实付金额</span>
+          <span className={styles.price}>¥{(finalAmount / 100).toFixed(2)}</span>
+        </div>
+      </Flexbox>
+    );
+
+    // Render confirm step
+    const renderConfirmStep = () => (
+      <Flexbox gap={20}>
+        {/* Plan Comparison */}
+        {renderPlanComparison()}
+
+        {/* Price Details */}
+        {renderPriceDetails()}
+
+        {/* Payment Method Selection */}
+        <Flexbox gap={12}>
+          <span className={styles.sectionTitle}>选择支付方式</span>
+          <Flexbox gap={8}>
+            {/* Alipay */}
+            <div
+              className={
+                paymentMethod === 'alipay_precreate'
+                  ? styles.paymentMethodCardSelected
+                  : styles.paymentMethodCard
+              }
+              onClick={() => setPaymentMethod('alipay_precreate')}
+            >
+              <Flexbox align="center" horizontal justify="space-between">
+                <Flexbox align="center" gap={12} horizontal>
+                  <Radio checked={paymentMethod === 'alipay_precreate'} />
+                  <Image
+                    alt="Alipay"
+                    height={24}
+                    src="/images/payment/alipay-logo.png"
+                    width={24}
+                  />
+                  <span style={{ fontWeight: 500 }}>支付宝</span>
+                  <span className={styles.recommendTag}>推荐</span>
+                </Flexbox>
+              </Flexbox>
+            </div>
+
+            {/* WeChat Pay - Coming Soon */}
+            <div
+              className={styles.paymentMethodCard}
+              onClick={() => message.info('微信支付敬请期待')}
+              style={{ opacity: 0.6 }}
+            >
+              <Flexbox align="center" horizontal justify="space-between">
+                <Flexbox align="center" gap={12} horizontal>
+                  <Radio checked={false} disabled />
+                  <WechatOutlined className={styles.wechatIcon} style={{ fontSize: 24 }} />
+                  <span style={{ fontWeight: 500 }}>微信支付</span>
+                  <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>即将上线</span>
+                </Flexbox>
+              </Flexbox>
+            </div>
+          </Flexbox>
+        </Flexbox>
+
+        {/* Security Note */}
+        <Flexbox align="center" gap={6} horizontal style={{ justifyContent: 'center' }}>
+          <Icon color={theme.colorSuccess} icon={ShieldCheck} size={16} />
+          <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
+            支付由支付宝安全加密处理
+          </span>
+        </Flexbox>
+
+        {/* Confirm Button */}
+        <Button
+          block
+          className={styles.confirmButton}
+          onClick={handleConfirmPayment}
+          type="primary"
+        >
+          去支付 ¥{(finalAmount / 100).toFixed(2)}
+        </Button>
+      </Flexbox>
+    );
+
+    // Render QR code step
+    const renderQRCodeStep = () => (
+      <Flexbox gap={20}>
+        {/* Plan Comparison (compact) */}
+        {renderPlanComparison()}
+
+        {/* QR Code */}
+        <Center>
+          <div className={styles.qrContainer}>
+            {codeUrl ? (
+              <QRCodeSVG level="M" size={200} value={codeUrl} />
+            ) : (
+              <Center style={{ height: 200, width: 200 }}>
+                <Spin />
+              </Center>
+            )}
+          </div>
+        </Center>
+
+        {/* Instructions */}
+        <Flexbox align="center" gap={8}>
+          <Flexbox align="center" gap={8} horizontal>
+            <Image alt="Alipay" height={20} src="/images/payment/alipay-logo.png" width={20} />
+            <span style={{ fontSize: 14 }}>
+              请使用支付宝扫码支付{' '}
+              <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
+                ¥{(finalAmount / 100).toFixed(2)}
+              </Typography.Text>
+            </span>
+          </Flexbox>
+          {remainingSeconds > 0 && (
+            <span className={styles.timer}>有效期: {formatTime(remainingSeconds)}</span>
+          )}
+        </Flexbox>
+
+        {/* Back button */}
+        <Button block onClick={handleBack}>
+          返回修改
+        </Button>
+
+        {/* Tips */}
+        <Alert
+          description={
+            <Flexbox gap={4}>
+              {onetimeTips.map((tip, index) => (
+                <div className={styles.tipItem} key={index}>
+                  • {tip}
+                </div>
+              ))}
+            </Flexbox>
+          }
+          message="支付提示"
+          showIcon
+          type="info"
+        />
+      </Flexbox>
+    );
+
+    // Render content based on status
+    const renderContent = () => {
+      switch (status) {
+        case 'confirm':
+          return renderConfirmStep();
+
+        case 'loading':
+          return (
+            <Center style={{ minHeight: 300 }}>
+              <Spin size="large" tip="正在创建订单..." />
+            </Center>
+          );
+
+        case 'qrcode':
+          return renderQRCodeStep();
+
+        case 'success':
+          return (
+            <Center style={{ minHeight: 300 }}>
+              <Flexbox align="center" gap={16}>
+                <Icon className={styles.successIcon} icon={CheckCircle} size={64} />
+                <span style={{ fontSize: 20, fontWeight: 600 }}>支付成功！</span>
+                <span style={{ color: theme.colorTextSecondary, fontSize: 14 }}>正在跳转...</span>
+              </Flexbox>
+            </Center>
+          );
+
+        case 'error':
+          return (
+            <Center style={{ minHeight: 300 }}>
+              <Flexbox align="center" gap={16}>
+                <Icon className={styles.errorIcon} icon={XCircle} size={64} />
+                <span style={{ fontSize: 16, fontWeight: 500 }}>{errorMessage || '支付失败'}</span>
+                <Flexbox gap={8} horizontal>
+                  <Button onClick={handleBack}>返回重试</Button>
+                  <Button onClick={handleClose} type="primary">
+                    关闭
+                  </Button>
+                </Flexbox>
+              </Flexbox>
+            </Center>
+          );
+
+        default:
+          return null;
+      }
+    };
 
     return (
       <Modal
@@ -486,185 +769,27 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
       >
         {/* Header */}
         <div className={styles.header}>
-          <span className={styles.title}>订阅升级</span>
+          <span className={styles.title}>
+            {status === 'confirm' ? '确认升级' : status === 'qrcode' ? '扫码支付' : '订阅升级'}
+          </span>
         </div>
 
-        <div className={styles.body}>
-          <Flexbox gap={20}>
-            {/* Plan Comparison */}
-            <Flexbox gap={16} horizontal>
-              {/* Current Plan */}
-              <div className={styles.currentPlanCard}>
-                <Flexbox gap={8}>
-                  <Flexbox align="center" gap={8} horizontal>
-                    <span className={styles.planName}>{currentPlan.planName}</span>
-                    <Tag>现有套餐</Tag>
-                  </Flexbox>
-                  <span className={styles.planPeriod}>
-                    {getPeriodText(
-                      currentPlan.subscriptionType,
-                      currentPlan.billingInterval,
-                      currentPlan.durationMonths,
-                    )}
-                  </span>
-                  <span className={styles.planStatus}>失效时间：订阅升级后失效</span>
-                </Flexbox>
-              </div>
-
-              {/* Arrow */}
-              <Center style={{ flexShrink: 0, width: 32 }}>
-                <Icon color={theme.colorPrimary} icon={ArrowRight} size={24} />
-              </Center>
-
-              {/* New Plan */}
-              <div className={styles.newPlanCard}>
-                <Flexbox gap={8}>
-                  <Flexbox align="center" gap={8} horizontal>
-                    <span className={styles.planName}>{newPlan.planName}</span>
-                    <Tag color="blue">购买中</Tag>
-                  </Flexbox>
-                  <span className={styles.planPeriod}>
-                    {getPeriodText(
-                      newPlan.subscriptionType,
-                      newPlan.billingInterval,
-                      newPlan.durationMonths,
-                    )}
-                  </span>
-                  <span className={styles.planStatus} style={{ color: theme.colorSuccess }}>
-                    生效时间：升级后立即生效
-                  </span>
-                </Flexbox>
-              </div>
-            </Flexbox>
-
-            {/* Price Details */}
-            <Flexbox gap={0}>
-              <div className={styles.priceRow}>
-                <span className={styles.priceLabel}>新套餐原价</span>
-                <span className={styles.priceValue}>¥{(newPlan.originalPrice / 100).toFixed(2)}</span>
-              </div>
-
-              {discountAmount > 0 && (
-                <div className={styles.priceRow}>
-                  <Flexbox align="center" gap={8} horizontal>
-                    <span className={styles.priceLabel}>优惠活动</span>
-                    <Tag color="red">{discount?.label}</Tag>
-                  </Flexbox>
-                  <span className={styles.priceValueDiscount}>-¥{(discountAmount / 100).toFixed(2)}</span>
-                </div>
-              )}
-
-              {residualValue > 0 && (
-                <div className={styles.priceRow}>
-                  <Flexbox align="center" gap={4} horizontal>
-                    <span className={styles.priceLabel}>现有套餐剩余价值</span>
-                    <Tooltip title="现有套餐剩余价值是指您套餐中还没用完、按剩余天数折算出来的金额。">
-                      <Icon icon={CircleHelp} size={14} style={{ color: theme.colorTextTertiary }} />
-                    </Tooltip>
-                  </Flexbox>
-                  <span className={styles.priceValueDiscount}>-¥{(residualValue / 100).toFixed(2)}</span>
-                </div>
-              )}
-
-              <Collapse
-                ghost
-                items={[
-                  {
-                    children: (
-                      <Flexbox gap={4} style={{ fontSize: 12, color: theme.colorTextSecondary }}>
-                        <div>原价：¥{(newPlan.originalPrice / 100).toFixed(2)}</div>
-                        {discountAmount > 0 && <div>优惠：-¥{(discountAmount / 100).toFixed(2)}</div>}
-                        {residualValue > 0 && <div>残值抵扣：-¥{(residualValue / 100).toFixed(2)}</div>}
-                      </Flexbox>
-                    ),
-                    key: '1',
-                    label: (
-                      <div className={styles.priceRow} style={{ padding: 0 }}>
-                        <span className={styles.priceLabel}>套餐差价</span>
-                        <span className={styles.priceValue}>
-                          ¥{((newPlan.originalPrice - discountAmount - residualValue) / 100).toFixed(2)}
-                        </span>
-                      </div>
-                    ),
-                  },
-                ]}
-                size="small"
-              />
-
-              <div className={styles.totalRow}>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>实付金额</span>
-                <span className={styles.price}>¥{(finalAmount / 100).toFixed(2)}</span>
-              </div>
-            </Flexbox>
-
-            {/* Payment Area */}
-            {status === 'loading' ? (
-              <Center style={{ minHeight: 200 }}>
-                <Spin size="large" tip="正在创建订单..." />
-              </Center>
-            ) : (
-              <div className={styles.paymentArea}>
-                {/* QR Code */}
-                <div className={styles.qrContainer}>
-                  {codeUrl ? (
-                    <QRCodeSVG level="M" size={136} value={codeUrl} />
-                  ) : (
-                    <Center style={{ height: '100%' }}>
-                      <Spin />
-                    </Center>
-                  )}
-                </div>
-
-                {/* Payment Info */}
-                <Flexbox flex={1} gap={12}>
-                  <Flexbox align="center" gap={8} horizontal>
-                    {paymentMethod === 'alipay_precreate' ? (
-                      <AlipayOutlined style={{ color: '#1677ff', fontSize: 20 }} />
-                    ) : (
-                      <WechatOutlined style={{ color: '#07c160', fontSize: 20 }} />
-                    )}
-                    <span>
-                      请使用{paymentMethod === 'alipay_precreate' ? '支付宝' : '微信'}扫码支付{' '}
-                      <Typography.Text strong style={{ color: theme.colorError, fontSize: 18 }}>
-                        ¥{(finalAmount / 100).toFixed(2)}
-                      </Typography.Text>
-                    </span>
-                    <Button
-                      className={styles.switchButton}
-                      onClick={switchPaymentMethod}
-                      size="small"
-                      type="link"
-                    >
-                      切换{paymentMethod === 'alipay_precreate' ? '微信支付' : '支付宝'}
-                    </Button>
-                  </Flexbox>
-
-                  {remainingSeconds > 0 && (
-                    <span style={{ color: theme.colorWarning, fontSize: 12 }}>
-                      有效期: {formatTime(remainingSeconds)}
-                    </span>
-                  )}
-
-                  <Flexbox gap={4} style={{ marginTop: 4 }}>
-                    {tips.map((tip, index) => (
-                      <div className={styles.tipItem} key={index}>
-                        • {tip}
-                      </div>
-                    ))}
-                  </Flexbox>
-                </Flexbox>
-              </div>
-            )}
-          </Flexbox>
-        </div>
+        {/* Body */}
+        <div className={styles.body}>{renderContent()}</div>
 
         {/* Footer */}
-        <div className={styles.footer}>
-          支付即视您同意
-          <Typography.Link href="/terms" target="_blank">《服务协议》</Typography.Link>
-          <Typography.Link href="/subscription-terms" target="_blank">《订阅协议》</Typography.Link>
-          ，虚拟商品一经支付不支持退款
-        </div>
+        {status === 'confirm' && (
+          <div className={styles.footer}>
+            支付即视为您同意
+            <Typography.Link href="/terms" target="_blank">
+              《服务协议》
+            </Typography.Link>
+            <Typography.Link href="/subscription-terms" target="_blank">
+              《订阅协议》
+            </Typography.Link>
+            ，虚拟商品一经支付不支持退款
+          </div>
+        )}
       </Modal>
     );
   },
