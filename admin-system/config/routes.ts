@@ -40,12 +40,6 @@ export default [
     component: './Dashboard/Enhanced',
   },
   {
-    path: '/dashboard/debug',
-    name: 'dashboardDebug',
-    hideInMenu: true,
-    component: './Dashboard/Debug',
-  },
-  {
     path: '/users',
     name: 'users',
     icon: 'UserOutlined',
