@@ -62,5 +62,7 @@ export default {
   'menu.analytics.userInsights': 'User Insights',
   'menu.protochat': 'ProtoChat Sub-Providers',
   'menu.systemConfig': 'System Config',
+  'menu.systemConfig.defaultModel': 'Default Model',
   'menu.systemConfig.embedding': 'Embedding Config',
+  'menu.systemConfig.rules': 'System Rules',
 };

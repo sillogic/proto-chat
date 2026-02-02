@@ -1,7 +1,7 @@
 import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { subscriptionPlans, userExtensions } from '@lobechat/database';
-import { asc, eq } from 'drizzle-orm';
+import { paymentOrders, subscriptionPlans, userExtensions } from '@lobechat/database';
+import { and, asc, desc, eq } from 'drizzle-orm';
 
 // Features structure from plan document
 export interface PlanFeatures {
@@ -79,16 +79,39 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
         .limit(1);
 
       if (plan && plan.length > 0) {
+        // Query the most recent paid order for this user's current plan to get paidAmount
+        const recentOrder = await ctx.serverDB
+          .select({ amount: paymentOrders.amount })
+          .from(paymentOrders)
+          .where(
+            and(
+              eq(paymentOrders.userId, ctx.userId),
+              eq(paymentOrders.planId, user.planId),
+              eq(paymentOrders.status, 'paid'),
+            ),
+          )
+          .orderBy(desc(paymentOrders.paidAt))
+          .limit(1);
+
+        const paidAmount = recentOrder.length > 0 ? recentOrder[0].amount : 0;
+
         return {
+          autoRenew: user.autoRenew ?? false,
           billingInterval: user.billingInterval,
+          currentAgreementId: user.currentAgreementId,
+          downgradeAt: user.downgradeAt,
+          downgradeReason: user.downgradeReason,
           durationMonths: user.durationMonths,
           features: plan[0].features,
           nextCreditGrantAt: user.nextCreditGrantAt,
+          paidAmount, // 实付金额（分）
           planExpiresAt: user.planExpiresAt,
           planId: user.planId,
           planName: plan[0].name,
           planSlug: user.currentPlan,
           planType: plan[0].type,
+          previousPlanName: user.previousPlanName,
+          previousPlanSlug: user.previousPlanSlug,
           subscriptionType: user.subscriptionType || 'recurring',
         };
       }
@@ -96,15 +119,22 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
 
     // Fallback: user doesn't have a plan or plan not found
     return {
+      autoRenew: user.autoRenew ?? false,
       billingInterval: null,
+      currentAgreementId: user.currentAgreementId,
+      downgradeAt: user.downgradeAt,
+      downgradeReason: user.downgradeReason,
       durationMonths: null,
       features: {},
       nextCreditGrantAt: null,
+      paidAmount: 0,
       planExpiresAt: user.planExpiresAt,
       planId: null,
       planName: 'Free',
       planSlug: user.currentPlan || 'free',
       planType: 'individual',
+      previousPlanName: user.previousPlanName,
+      previousPlanSlug: user.previousPlanSlug,
       subscriptionType: 'recurring',
     };
   }),

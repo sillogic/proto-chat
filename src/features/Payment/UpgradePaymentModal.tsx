@@ -2,9 +2,16 @@
 
 import { Icon } from '@lobehub/ui';
 import { WechatOutlined } from '@ant-design/icons';
-import { Alert, Button, message, Modal, Radio, Spin, Typography } from 'antd';
+import { Alert, Button, Collapse, message, Modal, Radio, Spin, Tag, Tooltip, Typography } from 'antd';
 import { createStyles } from 'antd-style';
-import { CheckCircle, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
+import {
+  ArrowRight,
+  CheckCircle,
+  CircleHelp,
+  RefreshCw,
+  ShieldCheck,
+  XCircle,
+} from 'lucide-react';
 import Image from 'next/image';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Center, Flexbox } from 'react-layout-kit';
@@ -13,62 +20,58 @@ import { QRCodeSVG } from 'qrcode.react';
 import { lambdaClient } from '@/libs/trpc/client';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
-  alipayIcon: css`
-    color: #1677ff;
-  `,
   body: css`
     padding-block: 24px;
-    padding-inline: 32px;
+    padding-inline: 24px;
   `,
   confirmButton: css`
     height: 48px;
     font-size: 16px;
     font-weight: 500;
   `,
+  currentPlanCard: css`
+    flex: 1;
+
+    padding: 16px;
+    border: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
+    border-radius: 8px;
+
+    background: ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'};
+  `,
   divider: css`
     width: 100%;
     height: 1px;
-    background: ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+    background: ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
   `,
   errorIcon: css`
     color: ${token.colorError};
   `,
   footer: css`
     padding-block: 16px;
-    padding-inline: 32px;
-    border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+    padding-inline: 24px;
+    border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
 
     font-size: 12px;
     color: ${token.colorTextTertiary};
   `,
   header: css`
     padding-block: 20px;
-    padding-inline: 32px;
-    border-block-end: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
-  `,
-  hint: css`
-    font-size: 13px;
-    color: ${token.colorTextTertiary};
-    text-align: center;
+    padding-inline: 24px;
+    border-block-end: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
   `,
   modal: css`
     .ant-modal-content {
       padding: 0;
     }
   `,
-  orderInfo: css`
+  newPlanCard: css`
+    flex: 1;
+
     padding: 16px;
+    border: 2px solid ${token.colorPrimary};
     border-radius: 8px;
-    background: ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'};
-  `,
-  orderLabel: css`
-    font-size: 14px;
-    color: ${token.colorTextSecondary};
-  `,
-  orderValue: css`
-    font-size: 14px;
-    font-weight: 500;
-    color: ${token.colorText};
+
+    background: ${isDarkMode ? 'rgba(22, 119, 255, 0.1)' : 'rgba(22, 119, 255, 0.05)'};
   `,
   paymentMethodCard: css`
     cursor: pointer;
@@ -96,13 +99,41 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
 
     background: ${isDarkMode ? 'rgba(22, 119, 255, 0.1)' : 'rgba(22, 119, 255, 0.05)'};
   `,
+  planName: css`
+    font-size: 16px;
+    font-weight: 600;
+    color: ${token.colorText};
+  `,
+  planPeriod: css`
+    font-size: 13px;
+    color: ${token.colorTextSecondary};
+  `,
+  planStatus: css`
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+  `,
   price: css`
-    font-size: 32px;
+    font-size: 20px;
     font-weight: 700;
     color: ${token.colorError};
   `,
-  priceCurrency: css`
-    font-size: 18px;
+  priceLabel: css`
+    font-size: 14px;
+    color: ${token.colorTextSecondary};
+  `,
+  priceRow: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 8px;
+  `,
+  priceValue: css`
+    font-size: 14px;
+    font-weight: 500;
+    color: ${token.colorText};
+  `,
+  priceValueDiscount: css`
+    font-size: 14px;
     font-weight: 500;
     color: ${token.colorError};
   `,
@@ -127,10 +158,6 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     font-weight: 500;
     color: ${token.colorText};
   `,
-  subtitle: css`
-    font-size: 14px;
-    color: ${token.colorTextSecondary};
-  `,
   successIcon: css`
     color: ${token.colorSuccess};
   `,
@@ -139,26 +166,59 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     font-weight: 500;
     color: ${token.colorWarning};
   `,
+  tipItem: css`
+    font-size: 13px;
+    line-height: 1.8;
+    color: ${token.colorTextSecondary};
+  `,
   title: css`
     font-size: 18px;
     font-weight: 600;
     color: ${token.colorText};
+  `,
+  totalRow: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding-block: 12px;
+    border-block-start: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
   `,
   wechatIcon: css`
     color: #07c160;
   `,
 }));
 
-interface PaymentModalProps {
-  amount: number;
-  billingCycle: 'month' | 'year';
-  durationMonths?: number;
+interface CurrentPlanInfo {
+  billingInterval?: 'month' | 'year' | null;
+  durationMonths?: number | null;
+  paidAmount?: number; // 实付金额（分）
+  planExpiresAt?: Date | null;
+  planName: string;
+  planSlug: string;
+  subscriptionType: 'recurring' | 'onetime';
+}
+
+interface NewPlanInfo {
+  billingInterval: 'month' | 'year';
+  durationMonths?: number; // 一次性付费的月数
+  originalPrice: number; // 原价（分）
+  planId: string;
+  planName: string;
+  planSlug: string;
+  subscriptionType: 'recurring' | 'onetime';
+}
+
+interface UpgradePaymentModalProps {
+  currentPlan: CurrentPlanInfo;
+  discount?: {
+    amount: number; // 优惠金额（分）
+    label: string; // 如"首购5折"
+  };
+  newPlan: NewPlanInfo;
   onClose: () => void;
   onSuccess: () => void;
   open: boolean;
-  planId: string;
-  planName: string;
-  subscriptionType?: 'recurring' | 'onetime';
 }
 
 type PaymentMethod = 'alipay_precreate' | 'wechat_native';
@@ -170,6 +230,7 @@ interface AgreementInfo {
   externalAgreementNo: string;
 }
 
+// Helper function
 const formatTime = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -181,30 +242,54 @@ const formatTime = (seconds: number): string => {
   return `${minutes}:${String(secs).padStart(2, '0')}`;
 };
 
-// Get period text
-const getPeriodText = (
+// 计算残值
+const calculateResidualValue = (
+  paidAmount: number, // 实付金额（分）
   subscriptionType: 'recurring' | 'onetime',
-  billingCycle: 'month' | 'year',
-  durationMonths?: number,
-): string => {
-  if (subscriptionType === 'onetime') {
-    return `一次性 ${durationMonths || 1} 个月`;
+  billingInterval: 'month' | 'year' | null | undefined,
+  durationMonths: number | null | undefined,
+  expiresAt: Date | null | undefined,
+): number => {
+  if (!paidAmount || paidAmount <= 0 || !expiresAt) return 0;
+
+  const now = new Date();
+  const remainingDays = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+  if (remainingDays <= 0) return 0;
+
+  let totalDays: number;
+
+  if (subscriptionType === 'recurring') {
+    totalDays = billingInterval === 'year' ? 365 : 30;
+  } else {
+    // 一次性付费
+    const months = durationMonths || 1;
+    totalDays = months * 30;
   }
-  return billingCycle === 'year' ? '连续包年' : '连续包月';
+
+  // 日均价格向上取整到分
+  const dailyPrice = Math.ceil((paidAmount / totalDays) * 100) / 100;
+  // 残值
+  const residual = Math.round(dailyPrice * remainingDays);
+
+  return residual;
 };
 
-const PaymentModal = memo<PaymentModalProps>(
-  ({
-    open,
-    planName,
-    planId,
-    amount,
-    billingCycle,
-    subscriptionType = 'recurring',
-    durationMonths,
-    onClose,
-    onSuccess,
-  }) => {
+// 获取周期显示文本
+const getPeriodText = (
+  subscriptionType: 'recurring' | 'onetime',
+  billingInterval?: 'month' | 'year' | null,
+  durationMonths?: number | null,
+): string => {
+  if (subscriptionType === 'recurring') {
+    return billingInterval === 'year' ? '连续包年' : '连续包月';
+  }
+  // 一次性付费
+  return `一次性 ${durationMonths ?? 1} 个月`;
+};
+
+const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
+  ({ open, currentPlan, newPlan, discount, onClose, onSuccess }) => {
     const { styles, theme } = useStyles();
 
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('alipay_precreate');
@@ -221,7 +306,19 @@ const PaymentModal = memo<PaymentModalProps>(
     const prevOrderRef = useRef<string>('');
 
     // Is this a recurring subscription (uses sign + pay flow)
-    const isRecurring = subscriptionType === 'recurring';
+    const isRecurring = newPlan.subscriptionType === 'recurring';
+
+    // 计算价格
+    const residualValue = calculateResidualValue(
+      currentPlan.paidAmount || 0,
+      currentPlan.subscriptionType,
+      currentPlan.billingInterval,
+      currentPlan.durationMonths,
+      currentPlan.planExpiresAt,
+    );
+
+    const discountAmount = discount?.amount || 0;
+    const finalAmount = Math.max(0, newPlan.originalPrice - discountAmount - residualValue);
 
     // Reset state when modal closes
     useEffect(() => {
@@ -237,7 +334,7 @@ const PaymentModal = memo<PaymentModalProps>(
       }
     }, [open]);
 
-    // Stop polling
+    // Stop polling function
     const stopPolling = useCallback(() => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -250,34 +347,31 @@ const PaymentModal = memo<PaymentModalProps>(
     }, []);
 
     // Poll order status
-    const startPolling = useCallback(
-      (pollOrderNo: string) => {
-        if (pollingIntervalRef.current) return;
+    const startPolling = useCallback((pollOrderNo: string) => {
+      if (pollingIntervalRef.current) return;
 
-        pollingIntervalRef.current = setInterval(async () => {
-          try {
-            const result = await lambdaClient.payment.queryOrder.query({
-              orderNo: pollOrderNo,
-            });
+      pollingIntervalRef.current = setInterval(async () => {
+        try {
+          const result = await lambdaClient.payment.queryOrder.query({
+            orderNo: pollOrderNo,
+          });
 
-            if (result.status === 'paid') {
-              setStatus('success');
-              stopPolling();
-              setTimeout(() => {
-                onSuccess();
-              }, 1500);
-            } else if (result.status === 'closed') {
-              setStatus('error');
-              setErrorMessage('订单已关闭');
-              stopPolling();
-            }
-          } catch (error) {
-            console.error('Failed to query order:', error);
+          if (result.status === 'paid') {
+            setStatus('success');
+            stopPolling();
+            setTimeout(() => {
+              onSuccess();
+            }, 1500);
+          } else if (result.status === 'closed') {
+            setStatus('error');
+            setErrorMessage('订单已关闭');
+            stopPolling();
           }
-        }, 3000);
-      },
-      [onSuccess, stopPolling],
-    );
+        } catch (error) {
+          console.error('Failed to query order:', error);
+        }
+      }, 3000);
+    }, [onSuccess, stopPolling]);
 
     // Create order - only called when user confirms
     const handleConfirmPayment = useCallback(async () => {
@@ -286,7 +380,7 @@ const PaymentModal = memo<PaymentModalProps>(
         setErrorMessage('');
 
         // Close previous order if exists (only for onetime orders)
-        if (prevOrderRef.current && !isRecurring) {
+        if (!isRecurring && prevOrderRef.current) {
           try {
             await lambdaClient.payment.closeOrder.mutate({ orderNo: prevOrderRef.current });
           } catch (error) {
@@ -297,8 +391,8 @@ const PaymentModal = memo<PaymentModalProps>(
         if (isRecurring) {
           // Recurring subscription: use sign + pay flow (周期扣款签约扣款一体化)
           const result = await lambdaClient.payment.createSignPaymentOrder.mutate({
-            billingInterval: billingCycle,
-            planId,
+            billingInterval: newPlan.billingInterval,
+            planId: newPlan.planId,
           });
 
           prevOrderRef.current = result.orderNo;
@@ -316,11 +410,11 @@ const PaymentModal = memo<PaymentModalProps>(
         } else {
           // One-time payment: use standard order flow
           const result = await lambdaClient.payment.createOrder.mutate({
-            durationMonths,
-            interval: billingCycle,
+            durationMonths: newPlan.durationMonths,
+            interval: newPlan.billingInterval,
             payChannel: paymentMethod,
-            planId,
-            subscriptionType,
+            planId: newPlan.planId,
+            subscriptionType: newPlan.subscriptionType,
           });
 
           prevOrderRef.current = result.orderNo;
@@ -336,7 +430,7 @@ const PaymentModal = memo<PaymentModalProps>(
         setStatus('error');
         setErrorMessage(error instanceof Error ? error.message : '创建订单失败');
       }
-    }, [billingCycle, durationMonths, isRecurring, paymentMethod, planId, startPolling, subscriptionType]);
+    }, [isRecurring, newPlan, paymentMethod, startPolling]);
 
     // Countdown timer
     useEffect(() => {
@@ -379,7 +473,6 @@ const PaymentModal = memo<PaymentModalProps>(
       stopPolling();
 
       // Close order in background (fire-and-forget) - only for onetime payments
-      // Recurring subscriptions use agreements, not standard orders
       if (!isRecurring && prevOrderRef.current && (status === 'qrcode' || status === 'loading')) {
         const orderToClose = prevOrderRef.current;
         lambdaClient.payment.closeOrder.mutate({ orderNo: orderToClose }).catch((error) => {
@@ -412,32 +505,138 @@ const PaymentModal = memo<PaymentModalProps>(
       setAgreementInfo(null);
     }, [isRecurring, stopPolling]);
 
-    // Render confirm step
-    const renderConfirmStep = () => (
-      <Flexbox gap={24}>
-        {/* Order Summary */}
-        <Flexbox className={styles.orderInfo} gap={12}>
-          <Flexbox horizontal justify="space-between">
-            <span className={styles.orderLabel}>订阅方案</span>
-            <span className={styles.orderValue}>{planName}</span>
+    // 一次性付费提示
+    const onetimeTips = [
+      '本次为一次性付费，到期后将自动降级为免费版。',
+      '到期前可随时升级至更高方案。',
+    ];
+
+    // 连续订阅提示
+    const recurringTips = [
+      '签约后将按周期自动续费。',
+      '您可随时在「账户设置」中取消自动续费。',
+    ];
+
+    // Render plan comparison section
+    const renderPlanComparison = () => (
+      <Flexbox gap={16} horizontal>
+        {/* Current Plan */}
+        <div className={styles.currentPlanCard}>
+          <Flexbox gap={8}>
+            <Flexbox align="center" gap={8} horizontal>
+              <span className={styles.planName}>{currentPlan.planName}</span>
+              <Tag>现有套餐</Tag>
+            </Flexbox>
+            <span className={styles.planPeriod}>
+              {getPeriodText(
+                currentPlan.subscriptionType,
+                currentPlan.billingInterval,
+                currentPlan.durationMonths,
+              )}
+            </span>
+            <span className={styles.planStatus}>失效时间：订阅升级后失效</span>
           </Flexbox>
-          <Flexbox horizontal justify="space-between">
-            <span className={styles.orderLabel}>订阅周期</span>
-            <span className={styles.orderValue}>
-              {getPeriodText(subscriptionType, billingCycle, durationMonths)}
+        </div>
+
+        {/* Arrow */}
+        <Center style={{ flexShrink: 0, width: 32 }}>
+          <Icon color={theme.colorPrimary} icon={ArrowRight} size={24} />
+        </Center>
+
+        {/* New Plan */}
+        <div className={styles.newPlanCard}>
+          <Flexbox gap={8}>
+            <Flexbox align="center" gap={8} horizontal>
+              <span className={styles.planName}>{newPlan.planName}</span>
+              <Tag color="blue">购买中</Tag>
+            </Flexbox>
+            <span className={styles.planPeriod}>
+              {getPeriodText(
+                newPlan.subscriptionType,
+                newPlan.billingInterval,
+                newPlan.durationMonths,
+              )}
+            </span>
+            <span className={styles.planStatus} style={{ color: theme.colorSuccess }}>
+              生效时间：升级后立即生效
             </span>
           </Flexbox>
-          <div className={styles.divider} />
-          <Flexbox align="center" horizontal justify="space-between">
-            <span className={styles.orderLabel}>支付金额</span>
-            <Flexbox align="baseline" gap={2} horizontal>
-              <span className={styles.priceCurrency}>¥</span>
-              <span className={styles.price}>{(amount / 100).toFixed(2)}</span>
-            </Flexbox>
-          </Flexbox>
-        </Flexbox>
+        </div>
+      </Flexbox>
+    );
 
-        {/* Payment Method */}
+    // Render price details section
+    const renderPriceDetails = () => (
+      <Flexbox gap={0}>
+        <div className={styles.priceRow}>
+          <span className={styles.priceLabel}>新套餐原价</span>
+          <span className={styles.priceValue}>¥{(newPlan.originalPrice / 100).toFixed(2)}</span>
+        </div>
+
+        {discountAmount > 0 && (
+          <div className={styles.priceRow}>
+            <Flexbox align="center" gap={8} horizontal>
+              <span className={styles.priceLabel}>优惠活动</span>
+              <Tag color="red">{discount?.label}</Tag>
+            </Flexbox>
+            <span className={styles.priceValueDiscount}>-¥{(discountAmount / 100).toFixed(2)}</span>
+          </div>
+        )}
+
+        {residualValue > 0 && (
+          <div className={styles.priceRow}>
+            <Flexbox align="center" gap={4} horizontal>
+              <span className={styles.priceLabel}>现有套餐剩余价值</span>
+              <Tooltip title="现有套餐剩余价值是指您套餐中还没用完、按剩余天数折算出来的金额。">
+                <Icon icon={CircleHelp} size={14} style={{ color: theme.colorTextTertiary }} />
+              </Tooltip>
+            </Flexbox>
+            <span className={styles.priceValueDiscount}>-¥{(residualValue / 100).toFixed(2)}</span>
+          </div>
+        )}
+
+        <Collapse
+          ghost
+          items={[
+            {
+              children: (
+                <Flexbox gap={4} style={{ color: theme.colorTextSecondary, fontSize: 12 }}>
+                  <div>原价：¥{(newPlan.originalPrice / 100).toFixed(2)}</div>
+                  {discountAmount > 0 && <div>优惠：-¥{(discountAmount / 100).toFixed(2)}</div>}
+                  {residualValue > 0 && <div>残值抵扣：-¥{(residualValue / 100).toFixed(2)}</div>}
+                </Flexbox>
+              ),
+              key: '1',
+              label: (
+                <div className={styles.priceRow} style={{ padding: 0 }}>
+                  <span className={styles.priceLabel}>套餐差价</span>
+                  <span className={styles.priceValue}>
+                    ¥{((newPlan.originalPrice - discountAmount - residualValue) / 100).toFixed(2)}
+                  </span>
+                </div>
+              ),
+            },
+          ]}
+          size="small"
+        />
+
+        <div className={styles.totalRow}>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>实付金额</span>
+          <span className={styles.price}>¥{(finalAmount / 100).toFixed(2)}</span>
+        </div>
+      </Flexbox>
+    );
+
+    // Render confirm step
+    const renderConfirmStep = () => (
+      <Flexbox gap={20}>
+        {/* Plan Comparison */}
+        {renderPlanComparison()}
+
+        {/* Price Details */}
+        {renderPriceDetails()}
+
+        {/* Payment Method Selection */}
         <Flexbox gap={12}>
           <span className={styles.sectionTitle}>选择支付方式</span>
           <Flexbox gap={8}>
@@ -494,7 +693,7 @@ const PaymentModal = memo<PaymentModalProps>(
         {/* Auto-renewal notice for recurring */}
         {isRecurring && (
           <Alert
-            description={`签约后将按${billingCycle === 'year' ? '年' : '月'}自动续费，您可随时在账户设置中取消`}
+            description={`签约后将按${newPlan.billingInterval === 'year' ? '年' : '月'}自动续费，您可随时在账户设置中取消`}
             showIcon
             type="warning"
           />
@@ -507,7 +706,7 @@ const PaymentModal = memo<PaymentModalProps>(
           onClick={handleConfirmPayment}
           type="primary"
         >
-          {isRecurring ? `签约并支付 ¥${(amount / 100).toFixed(2)}` : `去支付 ¥${(amount / 100).toFixed(2)}`}
+          {isRecurring ? `签约并支付 ¥${(finalAmount / 100).toFixed(2)}` : `去支付 ¥${(finalAmount / 100).toFixed(2)}`}
         </Button>
       </Flexbox>
     );
@@ -515,6 +714,9 @@ const PaymentModal = memo<PaymentModalProps>(
     // Render QR code step
     const renderQRCodeStep = () => (
       <Flexbox gap={20}>
+        {/* Plan Comparison (compact) */}
+        {renderPlanComparison()}
+
         {/* QR Code */}
         <Center>
           <div className={styles.qrContainer}>
@@ -537,14 +739,14 @@ const PaymentModal = memo<PaymentModalProps>(
                 <>
                   请使用支付宝扫码签约并支付{' '}
                   <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
-                    ¥{(amount / 100).toFixed(2)}
+                    ¥{(finalAmount / 100).toFixed(2)}
                   </Typography.Text>
                 </>
               ) : (
                 <>
                   请使用支付宝扫码支付{' '}
                   <Typography.Text strong style={{ color: theme.colorError, fontSize: 16 }}>
-                    ¥{(amount / 100).toFixed(2)}
+                    ¥{(finalAmount / 100).toFixed(2)}
                   </Typography.Text>
                 </>
               )}
@@ -563,9 +765,13 @@ const PaymentModal = memo<PaymentModalProps>(
         {/* Tips */}
         <Alert
           description={
-            isRecurring
-              ? '请在支付宝 App 中完成签约并支付首期费用，完成后页面会自动跳转。签约后将按周期自动扣款续费。'
-              : '请在支付宝 App 中完成支付，支付完成后页面会自动跳转。'
+            <Flexbox gap={4}>
+              {(isRecurring ? recurringTips : onetimeTips).map((tip, index) => (
+                <div className={styles.tipItem} key={index}>
+                  • {tip}
+                </div>
+              ))}
+            </Flexbox>
           }
           message={isRecurring ? '签约提示' : '支付提示'}
           showIcon
@@ -646,18 +852,18 @@ const PaymentModal = memo<PaymentModalProps>(
         onCancel={handleClose}
         open={open}
         title={null}
-        width={480}
+        width={600}
       >
         {/* Header */}
         <div className={styles.header}>
           <span className={styles.title}>
             {status === 'confirm'
-              ? '确认订单'
+              ? '确认升级'
               : status === 'qrcode'
                 ? isRecurring
                   ? '签约扣款'
                   : '扫码支付'
-                : '订阅支付'}
+                : '订阅升级'}
           </span>
         </div>
 
@@ -700,6 +906,6 @@ const PaymentModal = memo<PaymentModalProps>(
   },
 );
 
-PaymentModal.displayName = 'PaymentModal';
+UpgradePaymentModal.displayName = 'UpgradePaymentModal';
 
-export default PaymentModal;
+export default UpgradePaymentModal;

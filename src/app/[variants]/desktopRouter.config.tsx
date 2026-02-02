@@ -268,6 +268,13 @@ const DesktopProfileUsagePage = dynamic(
     ssr: false,
   },
 );
+const DesktopProfileBillingPage = dynamic(
+  () => import('./(main)/profile/billing/index').then((m) => m.DesktopProfileBillingPage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
 const ProfileLayoutWrapper = dynamic(() => import('./(main)/profile/_layout/DesktopWrapper'), {
   loading: () => <Loading />,
   ssr: false,
@@ -510,6 +517,10 @@ export const createDesktopRouter = (locale: Locales) =>
             {
               element: <DesktopProfileUsagePage />,
               path: 'usage',
+            },
+            {
+              element: <DesktopProfileBillingPage />,
+              path: 'billing',
             },
           ],
           element: <ProfileLayoutWrapper />,

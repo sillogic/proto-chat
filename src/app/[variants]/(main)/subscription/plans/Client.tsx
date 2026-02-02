@@ -72,10 +72,16 @@ interface ClientProps {
   mobile?: boolean;
 }
 
+// TODO: 支付宝商家扣款功能对企业注册资本和用户数有较高要求，暂时隐藏连续订阅选项
+const ENABLE_RECURRING_SUBSCRIPTION = false;
+
 const Client = memo<ClientProps>(() => {
   const { t } = useTranslation('subscription');
   const { styles, theme } = useStyles();
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
+  // 当连续订阅功能禁用时，默认使用一次性付费
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>(
+    ENABLE_RECURRING_SUBSCRIPTION ? 'yearly' : 'onetime',
+  );
   const { plans, currentPlan, isLoading } = useSubscriptionPlans();
 
   // Filter plans: separate individual and team plans, exclude free plan from main list
@@ -100,7 +106,9 @@ const Client = memo<ClientProps>(() => {
             {t('subtitle', '选择适合您的 AI 研究助手服务')}
           </span>
         </Flexbox>
-        <BillingToggle onChange={setBillingCycle} value={billingCycle} />
+        {ENABLE_RECURRING_SUBSCRIPTION && (
+          <BillingToggle onChange={setBillingCycle} value={billingCycle} />
+        )}
       </Flexbox>
 
       {/* Personal Plans Section */}
@@ -126,8 +134,13 @@ const Client = memo<ClientProps>(() => {
               // One-time payment cards
               individualPlans.map((plan) => (
                 <OnetimePlanCard
+                  currentBillingInterval={currentPlan?.billingInterval as 'month' | 'year' | null}
+                  currentDurationMonths={currentPlan?.durationMonths}
+                  currentPaidAmount={currentPlan?.paidAmount}
+                  currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
+                  currentPlanName={currentPlan?.planName}
                   currentPlanSlug={currentPlan?.planSlug || undefined}
-                  currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                  currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                   key={plan.id}
                   plan={plan}
                 />
@@ -137,8 +150,13 @@ const Client = memo<ClientProps>(() => {
               individualPlans.map((plan) => (
                 <PlanCard
                   billingCycle={billingCycle}
+                  currentBillingInterval={currentPlan?.billingInterval as 'month' | 'year' | null}
+                  currentDurationMonths={currentPlan?.durationMonths}
+                  currentPaidAmount={currentPlan?.paidAmount}
+                  currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
+                  currentPlanName={currentPlan?.planName}
                   currentPlanSlug={currentPlan?.planSlug || undefined}
-                  currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                  currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                   key={plan.id}
                   plan={plan}
                 />
@@ -170,8 +188,13 @@ const Client = memo<ClientProps>(() => {
             {teamPlans.map((plan) => (
               <PlanCard
                 billingCycle={billingCycle}
+                currentBillingInterval={currentPlan?.billingInterval as 'month' | 'year' | null}
+                currentDurationMonths={currentPlan?.durationMonths}
+                currentPaidAmount={currentPlan?.paidAmount}
+                currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
+                currentPlanName={currentPlan?.planName}
                 currentPlanSlug={currentPlan?.planSlug || undefined}
-                currentSubscriptionType={currentPlan?.subscriptionType || undefined}
+                currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                 key={plan.id}
                 plan={plan}
               />

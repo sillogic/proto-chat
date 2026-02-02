@@ -261,6 +261,13 @@ const MobileProfileStatsPage = dynamic(
     ssr: false,
   },
 );
+const MobileProfileBillingPage = dynamic(
+  () => import('./(main)/profile/billing').then((m) => m.MobileProfileBillingPage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
 const ProfileLayoutMobile = dynamic(() => import('./(main)/profile/_layout/Mobile'), {
   loading: () => <Loading />,
   ssr: false,
@@ -518,6 +525,10 @@ export const createMobileRouter = (locale: Locales) =>
             {
               element: <MobileProfileStatsPage />,
               path: 'stats',
+            },
+            {
+              element: <MobileProfileBillingPage />,
+              path: 'billing',
             },
           ],
           element: <ProfileLayoutMobile />,
