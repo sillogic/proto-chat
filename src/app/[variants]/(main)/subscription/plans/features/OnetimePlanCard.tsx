@@ -5,6 +5,7 @@ import { Button, Select, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'lucide-react';
 import { memo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Center, Flexbox } from 'react-layout-kit';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
@@ -158,6 +159,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
   currentSubscriptionType,
 }) => {
   const { styles, theme } = useStyles();
+  const navigate = useNavigate();
   const [selectedDuration, setSelectedDuration] = useState<number>(3); // Default to 3 months
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
@@ -370,7 +372,8 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
         onClose={() => setPaymentModalOpen(false)}
         onSuccess={() => {
           setPaymentModalOpen(false);
-          window.location.reload();
+          // Navigate to profile to see updated subscription
+          navigate('/profile');
         }}
         open={paymentModalOpen}
         planId={plan.id}

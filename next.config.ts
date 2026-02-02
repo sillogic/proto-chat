@@ -228,6 +228,38 @@ const nextConfig: NextConfig = {
     },
   },
   reactStrictMode: true,
+  rewrites: async () => {
+    // SPA routes that should be handled by the root page
+    // These routes use react-router-dom for client-side routing
+    const spaRoutes = [
+      'chat',
+      'discover',
+      'knowledge',
+      'settings',
+      'image',
+      'labs',
+      'profile',
+      'subscription',
+      'contact',
+      'changelog',
+      'me',
+    ];
+
+    return {
+      // Rewrite SPA routes to the root page (which loads the react-router)
+      beforeFiles: spaRoutes.flatMap((route) => [
+        {
+          destination: '/',
+          source: `/${route}`,
+        },
+        {
+          destination: '/',
+          source: `/${route}/:path*`,
+        },
+      ]),
+    };
+  },
+
   redirects: async () => [
     {
       destination: '/sitemap-index.xml',

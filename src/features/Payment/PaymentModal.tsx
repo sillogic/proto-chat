@@ -158,6 +158,9 @@ const PaymentModal = memo<PaymentModalProps>(
       }, 3000); // Poll every 3 seconds
     }, [onSuccess, t, stopPolling]);
 
+    // Track previous order for cleanup
+    const prevOrderRef = useRef<string>('');
+
     // Create order when modal opens or payment method changes
     useEffect(() => {
       if (!open) return;
@@ -168,9 +171,9 @@ const PaymentModal = memo<PaymentModalProps>(
           setErrorMessage('');
 
           // Close previous order if exists
-          if (orderNo && (status === 'qrcode' || status === 'polling')) {
+          if (prevOrderRef.current) {
             try {
-              await lambdaClient.payment.closeOrder.mutate({ orderNo });
+              await lambdaClient.payment.closeOrder.mutate({ orderNo: prevOrderRef.current });
             } catch (error) {
               console.error('Failed to close previous order:', error);
             }
@@ -184,6 +187,7 @@ const PaymentModal = memo<PaymentModalProps>(
             subscriptionType,
           });
 
+          prevOrderRef.current = result.orderNo;
           setOrderNo(result.orderNo);
           setCodeUrl(result.codeUrl || '');
           setExpiredAt(new Date(result.expiredAt));
@@ -201,7 +205,8 @@ const PaymentModal = memo<PaymentModalProps>(
       };
 
       createOrder();
-    }, [open, planId, billingCycle, paymentMethod, t, orderNo, status, subscriptionType, durationMonths, startPolling]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, planId, billingCycle, paymentMethod, subscriptionType, durationMonths]);
 
     // Countdown timer
     useEffect(() => {
@@ -246,9 +251,9 @@ const PaymentModal = memo<PaymentModalProps>(
       }
 
       // Close order if still pending
-      if (orderNo && (status === 'qrcode' || status === 'polling')) {
+      if (prevOrderRef.current && (status === 'qrcode' || status === 'polling')) {
         try {
-          await lambdaClient.payment.closeOrder.mutate({ orderNo });
+          await lambdaClient.payment.closeOrder.mutate({ orderNo: prevOrderRef.current });
         } catch (error) {
           console.error('Failed to close order:', error);
         }
@@ -256,7 +261,7 @@ const PaymentModal = memo<PaymentModalProps>(
 
       stopPolling();
       onClose();
-    }, [status, orderNo, onClose, stopPolling]);
+    }, [status, onClose, stopPolling]);
 
     const renderContent = () => {
       if (status === 'loading') {

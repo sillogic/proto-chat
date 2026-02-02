@@ -6,6 +6,7 @@ import { createStyles } from 'antd-style';
 import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Center, Flexbox } from 'react-layout-kit';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
@@ -158,6 +159,7 @@ interface PlanCardProps {
 const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, currentSubscriptionType }) => {
   const { t } = useTranslation('subscription');
   const { styles, theme } = useStyles();
+  const navigate = useNavigate();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const iconConfig = planIcons[plan.slug as keyof typeof planIcons] || planIcons.lite;
@@ -360,8 +362,8 @@ const PlanCard = memo<PlanCardProps>(({ plan, billingCycle, currentPlanSlug, cur
         onClose={() => setPaymentModalOpen(false)}
         onSuccess={() => {
           setPaymentModalOpen(false);
-          // TODO: Refresh user state or redirect
-          window.location.reload();
+          // Navigate to profile to see updated subscription
+          navigate('/profile');
         }}
         open={paymentModalOpen}
         planId={plan.id}
