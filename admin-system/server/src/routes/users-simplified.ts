@@ -17,19 +17,29 @@ router.get('/', requirePermission('users.read'), async (req: AuthenticatedReques
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
-    const search = req.query.search as string || '';
+    // 前端参数
+    const keyword = req.query.keyword as string || '';  // 邮箱搜索
+    const planType = req.query.planType as string || '';  // 方案类型筛选
+
+    console.log('查询参数:', { keyword, planType, page, limit });
 
     const offset = (page - 1) * limit;
 
     // 使用简化的用量服务获取用户列表和统计
     const result = await usageService.getAllUsersUsage(limit, offset);
-
-    // 如果有搜索条件，过滤结果
     let filteredUsers = result.users;
-    if (search) {
-      filteredUsers = result.users.filter(user =>
-        user.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-        user.email?.toLowerCase().includes(search.toLowerCase())
+
+    // 按邮箱筛选
+    if (keyword) {
+      filteredUsers = filteredUsers.filter(user =>
+        user.email?.toLowerCase().includes(keyword.toLowerCase())
+      );
+    }
+
+    // 按方案类型筛选
+    if (planType) {
+      filteredUsers = filteredUsers.filter(user =>
+        (user.planType || '').toLowerCase() === planType.toLowerCase()
       );
     }
 
@@ -40,8 +50,8 @@ router.get('/', requirePermission('users.read'), async (req: AuthenticatedReques
         pagination: {
           page,
           pageSize: limit,
-          total: result.total,
-          totalPages: Math.ceil(result.total / limit)
+          total: filteredUsers.length,
+          totalPages: Math.ceil(filteredUsers.length / limit)
         }
       }
     });

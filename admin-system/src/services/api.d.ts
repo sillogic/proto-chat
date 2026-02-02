@@ -66,9 +66,8 @@ export interface User {
 export interface UserListParams {
   current?: number;
   pageSize?: number;
-  keyword?: string;
-  planType?: string;
-  status?: string;
+  keyword?: string;    // 邮箱搜索
+  planType?: string;   // 方案类型筛选
 }
 
 // 用户列表响应
