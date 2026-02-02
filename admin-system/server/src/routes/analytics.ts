@@ -2,6 +2,7 @@ import express from 'express';
 import { db } from '../config/database';
 import { sql } from 'drizzle-orm';
 import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
+import { getUSDCNYRate, refreshExchangeRate } from '../services/exchange-rate-service';
 
 const router: express.Router = express.Router();
 
@@ -889,6 +890,32 @@ router.get('/users', requirePermission('stats.read'), async (req: AuthenticatedR
   } catch (error) {
     console.error('Analytics users error:', error);
     return res.status(500).json({ message: 'Failed to fetch user analytics', success: false });
+  }
+});
+
+// GET /api/admin/analytics/exchange-rate - Get current USD/CNY exchange rate
+router.get('/exchange-rate', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { refresh } = req.query;
+
+    // Force refresh if requested
+    const rate = refresh === 'true' ? await refreshExchangeRate() : await getUSDCNYRate();
+
+    return res.json({
+      data: {
+        rate,
+        from: 'USD',
+        to: 'CNY',
+        timestamp: new Date().toISOString(),
+      },
+      success: true,
+    });
+  } catch (error: any) {
+    console.error('Get exchange rate error:', error);
+    return res.status(500).json({
+      message: 'Failed to fetch exchange rate',
+      success: false,
+    });
   }
 });
 
