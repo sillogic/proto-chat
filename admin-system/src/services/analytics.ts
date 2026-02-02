@@ -28,3 +28,11 @@ export async function getAnalyticsUsers(params: AnalyticsParams) {
     params,
   });
 }
+
+// 汇率
+export async function getExchangeRate(refresh = false) {
+  return request('/api/admin/analytics/exchange-rate', {
+    method: 'GET',
+    params: { refresh: refresh ? 'true' : 'false' },
+  });
+}

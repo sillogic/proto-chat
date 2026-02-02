@@ -2,15 +2,12 @@ import { PageContainer, ProCard, ProTable } from '@ant-design/pro-components';
 import { Column } from '@ant-design/plots';
 import { useRequest } from '@umijs/max';
 import { Card, Col, Row, Statistic, DatePicker, Space, Tag, Typography, InputNumber, Button, Tooltip, Segmented } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 import dayjs, { Dayjs } from 'dayjs';
-import { getAnalyticsCost } from '../../../services/analytics';
+import { getAnalyticsCost, getExchangeRate } from '../../../services/analytics';
 
 const { Text } = Typography;
-
-// 默认美元人民币汇率
-const DEFAULT_USD_CNY_RATE = 7.3;
 
 type PeriodType = 'month' | 'year';
 
@@ -19,12 +16,21 @@ type TokenType = 'input' | 'output';
 const CostAnalysis: React.FC = () => {
   const [period, setPeriod] = useState<PeriodType>('month');
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
-  const [exchangeRate, setExchangeRate] = useState<number>(DEFAULT_USD_CNY_RATE);
-  const [tempRate, setTempRate] = useState<number>(DEFAULT_USD_CNY_RATE);
+  const [exchangeRate, setExchangeRate] = useState<number>(1.000000);
   const [tokenType, setTokenType] = useState<TokenType>('input');
 
-  const handleApplyRate = () => {
-    setExchangeRate(tempRate);
+  // Fetch real-time exchange rate on mount (force refresh)
+  const { loading: rateLoading, run: fetchRate } = useRequest(getExchangeRate, {
+    onSuccess: (result) => {
+      const rate = result?.rate || 7.3;
+      setExchangeRate(rate);
+    },
+    defaultParams: [true],
+    ready: true,
+  });
+
+  const handleRefreshRate = () => {
+    fetchRate(true); 
   };
 
   const handleDateChange = (date: Dayjs | null) => {
@@ -124,22 +130,36 @@ const CostAnalysis: React.FC = () => {
           <Space>
             <Tooltip title="收入为人民币计价，成本为美元计价。此汇率用于将人民币收入转换为美元，以便统一对比。">
               <Text type="secondary">
-                CNY/USD 汇率：
+                USD/CNY 汇率：
                 <InfoCircleOutlined style={{ marginLeft: 4 }} />
               </Text>
             </Tooltip>
-            <InputNumber
-              value={tempRate}
-              onChange={(v) => setTempRate(v || DEFAULT_USD_CNY_RATE)}
-              min={1}
-              max={20}
-              step={0.1}
-              precision={2}
-              style={{ width: 80 }}
-            />
-            <Button type="primary" size="small" onClick={handleApplyRate}>
-              应用
-            </Button>
+            {rateLoading ? (
+              <Text type="secondary">加载中...</Text>
+            ) : (
+              <>
+                <InputNumber
+                  value={exchangeRate}
+                  onChange={(v) => {
+                    setExchangeRate(v || 7.3);
+                  }}
+                  min={1}
+                  max={20}
+                  precision={6}
+                  style={{ width: 100 }}
+                  disabled
+                />
+                <Tooltip title="刷新实时汇率">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    onClick={handleRefreshRate}
+                    loading={rateLoading}
+                  />
+                </Tooltip>
+              </>
+            )}
           </Space>
         </Space>
       }
