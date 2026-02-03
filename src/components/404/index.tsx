@@ -3,9 +3,9 @@
 import { Button } from '@lobehub/ui';
 import { createStyles, keyframes } from 'antd-style';
 import { Search } from 'lucide-react';
-import Link from 'next/link';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Flexbox } from 'react-layout-kit';
 
 import { MAX_WIDTH } from '@/const/layoutTokens';
@@ -31,6 +31,8 @@ const useStyles = createStyles(({ css, token }) => ({
 const NotFound = memo(() => {
   const { t } = useTranslation('error');
   const { styles } = useStyles();
+  const navigate = useNavigate();
+
   return (
     <Flexbox align={'center'} justify={'center'} style={{ minHeight: '100%', width: '100%' }}>
       <h1
@@ -55,9 +57,9 @@ const NotFound = memo(() => {
         <br />
         <div style={{ textAlign: 'center' }}>{t('notFound.check')}</div>
       </p>
-      <Link href="/">
-        <Button type={'primary'}>{t('notFound.backHome')}</Button>
-      </Link>
+      <Button onClick={() => navigate('/')} type={'primary'}>
+        {t('notFound.backHome')}
+      </Button>
     </Flexbox>
   );
 });

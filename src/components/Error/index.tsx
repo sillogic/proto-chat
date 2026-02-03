@@ -3,7 +3,7 @@
 import { Button } from '@lobehub/ui';
 import { createStyles, keyframes } from 'antd-style';
 import { AlertTriangle } from 'lucide-react';
-import Link from 'next/link';
+import { useNavigate } from 'react-router-dom';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
@@ -33,7 +33,7 @@ interface ErrorCaptureProps {
 const ErrorCapture = memo<ErrorCaptureProps>(({ reset }) => {
   const { t } = useTranslation('error');
   const { styles } = useStyles();
-
+  const navigate = useNavigate();
   return (
     <Flexbox align={'center'} justify={'center'} style={{ minHeight: '100%', width: '100%' }}>
       <h1
@@ -56,9 +56,7 @@ const ErrorCapture = memo<ErrorCaptureProps>(({ reset }) => {
       <p style={{ marginBottom: '2em' }}>{t('error.desc')}</p>
       <Flexbox gap={12} horizontal style={{ marginBottom: '1em' }}>
         <Button onClick={() => reset()}>{t('error.retry')}</Button>
-        <Link href="/">
-          <Button type={'primary'}>{t('error.backHome')}</Button>
-        </Link>
+        <Button onClick={() => navigate('/')} type={'primary'}>{t('error.backHome')}</Button>
       </Flexbox>
     </Flexbox>
   );
