@@ -54,9 +54,9 @@ export class DocumentService {
     const document = await this.documentModel.create({
       content,
       editorData,
-      fileId: knowledgeBaseId ? null : undefined,
       fileType,
       filename: title,
+      knowledgeBaseId,
       metadata,
       pages: undefined,
       source: 'document',

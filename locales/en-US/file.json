@@ -103,6 +103,8 @@
         "title": "Create Knowledge Base"
       },
       "newPage": {
+        "modalTitle": "New Page",
+        "placeholder": "Enter page title",
         "title": "New Page"
       }
     }

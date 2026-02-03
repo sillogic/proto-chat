@@ -143,6 +143,7 @@ const Home = memo<HomeProps>(({ knowledgeBaseId, onOpenFile }) => {
                 }}
               >
                 <Dropdown
+                  destroyOnHidden
                   menu={{
                     items: [
                       {
@@ -188,6 +189,7 @@ const Home = memo<HomeProps>(({ knowledgeBaseId, onOpenFile }) => {
                 }}
               >
                 <Dropdown
+                  destroyOnHidden
                   menu={{
                     items: [
                       {

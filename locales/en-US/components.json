@@ -25,6 +25,7 @@
       "copyUrlSuccess": "File url copied successfully.",
       "createChunkingTask": "Preparing...",
       "deleteSuccess": "File deleted successfully.",
+      "downloadError": "Download failed",
       "downloading": "Downloading file...",
       "removeFromKnowledgeBase": "Remove from Knowledge Base",
       "removeFromKnowledgeBaseSuccess": "File removed successfully."

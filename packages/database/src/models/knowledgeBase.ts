@@ -1,8 +1,11 @@
 import { KnowledgeBaseItem } from '@lobechat/types';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 
-import { NewKnowledgeBase, knowledgeBaseFiles, knowledgeBases } from '../schemas';
+import { NewKnowledgeBase, documents, knowledgeBaseFiles, knowledgeBases } from '../schemas';
 import { LobeChatDatabase } from '../type';
+
+// Helper to check if an ID is a document ID
+const isDocumentId = (id: string) => id.startsWith('docs_');
 
 export class KnowledgeBaseModel {
   private userId: string;
@@ -24,11 +27,31 @@ export class KnowledgeBaseModel {
     return result;
   };
 
-  addFilesToKnowledgeBase = async (id: string, fileIds: string[]) => {
-    return this.db
-      .insert(knowledgeBaseFiles)
-      .values(fileIds.map((fileId) => ({ fileId, knowledgeBaseId: id, userId: this.userId })))
-      .returning();
+  addFilesToKnowledgeBase = async (id: string, ids: string[]) => {
+    // Separate files and documents
+    const fileIds = ids.filter((itemId) => !isDocumentId(itemId));
+    const documentIds = ids.filter((itemId) => isDocumentId(itemId));
+
+    const results: any[] = [];
+
+    // Add files to knowledge_base_files table
+    if (fileIds.length > 0) {
+      const fileResults = await this.db
+        .insert(knowledgeBaseFiles)
+        .values(fileIds.map((fileId) => ({ fileId, knowledgeBaseId: id, userId: this.userId })))
+        .returning();
+      results.push(...fileResults);
+    }
+
+    // Update documents' knowledgeBaseId directly
+    if (documentIds.length > 0) {
+      await this.db
+        .update(documents)
+        .set({ knowledgeBaseId: id, updatedAt: new Date() })
+        .where(and(eq(documents.userId, this.userId), inArray(documents.id, documentIds)));
+    }
+
+    return results;
   };
 
   // delete
@@ -43,13 +66,33 @@ export class KnowledgeBaseModel {
   };
 
   removeFilesFromKnowledgeBase = async (knowledgeBaseId: string, ids: string[]) => {
-    return this.db.delete(knowledgeBaseFiles).where(
-      and(
-        eq(knowledgeBaseFiles.knowledgeBaseId, knowledgeBaseId),
-        inArray(knowledgeBaseFiles.fileId, ids),
-        // eq(knowledgeBaseFiles.userId, this.userId),
-      ),
-    );
+    // Separate files and documents
+    const fileIds = ids.filter((itemId) => !isDocumentId(itemId));
+    const documentIds = ids.filter((itemId) => isDocumentId(itemId));
+
+    // Remove files from knowledge_base_files table
+    if (fileIds.length > 0) {
+      await this.db.delete(knowledgeBaseFiles).where(
+        and(
+          eq(knowledgeBaseFiles.knowledgeBaseId, knowledgeBaseId),
+          inArray(knowledgeBaseFiles.fileId, fileIds),
+        ),
+      );
+    }
+
+    // Set documents' knowledgeBaseId to null
+    if (documentIds.length > 0) {
+      await this.db
+        .update(documents)
+        .set({ knowledgeBaseId: null, updatedAt: new Date() })
+        .where(
+          and(
+            eq(documents.userId, this.userId),
+            eq(documents.knowledgeBaseId, knowledgeBaseId),
+            inArray(documents.id, documentIds),
+          ),
+        );
+    }
   };
   // query
   query = async () => {

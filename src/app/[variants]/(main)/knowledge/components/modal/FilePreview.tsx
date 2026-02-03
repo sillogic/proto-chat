@@ -8,8 +8,9 @@ import { fileManagerSelectors, useFileStore } from '@/store/file';
 const FilePreview = memo<{ id: string }>(({ id }) => {
   const file = useFileStore(fileManagerSelectors.getFileById(id));
 
-  if (!file) return;
+  if (!file) return null;
 
   return <FileViewer {...file} />;
 });
+
 export default FilePreview;

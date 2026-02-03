@@ -103,6 +103,8 @@
         "title": "新建知识库"
       },
       "newPage": {
+        "modalTitle": "新建文稿",
+        "placeholder": "请输入文稿名称",
         "title": "新建文稿"
       }
     }
