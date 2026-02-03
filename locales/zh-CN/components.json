@@ -25,6 +25,7 @@
       "copyUrlSuccess": "文件地址复制成功",
       "createChunkingTask": "准备中...",
       "deleteSuccess": "文件删除成功",
+      "downloadError": "下载失败",
       "downloading": "文件下载中...",
       "removeFromKnowledgeBase": "从知识库中移除",
       "removeFromKnowledgeBaseSuccess": "文件移除成功"

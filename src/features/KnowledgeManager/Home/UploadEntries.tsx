@@ -1,10 +1,10 @@
 'use client';
 
 import { FileTypeIcon, Icon } from '@lobehub/ui';
-import { Upload } from 'antd';
+import { Input, Modal, Upload } from 'antd';
 import { createStyles, useTheme } from 'antd-style';
 import { ArrowUpIcon, FolderUp, PlusIcon } from 'lucide-react';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 import { useNavigate } from 'react-router-dom';
@@ -90,20 +90,38 @@ const UploadEntries = memo<UploadEntriesProps>(({ knowledgeBaseId }) => {
 
   const createDocument = useFileStore((s) => s.createDocument);
   const pushDockFileList = useFileStore((s) => s.pushDockFileList);
-  // const { open } = useCreateNewModal();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newPageTitle, setNewPageTitle] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleOpenModal = () => {
+    setNewPageTitle(t('home.uploadEntries.newPage.title'));
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setNewPageTitle('');
+  };
 
   const handleCreateNote = async () => {
+    if (!newPageTitle.trim()) return;
+
+    setIsCreating(true);
     try {
       const newDoc = await createDocument({
         content: '',
         knowledgeBaseId,
-        title: t('home.uploadEntries.newPage.title'),
+        title: newPageTitle.trim(),
       });
+      handleCloseModal();
       // Navigate to the newly created document
-      // The KnowledgeHomePage will automatically set category to 'documents' when it detects the id param
-      navigate(`/${newDoc.id}`);
+      navigate(`/knowledge/${newDoc.id}`);
     } catch (error) {
       console.error('Failed to create document:', error);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -134,19 +152,20 @@ const UploadEntries = memo<UploadEntriesProps>(({ knowledgeBaseId }) => {
   };
 
   return (
-    <div className={styles.grid}>
-      {/* Create New Note */}
-      <Flexbox className={styles.card} onClick={handleCreateNote} padding={16}>
-        <span className={styles.actionTitle}>{t('home.uploadEntries.newPage.title')}</span>
-        <div className={styles.glow} style={{ background: theme.purple }} />
-        <FileTypeIcon
-          className={styles.icon}
-          color={theme.purple}
-          icon={<Icon color={'#fff'} icon={PlusIcon} />}
-          size={ICON_SIZE}
-          type={'file'}
-        />
-      </Flexbox>
+    <>
+      <div className={styles.grid}>
+        {/* Create New Note */}
+        <Flexbox className={styles.card} onClick={handleOpenModal} padding={16}>
+          <span className={styles.actionTitle}>{t('home.uploadEntries.newPage.title')}</span>
+          <div className={styles.glow} style={{ background: theme.purple }} />
+          <FileTypeIcon
+            className={styles.icon}
+            color={theme.purple}
+            icon={<Icon color={'#fff'} icon={PlusIcon} />}
+            size={ICON_SIZE}
+            type={'file'}
+          />
+        </Flexbox>
 
       {/* Create Knowledge Base */}
       {/* <Flexbox className={styles.card} onClick={handleCreateKnowledgeBase} padding={16}>
@@ -202,6 +221,26 @@ const UploadEntries = memo<UploadEntriesProps>(({ knowledgeBaseId }) => {
         </Flexbox>
       </Upload>
     </div>
+
+      {/* New Page Title Modal */}
+      <Modal
+        cancelText={t('cancel', { ns: 'common' })}
+        okButtonProps={{ disabled: !newPageTitle.trim(), loading: isCreating }}
+        okText={t('confirm', { ns: 'common' })}
+        onCancel={handleCloseModal}
+        onOk={handleCreateNote}
+        open={isModalOpen}
+        title={t('home.uploadEntries.newPage.modalTitle')}
+      >
+        <Input
+          autoFocus
+          onChange={(e) => setNewPageTitle(e.target.value)}
+          onPressEnter={handleCreateNote}
+          placeholder={t('home.uploadEntries.newPage.placeholder')}
+          value={newPageTitle}
+        />
+      </Modal>
+    </>
   );
 });
 

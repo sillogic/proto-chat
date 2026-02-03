@@ -332,25 +332,8 @@ export class KnowledgeRepo {
     }
 
     // Knowledge base filter for documents
-    // Documents don't have knowledge base association currently, so skip if knowledgeBaseId is set
     if (knowledgeBaseId) {
-      return sql`
-        SELECT
-          NULL::varchar(30) as id,
-          NULL::text as name,
-          NULL::varchar(255) as file_type,
-          NULL::integer as size,
-          NULL::text as url,
-          NULL::timestamp with time zone as created_at,
-          NULL::timestamp with time zone as updated_at,
-          NULL::uuid as chunk_task_id,
-          NULL::uuid as embedding_task_id,
-          NULL::jsonb as editor_data,
-          NULL::text as content,
-          NULL::jsonb as metadata,
-          NULL::text as source_type
-        WHERE false
-      `;
+      whereConditions.push(sql`${documents.knowledgeBaseId} = ${knowledgeBaseId}`);
     }
 
     return sql`

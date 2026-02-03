@@ -5,12 +5,16 @@ import { ConfigProvider } from 'antd';
 import { createStyles } from 'antd-style';
 import { memo, useCallback, useMemo } from 'react';
 
+import NoteEditorModal from '@/features/KnowledgeManager/DocumentExplorer/NoteEditorModal';
 import { fileManagerSelectors, useFileStore } from '@/store/file';
 
 import { DETAIL_PANEL_WIDTH } from '../components/FileDetail';
 import FileDetail from '../components/modal/FileDetail';
 import FilePreview from '../components/modal/FilePreview';
 import { useFileModalId, useSetFileModalId } from './useFileQueryParam';
+
+// Custom note file type
+const CUSTOM_NOTE_TYPE = 'custom/document';
 
 const useStyles = createStyles(({ css, token }, showDetail: boolean) => {
   return {
@@ -71,7 +75,23 @@ const FileModalQueryRoute = memo(() => {
     setFileModalId(undefined);
   }, [setFileModalId]);
 
-  if (!showDetail || !fileId) return null;
+  if (!showDetail || !fileId || !file) return null;
+
+  // Check if it's a custom note (document)
+  const isNote = file.sourceType === 'document' || file.fileType === CUSTOM_NOTE_TYPE;
+
+  // For notes, show the NoteEditorModal instead of FilePreview
+  if (isNote) {
+    return (
+      <NoteEditorModal
+        documentId={fileId}
+        documentTitle={file.name}
+        editorData={file.editorData}
+        onClose={handleClose}
+        open={showDetail}
+      />
+    );
+  }
 
   return (
     <>
