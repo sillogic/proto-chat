@@ -3,6 +3,7 @@ import { InfoIcon, MoreVerticalIcon, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
+import { useNavigate } from 'react-router-dom';
 
 import { useAgentStore } from '@/store/agent';
 import { useServerConfigStore } from '@/store/serverConfig';
@@ -16,6 +17,7 @@ interface ActionsProps {
 
 const Actions = memo<ActionsProps>(({ id, type, enabled }) => {
   const { t } = useTranslation('chat');
+  const navigate = useNavigate();
 
   const mobile = useServerConfigStore((s) => s.isMobile);
   const [
@@ -64,11 +66,11 @@ const Actions = memo<ActionsProps>(({ id, type, enabled }) => {
                 label: t('knowledgeBase.library.action.detail'),
                 onClick: () => {
                   if (type === KnowledgeType.KnowledgeBase) {
-                    window.open(`/knowledge/bases/${id}`);
+                    navigate(`/knowledge/bases/${id}`);
                     return;
                   }
 
-                  window.open(`/knowledge?file=${id}`);
+                  navigate(`/knowledge?file=${id}`);
                 },
               },
               {
