@@ -117,7 +117,7 @@ const UploadEntries = memo<UploadEntriesProps>(({ knowledgeBaseId }) => {
       });
       handleCloseModal();
       // Navigate to the newly created document
-      navigate(`/${newDoc.id}`);
+      navigate(`/knowledge/${newDoc.id}`);
     } catch (error) {
       console.error('Failed to create document:', error);
     } finally {
