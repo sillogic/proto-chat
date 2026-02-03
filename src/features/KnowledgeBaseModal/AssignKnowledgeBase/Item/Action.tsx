@@ -1,5 +1,5 @@
 import { ActionIcon, Button, Dropdown, Icon } from '@lobehub/ui';
-import { InfoIcon, MoreVerticalIcon, Trash2 } from 'lucide-react';
+import { MoreVerticalIcon, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
@@ -58,19 +58,19 @@ const Actions = memo<ActionsProps>(({ id, type, enabled }) => {
         <Dropdown
           menu={{
             items: [
-              {
-                icon: <Icon icon={InfoIcon} />,
-                key: 'detail',
-                label: t('knowledgeBase.library.action.detail'),
-                onClick: () => {
-                  if (type === KnowledgeType.KnowledgeBase) {
-                    window.open(`/knowledge/bases/${id}`);
-                    return;
-                  }
-
-                  window.open(`/knowledge?file=${id}`);
-                },
-              },
+              // {
+              //   icon: <Icon icon={InfoIcon} />,
+              //   key: 'detail',
+              //   label: t('knowledgeBase.library.action.detail'),
+              //   onClick: () => {
+              //     if (type === KnowledgeType.KnowledgeBase) {
+              //       navigate(`/knowledge/bases/${id}`);
+              //       return;
+              //     }
+              //
+              //     navigate(`/knowledge?file=${id}`);
+              //   },
+              // },
               {
                 danger: true,
                 icon: <Icon icon={Trash2} />,

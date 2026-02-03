@@ -108,8 +108,11 @@ const DropdownMenu = memo<DropdownMenuProps>(
         onClick: async ({ domEvent }) => {
           domEvent.stopPropagation();
           if (isNote) {
-            // For notes, generate a page link
-            const pageUrl = `${window.location.origin}/knowledge/${id}`;
+            // For notes, generate a page link with the correct base path
+            // Extract variants prefix from current pathname (e.g., /zh-CN__0__dark/knowledge -> zh-CN__0__dark)
+            const pathParts = window.location.pathname.split('/').filter(Boolean);
+            const variantsPrefix = pathParts[0] || '';
+            const pageUrl = `${window.location.origin}/${variantsPrefix}/knowledge/${id}`;
             await copyToClipboard(pageUrl);
           } else {
             await copyToClipboard(url || '');

@@ -1,6 +1,7 @@
 import { Button, Form, Input, TextArea } from '@lobehub/ui';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 import { useKnowledgeBaseStore } from '@/store/knowledgeBase';
 import { CreateKnowledgeBaseParams } from '@/types/knowledgeBase';
@@ -12,6 +13,7 @@ interface CreateFormProps {
 
 const CreateForm = memo<CreateFormProps>(({ onClose, onSuccess }) => {
   const { t } = useTranslation('knowledgeBase');
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const createNewKnowledgeBase = useKnowledgeBaseStore((s) => s.createNewKnowledgeBase);
 
@@ -27,7 +29,7 @@ const CreateForm = memo<CreateFormProps>(({ onClose, onSuccess }) => {
         onSuccess(id);
         onClose?.();
       } else {
-        window.location.href = `/knowledge/bases/${id}`;
+        navigate(`/knowledge/bases/${id}`);
       }
     } catch (e) {
       console.error(e);
