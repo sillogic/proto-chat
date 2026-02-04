@@ -142,7 +142,7 @@ const SubscriptionRecords: React.FC = () => {
       width: 100,
       render: (_, record) => {
         if (record.price == null || record.price === 0) return '-';
-        return `¥ ${(record.price / 100).toFixed(2)}`;
+        return `¥ ${record.price.toFixed(2)}`;
       },
       search: false,
     },

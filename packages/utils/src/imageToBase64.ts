@@ -2,8 +2,14 @@ export const imageToBase64 = ({
   size,
   img,
   type = 'image/webp',
+  quality = 0.8,
 }: {
   img: HTMLImageElement;
+  /**
+   * Quality of the output image (0-1), only applies to lossy formats like webp and jpeg.
+   * Default is 0.8 for good balance between quality and file size.
+   */
+  quality?: number;
   size: number;
   type?: string;
 }) => {
@@ -33,7 +39,7 @@ export const imageToBase64 = ({
     size,
   );
 
-  return canvas.toDataURL(type);
+  return canvas.toDataURL(type, quality);
 };
 
 /**

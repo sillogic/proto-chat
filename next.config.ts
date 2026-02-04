@@ -50,6 +50,10 @@ const nextConfig: NextConfig = {
     webpackBuildWorker: true,
     webpackMemoryOptimizations: true,
   },
+  serverActions: {
+    // Increase body size limit for avatar uploads (base64 encoded images)
+    bodySizeLimit: '4mb',
+  },
   async headers() {
     const securityHeaders = [
       {
