@@ -5,7 +5,7 @@ import { BarChart, ChartTooltipFrame, ChartTooltipRow, type BarChartProps } from
 export const UsageBarChart = ({ ...props }: BarChartProps) => (
     <BarChart
         {...props}
-        customTooltip={({ active, payload, label, valueFormatter }) => {
+        customTooltip={({ active, payload, label }) => {
             if (active && payload) {
                 return (
                     <ChartTooltipFrame>
@@ -19,7 +19,7 @@ export const UsageBarChart = ({ ...props }: BarChartProps) => (
                                 {label}
                             </Typography.Paragraph>
                             <span style={{ fontWeight: 'bold' }}>
-                                {payload.reduce((acc: number, cur: any) => acc + cur.value, 0)}
+                                {payload.reduce((acc: number, cur: any) => acc + cur.value, 0).toFixed(2)}
                             </span>
                         </Flexbox>
                         <Divider style={{ margin: 0 }} />
@@ -35,7 +35,7 @@ export const UsageBarChart = ({ ...props }: BarChartProps) => (
                                         color={color}
                                         key={`id-${idx}`}
                                         name={name}
-                                        value={(valueFormatter as any)?.(value)}
+                                        value={value.toFixed(2)}
                                     /> : null
                             ))}
                         </Flexbox>
