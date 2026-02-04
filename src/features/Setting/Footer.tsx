@@ -8,10 +8,10 @@ import { PropsWithChildren, memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 
+import FeedbackModal from '@/components/FeedbackModal';
 import GuideModal from '@/components/GuideModal';
 import GuideVideo from '@/components/GuideVideo';
-import { BRANDING_NAME } from '@/const/branding';
-import { GITHUB, GITHUB_ISSUES } from '@/const/url';
+import { GITHUB } from '@/const/url';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { isOnServerSide } from '@/utils/env';
 
@@ -58,7 +58,7 @@ const Footer = memo<PropsWithChildren>(() => {
             {` ${t('footer.and')} `}
             <Link
               aria-label={'feedback'}
-              href={GITHUB_ISSUES}
+              href="#"
               onClick={(e) => {
                 e.preventDefault();
                 setOpenFeedback(true);
@@ -83,19 +83,7 @@ const Footer = memo<PropsWithChildren>(() => {
         open={openStar}
         title={t('footer.star.title')}
       />
-      <GuideModal
-        cancelText={t('footer.later')}
-        cover={<GuideVideo height={269} src={'/videos/feedback.mp4?v=1'} width={358} />}
-        desc={t('footer.feedback.desc', { appName: BRANDING_NAME })}
-        okText={t('footer.feedback.action')}
-        onCancel={() => setOpenFeedback(false)}
-        onOk={() => {
-          if (isOnServerSide) return;
-          window.open(GITHUB_ISSUES, '__blank');
-        }}
-        open={openFeedback}
-        title={t('footer.feedback.title')}
-      />
+      <FeedbackModal onClose={() => setOpenFeedback(false)} open={openFeedback} />
     </>
   );
 });

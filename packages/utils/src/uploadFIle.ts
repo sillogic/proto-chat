@@ -5,4 +5,6 @@ export const createUploadImageHandler =
     reader.addEventListener('load', () => {
       onUploadImage(String(reader.result));
     });
+    // Return false to prevent Ant Design Upload from POSTing the file to the current page URL
+    return false;
   };

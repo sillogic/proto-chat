@@ -186,7 +186,17 @@ export default {
     allAgentWithMessage: '导出所有助手和消息',
     globalSetting: '导出全局设置',
   },
-  feedback: '反馈与建议',
+  feedback: {
+    contact: '联系方式（可选）',
+    contactPlaceholder: '邮箱或手机号，方便我们与您联系',
+    content: '您的建议或反馈',
+    contentRequired: '请输入反馈内容',
+    placeholder: '请描述您的建议、遇到的问题或希望改进的功能...',
+    rating: '您对产品的整体评分',
+    submit: '提交反馈',
+    submitSuccess: '感谢您的反馈！',
+    title: '反馈与建议',
+  },
   follow: '在 {{name}} 上关注我们',
   footer: {
     action: {
