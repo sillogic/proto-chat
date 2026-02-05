@@ -14,8 +14,8 @@ const { Panel } = Collapse;
 
 // System Rules Data (from src/config/system-rules.json)
 const systemRules = {
-  version: '1.0.0',
-  lastUpdated: '2024-02-02',
+  version: '1.1.0',
+  lastUpdated: '2026-02-05',
 
   subscription: {
     title: '订阅规则',
@@ -65,6 +65,27 @@ const systemRules = {
       credits: {
         title: '积分规则',
         items: ['积分按月发放，每月重置', '积分不累积，月底清零', '升级后立即获得新套餐积分', '降级后重置为免费版积分'],
+      },
+      history: {
+        title: '订阅历史记录规则',
+        description: '每次续费创建新记录，历史记录完整保留',
+        items: [
+          '每次续费/支付成功创建新的订阅记录',
+          '创建新记录时，自动标记旧记录为 is_active = false',
+          '每个用户同一时间只有一条 is_active = true 的记录',
+          '所有历史记录永久保留（用于财务审计）',
+          '过期/取消的订阅记录 is_active = false',
+        ],
+        rationale: {
+          title: '为什么采用"每次续费创建新记录"模式？',
+          reasons: [
+            '完整的历史记录审计：每次续费的价格、时间都有记录',
+            '统计收入方便：直接 SUM(price) 即可',
+            '符合表名语义：user_subscription_history 暗示历史记录表',
+            '业务灵活性：价格调整、促销活动的历史都能追溯',
+          ],
+        },
+        coreRule: '✅ 核心规则：每个用户在同一时间只有一条 is_active = true 的记录',
       },
     },
   },
@@ -126,6 +147,13 @@ const systemRules = {
           { status: 'unsigned', retention: '永久保留', reason: '历史记录' },
           { status: 'pending', retention: '30天', reason: '未完成签约' },
         ],
+      },
+      subscriptionHistory: {
+        title: '订阅历史记录',
+        items: [
+          { type: '所有订阅记录', retention: '永久保留', reason: '财务审计、收入统计、用户历史追溯' },
+        ],
+        note: '包括 is_active = true 和 is_active = false 的记录都永久保留',
       },
     },
   },
@@ -231,7 +259,7 @@ const SystemRulesPage: React.FC = () => {
             </Space>
           }
         >
-          <Collapse defaultActiveKey={['types', 'upgrade', 'credits']}>
+          <Collapse defaultActiveKey={['types', 'upgrade', 'credits', 'history']}>
             {/* 订阅类型 */}
             <Panel header={systemRules.subscription.rules.types.title} key="types">
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -292,6 +320,62 @@ const SystemRulesPage: React.FC = () => {
                   </li>
                 ))}
               </ul>
+            </Panel>
+
+            {/* 订阅历史记录规则 */}
+            <Panel header={systemRules.subscription.rules.history.title} key="history">
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Alert
+                  message={systemRules.subscription.rules.history.description}
+                  type="info"
+                  showIcon
+                />
+
+                <div>
+                  <Title level={5}>数据维护规则</Title>
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    {systemRules.subscription.rules.history.items.map((item, idx) => (
+                      <li key={idx}>
+                        <Text>{item}</Text>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <Alert
+                  message={systemRules.subscription.rules.history.coreRule}
+                  type="success"
+                  showIcon
+                />
+
+                <div>
+                  <Title level={5}>{systemRules.subscription.rules.history.rationale.title}</Title>
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    {systemRules.subscription.rules.history.rationale.reasons.map((reason, idx) => (
+                      <li key={idx}>
+                        <Text>{reason}</Text>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <Alert
+                  message="相关文档"
+                  description={
+                    <Space direction="vertical">
+                      <Text>
+                        详细技术文档请参考：
+                        <Text code>docs/SUBSCRIPTION_HISTORY_IS_ACTIVE_FIX.md</Text>
+                      </Text>
+                      <Text type="secondary">
+                        包含完整的问题分析、修复方案、数据迁移脚本等内容
+                      </Text>
+                    </Space>
+                  }
+                  type="warning"
+                  showIcon
+                />
+              </Space>
             </Panel>
           </Collapse>
         </Card>
@@ -366,7 +450,7 @@ const SystemRulesPage: React.FC = () => {
             </Space>
           }
         >
-          <Collapse defaultActiveKey={['orders']}>
+          <Collapse defaultActiveKey={['orders', 'subscriptionHistory']}>
             {/* 订单数据 */}
             <Panel header={systemRules.dataRetention.rules.orders.title} key="orders">
               <Table
@@ -423,6 +507,32 @@ const SystemRulesPage: React.FC = () => {
                   { title: '保留时长', dataIndex: 'retention', key: 'retention' },
                   { title: '原因', dataIndex: 'reason', key: 'reason' },
                 ]}
+              />
+            </Panel>
+
+            {/* 订阅历史记录 */}
+            <Panel header={systemRules.dataRetention.rules.subscriptionHistory.title} key="subscriptionHistory">
+              <Table
+                dataSource={systemRules.dataRetention.rules.subscriptionHistory.items}
+                rowKey="type"
+                pagination={false}
+                size="small"
+                columns={[
+                  { title: '记录类型', dataIndex: 'type', key: 'type' },
+                  {
+                    title: '保留时长',
+                    dataIndex: 'retention',
+                    key: 'retention',
+                    render: (v) => <Tag color="success">{v}</Tag>
+                  },
+                  { title: '原因', dataIndex: 'reason', key: 'reason' },
+                ]}
+              />
+              <Alert
+                message={systemRules.dataRetention.rules.subscriptionHistory.note}
+                type="info"
+                showIcon
+                style={{ marginTop: 12 }}
               />
             </Panel>
           </Collapse>

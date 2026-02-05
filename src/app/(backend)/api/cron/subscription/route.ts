@@ -213,11 +213,26 @@ async function processExpirations() {
           })
           .where(eq(userExtensions.userId, user.userId));
 
+        // Mark old subscription records as inactive
+        await tx
+          .update(userSubscriptionHistory)
+          .set({
+            isActive: false,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(userSubscriptionHistory.userId, user.userId),
+              eq(userSubscriptionHistory.isActive, true),
+            ),
+          );
+
         // Write expiration record to subscription history
         await tx.insert(userSubscriptionHistory).values({
           createdAt: now,
           endedAt: now,
           id: crypto.randomUUID(),
+          isActive: false,
           planId: user.planId!,
           planName: 'Expired Plan',
           planType: 'individual',

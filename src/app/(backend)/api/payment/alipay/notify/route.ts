@@ -13,7 +13,7 @@ import {
   userSubscriptionHistory,
   userTransactions,
 } from '@lobechat/database';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { AlipayPrecreateChannel } from '@/server/modules/payment/channels/alipay-precreate';
@@ -212,13 +212,28 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // 7e. Write subscription history
+      // 7e. Mark old subscription records as inactive
+      await tx
+        .update(userSubscriptionHistory)
+        .set({
+          isActive: false,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(userSubscriptionHistory.userId, order.userId),
+            eq(userSubscriptionHistory.isActive, true),
+          ),
+        );
+
+      // 7f. Write subscription history
       const price = order.planInterval === 'year' ? plan.yearlyPrice : plan.monthlyPrice;
       await tx.insert(userSubscriptionHistory).values({
         createdAt: now,
         durationMonths,
         endedAt: expiresAt,
         id: crypto.randomUUID(),
+        isActive: true,
         orderNo,
         planId: plan.id,
         planName: plan.name,
@@ -231,7 +246,7 @@ export async function POST(request: NextRequest) {
         userId: order.userId,
       });
 
-      // 7f. Grant credits - Reset balance to plan credits
+      // 7g. Grant credits - Reset balance to plan credits
       const existingBalance = await tx
         .select()
         .from(userBalances)
@@ -259,7 +274,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // 7g. Write transaction record
+      // 7h. Write transaction record
       await tx.insert(userTransactions).values({
         amount: String(credits),
         balanceAfter: String(credits),
