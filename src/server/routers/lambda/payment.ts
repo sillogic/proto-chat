@@ -101,12 +101,14 @@ closeOrder: paymentProcedure
 createOrder: paymentProcedure
     .input(
       z.object({
+        discountAmount: z.number().min(0).optional(),
         durationMonths: z.number().optional(),
         interval: z.enum(['month', 'year'], {
           errorMap: () => ({ message: 'Interval must be month or year' }),
         }),
         payChannel: z.enum(['wechat_native', 'alipay_precreate']).default('alipay_precreate'),
         planId: z.string().min(1, 'Plan ID is required'),
+        residualValue: z.number().min(0).optional(),
         subscriptionType: z.enum(['recurring', 'onetime'], {
           errorMap: () => ({ message: 'Subscription type must be recurring or onetime' }),
         }),
@@ -135,10 +137,12 @@ createOrder: paymentProcedure
       const paymentService = getPaymentService(ctx.serverDB);
 
       const result = await paymentService.createOrder({
+        discountAmount: input.discountAmount,
         durationMonths: input.durationMonths,
         payChannel: input.payChannel,
         planId: input.planId,
         planInterval: input.interval,
+        residualValue: input.residualValue,
         subscriptionType: input.subscriptionType,
         userId: ctx.userId,
       });

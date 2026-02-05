@@ -22,8 +22,8 @@ import { downloadFile } from '@/utils/client/downloadFile';
 const CUSTOM_NOTE_TYPE = 'custom/document';
 
 interface DropdownMenuProps {
-  filename: string;
   fileType?: string;
+  filename: string;
   id: string;
   knowledgeBaseId?: string;
   sourceType?: string;
@@ -105,13 +105,13 @@ const DropdownMenu = memo<DropdownMenuProps>(
         icon: <Icon icon={LinkIcon} />,
         key: 'copyUrl',
         label: t('FileManager.actions.copyUrl'),
-        onClick: async ({ domEvent }) => {
+        onClick: async ({ domEvent }: { domEvent: Event }) => {
           domEvent.stopPropagation();
           if (isNote) {
             // For notes, generate a page link with the correct base path
             // Extract variants prefix from current pathname (e.g., /zh-CN__0__dark/knowledge -> zh-CN__0__dark)
-            const pathParts = window.location.pathname.split('/').filter(Boolean);
-            const variantsPrefix = pathParts[0] || '';
+            const pathPart = window.location.pathname.split('/').find(Boolean);
+            const variantsPrefix = pathPart || '';
             const pageUrl = `${window.location.origin}/${variantsPrefix}/knowledge/${id}`;
             await copyToClipboard(pageUrl);
           } else {
@@ -126,7 +126,7 @@ const DropdownMenu = memo<DropdownMenuProps>(
         icon: <Icon icon={DownloadIcon} />,
         key: 'download',
         label: t('download', { ns: 'common' }),
-        onClick: async ({ domEvent }) => {
+        onClick: async ({ domEvent }: { domEvent: Event }) => {
           domEvent.stopPropagation();
           const key = 'file-downloading';
           message.loading({
@@ -145,9 +145,9 @@ const DropdownMenu = memo<DropdownMenuProps>(
                 const a = document.createElement('a');
                 a.href = downloadUrl;
                 a.download = `${filename || 'document'}.md`;
-                document.body.appendChild(a);
+                document.body.append(a);
                 a.click();
-                document.body.removeChild(a);
+                a.remove();
                 URL.revokeObjectURL(downloadUrl);
               }
             } catch (error) {
@@ -168,7 +168,7 @@ const DropdownMenu = memo<DropdownMenuProps>(
         icon: <Icon icon={Trash} />,
         key: 'delete',
         label: t('delete', { ns: 'common' }),
-        onClick: async ({ domEvent }) => {
+        onClick: async ({ domEvent }: { domEvent: Event }) => {
           domEvent.stopPropagation();
           modal.confirm({
             content: t('FileManager.actions.confirmDelete'),

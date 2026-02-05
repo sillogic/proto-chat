@@ -74,7 +74,7 @@ export const useCategory = () => {
     {
       icon: Feather,
       key: 'feedback',
-      label: t('feedback'),
+      label: t('userPanel.feedback'),
       onClick: () => window.open(FEEDBACK, '__blank'),
     },
     {

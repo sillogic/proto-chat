@@ -17,7 +17,8 @@ export const paymentOrders = pgTable('payment_orders', {
   // Order content
   planId: text('plan_id').notNull(),
   planInterval: varchar('plan_interval', { length: 10 }).notNull(), // 'month' | 'year'
-  amount: integer('amount').notNull(), // Amount in cents
+  amount: integer('amount').notNull(), // Amount in cents (actual payment amount after all deductions)
+  planValue: integer('plan_value'), // Plan standard value in cents (original price minus promotional discounts, but NOT minus residual value) - used for residual value calculation in future upgrades
   currency: varchar('currency', { length: 10 }).default('CNY').notNull(),
 
   // Subscription type: 'recurring' (auto-renew) or 'onetime' (one-time payment)

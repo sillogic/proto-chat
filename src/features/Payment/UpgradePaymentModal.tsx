@@ -192,10 +192,11 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
 interface CurrentPlanInfo {
   billingInterval?: 'month' | 'year' | null;
   durationMonths?: number | null;
-  paidAmount?: number; // 实付金额（分）
+  paidAmount?: number; // 实付金额（分）- 已废弃，仅用于显示
   planExpiresAt?: Date | null;
   planName: string;
   planSlug: string;
+  planValue?: number; // 套餐价值（分）- 用于残值计算（原价 - 促销优惠，但不扣除残值）
   subscriptionType: 'recurring' | 'onetime';
 }
 
@@ -244,13 +245,17 @@ const formatTime = (seconds: number): string => {
 
 // 计算残值
 const calculateResidualValue = (
-  paidAmount: number, // 实付金额（分）
+  planValue: number | undefined, // 套餐价值（分）- 原价 - 促销优惠（但不扣除残值）
+  paidAmount: number | undefined, // 实付金额（分）- 作为 fallback，仅用于历史数据
   subscriptionType: 'recurring' | 'onetime',
   billingInterval: 'month' | 'year' | null | undefined,
   durationMonths: number | null | undefined,
   expiresAt: Date | null | undefined,
 ): number => {
-  if (!paidAmount || paidAmount <= 0 || !expiresAt) return 0;
+  // 优先使用 planValue，如果没有则回退到 paidAmount（历史数据兼容）
+  const baseValue = planValue || paidAmount;
+
+  if (!baseValue || baseValue <= 0 || !expiresAt) return 0;
 
   const now = new Date();
   const remainingDays = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
@@ -268,7 +273,7 @@ const calculateResidualValue = (
   }
 
   // 日均价格向上取整到分
-  const dailyPrice = Math.ceil((paidAmount / totalDays) * 100) / 100;
+  const dailyPrice = Math.ceil((baseValue / totalDays) * 100) / 100;
   // 残值
   const residual = Math.round(dailyPrice * remainingDays);
 
@@ -310,7 +315,8 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
 
     // 计算价格
     const residualValue = calculateResidualValue(
-      currentPlan.paidAmount || 0,
+      currentPlan.planValue,
+      currentPlan.paidAmount,
       currentPlan.subscriptionType,
       currentPlan.billingInterval,
       currentPlan.durationMonths,
@@ -410,10 +416,12 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         } else {
           // One-time payment: use standard order flow
           const result = await lambdaClient.payment.createOrder.mutate({
+            discountAmount,
             durationMonths: newPlan.durationMonths,
             interval: newPlan.billingInterval,
             payChannel: paymentMethod,
             planId: newPlan.planId,
+            residualValue,
             subscriptionType: newPlan.subscriptionType,
           });
 

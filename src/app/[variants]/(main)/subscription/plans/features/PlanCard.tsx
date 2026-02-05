@@ -155,10 +155,11 @@ interface PlanCardProps {
   billingCycle: BillingCycle;
   currentBillingInterval?: 'month' | 'year' | null;
   currentDurationMonths?: number | null;
-  currentPaidAmount?: number; // 当前套餐实付金额（分）
+  currentPaidAmount?: number; // 当前套餐实付金额（分）- 仅用于显示
   currentPlanExpiresAt?: Date | null;
   currentPlanName?: string;
   currentPlanSlug?: string;
+  currentPlanValue?: number; // 当前套餐价值（分）- 用于残值计算
   currentSubscriptionType?: 'recurring' | 'onetime' | null;
   plan: PlanData;
 }
@@ -171,6 +172,7 @@ const PlanCard = memo<PlanCardProps>(({
   currentBillingInterval,
   currentDurationMonths,
   currentPaidAmount,
+  currentPlanValue,
   currentPlanExpiresAt,
   currentPlanName,
 }) => {
@@ -431,6 +433,7 @@ const PlanCard = memo<PlanCardProps>(({
             planExpiresAt: currentPlanExpiresAt,
             planName: currentPlanName || currentPlanSlug,
             planSlug: currentPlanSlug,
+            planValue: currentPlanValue,
             subscriptionType: currentSubscriptionType || 'recurring',
           }}
           discount={discount}

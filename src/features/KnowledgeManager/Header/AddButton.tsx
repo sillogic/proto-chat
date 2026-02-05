@@ -3,7 +3,7 @@
 import { Button, Dropdown, Icon, MenuProps } from '@lobehub/ui';
 import { Upload } from 'antd';
 import { css, cx } from 'antd-style';
-import { FilePenLine, FileUp, FolderIcon, FolderUp, Plus } from 'lucide-react';
+import { FilePenLine, FileUp, FolderUp, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -31,10 +31,6 @@ const AddButton = ({ knowledgeBaseId }: { knowledgeBaseId?: string }) => {
   };
 
   const handleCloseNoteEditor = () => {
-    setIsModalOpen(false);
-  };
-
-  const handleCreateFolder = () => {
     setIsModalOpen(false);
   };
 

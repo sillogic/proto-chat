@@ -13,7 +13,7 @@ export interface PaymentOrder {
   closedAt?: Date;
   createdAt: Date;
   // in cents
-  currency: string; 
+  currency: string;
   // Duration in months for one-time payments (1, 3, 6, 12), undefined for recurring
   durationMonths?: number;
   expiredAt: Date;
@@ -26,6 +26,9 @@ export interface PaymentOrder {
   planInterval: 'month' | 'year';
   planName?: string;
   planSlug?: string;
+  // Plan standard value in cents (original price minus promotional discounts, but NOT minus residual value)
+  // Used for residual value calculation in future upgrades
+  planValue?: number;
   status: PaymentStatus;
   // Subscription type: 'recurring' (auto-renew) or 'onetime' (one-time payment)
   subscriptionType: SubscriptionType;
@@ -88,12 +91,16 @@ export interface PaymentChannel {
 
 // Create order input
 export interface CreateOrderInput {
+  // Discount amount in cents (optional) - will be subtracted from the calculated price
+  discountAmount?: number;
   // Duration in months for one-time payments (1, 3, 6, 12)
 // Required when subscriptionType = 'onetime', undefined for 'recurring'
   durationMonths?: number;
   payChannel: 'wechat_native' | 'alipay_precreate';
   planId: string;
   planInterval: 'month' | 'year'; // extensible
+  // Residual value from current plan in cents (optional) - will be subtracted from the calculated price
+  residualValue?: number;
   // Subscription type: 'recurring' or 'onetime'
   subscriptionType: SubscriptionType;
   userId: string;

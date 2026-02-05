@@ -26,6 +26,7 @@ interface PaymentOrder {
   planSlug: string;
   planInterval: 'month' | 'year';
   amount: number;
+  planValue?: number;
   currency: string;
   subscriptionType: 'recurring' | 'onetime';
   durationMonths?: number;
@@ -146,7 +147,30 @@ const PaymentOrders: React.FC = () => {
       },
     },
     {
-      title: '支付金额',
+      title: '套餐价值',
+      dataIndex: 'planValue',
+      width: 110,
+      render: (_, record) => {
+        if (!record.planValue) return <Text type="secondary">-</Text>;
+        const discount = record.planValue - record.amount;
+        return (
+          <Space direction="vertical" size={0}>
+            <Text style={{ fontSize: '12px' }}>
+              ¥ {(record.planValue / 100).toFixed(2)}
+            </Text>
+            {discount > 0 && (
+              <Text type="success" style={{ fontSize: '10px' }}>
+                省 ¥{(discount / 100).toFixed(2)}
+              </Text>
+            )}
+          </Space>
+        );
+      },
+      search: false,
+      tooltip: '套餐标准价值（原价 - 促销优惠，不含残值抵扣）',
+    },
+    {
+      title: '实付金额',
       dataIndex: 'amount',
       width: 110,
       render: (_, record) => (
@@ -160,6 +184,7 @@ const PaymentOrders: React.FC = () => {
         </Space>
       ),
       search: false,
+      tooltip: '用户实际支付金额（已扣除促销优惠和残值）',
     },
     {
       title: '支付方式',
@@ -267,7 +292,7 @@ const PaymentOrders: React.FC = () => {
           reload: true,
           density: true,
         }}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1500 }}
         dateFormatter="string"
       />
     </PageContainer>
