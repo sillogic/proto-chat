@@ -13,13 +13,25 @@ router.use(authenticateToken);
  */
 router.get('/records', requirePermission('plans.read'), async (req: AuthenticatedRequest, res) => {
     try {
-        const { page = '1', limit = '20', search = '' } = req.query;
+        const { page = '1', limit = '20', search = '', status = '', subscriptionType = '', slug = '' } = req.query;
         const pageNum = parseInt(page as string, 10);
         const limitNum = parseInt(limit as string, 10);
         const offset = (pageNum - 1) * limitNum;
 
         const searchCondition = search
             ? sql`AND (h.user_id ILIKE ${'%' + search + '%'} OR h.plan_name ILIKE ${'%' + search + '%'} OR u.full_name ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'})`
+            : sql``;
+
+        const statusCondition = status
+            ? sql`AND h.status = ${status}`
+            : sql``;
+
+        const subscriptionTypeCondition = subscriptionType
+            ? sql`AND h.subscription_type = ${subscriptionType}`
+            : sql``;
+
+        const slugCondition = slug
+            ? sql`AND h.slug = ${slug}`
             : sql``;
 
         const records = await db.execute(sql`
@@ -32,6 +44,9 @@ router.get('/records', requirePermission('plans.read'), async (req: Authenticate
                 h.slug,
                 h.price,
                 h.billing_interval as "billingInterval",
+                h.subscription_type as "subscriptionType",
+                h.duration_months as "durationMonths",
+                h.order_no as "orderNo",
                 h.payment_method as "paymentMethod",
                 h.is_active as "isActive",
                 h.status,
@@ -45,6 +60,9 @@ router.get('/records', requirePermission('plans.read'), async (req: Authenticate
             LEFT JOIN users u ON h.user_id = u.id
             WHERE h.user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
             ${searchCondition}
+            ${statusCondition}
+            ${subscriptionTypeCondition}
+            ${slugCondition}
             ORDER BY h.created_at DESC
             LIMIT ${limitNum}
             OFFSET ${offset}
@@ -56,6 +74,9 @@ router.get('/records', requirePermission('plans.read'), async (req: Authenticate
             LEFT JOIN users u ON h.user_id = u.id
             WHERE h.user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
             ${searchCondition}
+            ${statusCondition}
+            ${subscriptionTypeCondition}
+            ${slugCondition}
         `);
 
         const total = parseInt((totalResult[0] as any).count, 10);

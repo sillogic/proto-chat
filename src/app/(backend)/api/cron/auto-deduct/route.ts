@@ -158,6 +158,20 @@ async function processDeduction(
           })
           .where(eq(userBalances.userId, agreement.userId));
 
+        // Mark old subscription records as inactive
+        await tx
+          .update(userSubscriptionHistory)
+          .set({
+            isActive: false,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(userSubscriptionHistory.userId, agreement.userId),
+              eq(userSubscriptionHistory.isActive, true),
+            ),
+          );
+
         // Write subscription history
         await tx.insert(userSubscriptionHistory).values({
           autoRenew: true,
@@ -165,6 +179,7 @@ async function processDeduction(
           createdAt: now,
           endedAt: newExpiresAt,
           id: crypto.randomUUID(),
+          isActive: true,
           orderNo,
           planId: plan.id,
           planName: plan.name,
@@ -296,6 +311,20 @@ async function downgradeToFree(agreement: any, plan: any): Promise<void> {
       })
       .where(eq(userAgreements.id, agreement.id));
 
+    // Mark old subscription records as inactive
+    await tx
+      .update(userSubscriptionHistory)
+      .set({
+        isActive: false,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(userSubscriptionHistory.userId, agreement.userId),
+          eq(userSubscriptionHistory.isActive, true),
+        ),
+      );
+
     // Write subscription history - expired
     await tx.insert(userSubscriptionHistory).values({
       autoRenew: false,
@@ -303,6 +332,7 @@ async function downgradeToFree(agreement: any, plan: any): Promise<void> {
       createdAt: now,
       endedAt: now,
       id: crypto.randomUUID(),
+      isActive: false,
       planId: plan.id,
       planName: plan.name,
       planType: plan.type,

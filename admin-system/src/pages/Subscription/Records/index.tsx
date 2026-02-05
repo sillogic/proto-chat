@@ -16,6 +16,9 @@ interface SubscriptionRecord {
   slug: string;
   price?: number;
   billingInterval?: 'month' | 'year' | null;
+  subscriptionType?: 'recurring' | 'onetime';
+  durationMonths?: number | null;
+  orderNo?: string;
   paymentMethod?: string;
   isActive: boolean;
   status: string;
@@ -58,11 +61,45 @@ const SubscriptionRecords: React.FC = () => {
           </Space>
         );
       },
+      search: false,
+    },
+    {
+      title: '订阅类型',
+      dataIndex: 'subscriptionType',
+      width: 140,
+      render: (_, record) => {
+        if (!record.subscriptionType || record.subscriptionType === 'recurring') {
+          // 循环订阅
+          const interval = record.billingInterval;
+          if (interval === 'year') {
+            return <Tag color="cyan">连续包年</Tag>;
+          } else if (interval === 'month') {
+            return <Tag color="blue">连续包月</Tag>;
+          }
+          return <Tag color="cyan">循环订阅</Tag>;
+        } else {
+          // 一次性付款
+          return (
+            <Space direction="vertical" size={0}>
+              <Tag color="purple">一次性</Tag>
+              {record.durationMonths && (
+                <Text type="secondary" style={{ fontSize: '11px' }}>
+                  {record.durationMonths}个月
+                </Text>
+              )}
+            </Space>
+          );
+        }
+      },
+      valueEnum: {
+        recurring: { text: '循环订阅' },
+        onetime: { text: '一次性' },
+      },
     },
     {
       title: '订阅套餐',
       dataIndex: 'planName',
-      width: 180,
+      width: 160,
       render: (_, record) => {
         const planColorMap: Record<string, string> = {
           free: '#1890ff',
@@ -76,19 +113,13 @@ const SubscriptionRecords: React.FC = () => {
         };
         const color = planColorMap[record.slug] || '#faad14';
         return (
-          <Space direction="vertical" size={0}>
-            <Space>
-              <CrownOutlined style={{ color }} />
-              <Text strong>{record.planName}</Text>
-            </Space>
-            {record.billingInterval && (
-              <Tag color="blue" style={{ fontSize: '10px' }}>
-                {record.billingInterval === 'year' ? '年付' : '月付'}
-              </Tag>
-            )}
+          <Space>
+            <CrownOutlined style={{ color }} />
+            <Text strong>{record.planName}</Text>
           </Space>
         );
       },
+      search: false,
     },
     {
       title: '方案级别',
@@ -120,34 +151,17 @@ const SubscriptionRecords: React.FC = () => {
       },
     },
     {
-      title: '付费方式',
-      dataIndex: 'billingInterval',
-      width: 100,
-      render: (val) => {
-        if (!val) return <Tag color="default">免费</Tag>;
-        return (
-          <Tag color={val === 'year' ? 'purple' : 'blue'}>
-            {val === 'year' ? '年付' : '月付'}
-          </Tag>
-        );
-      },
-      valueEnum: {
-        month: { text: '月付' },
-        year: { text: '年付' },
-      },
-    },
-    {
       title: '订阅价格',
       dataIndex: 'price',
       width: 100,
       render: (_, record) => {
         if (record.price == null || record.price === 0) return '-';
-        return `¥ ${record.price.toFixed(2)}`;
+        return `¥ ${(record.price / 100).toFixed(2)}`;
       },
       search: false,
     },
     {
-      title: '状态',
+      title: '订阅状态',
       dataIndex: 'status',
       width: 100,
       render: (_, record) => {
@@ -162,16 +176,7 @@ const SubscriptionRecords: React.FC = () => {
       },
     },
     {
-      title: '自动续费',
-      dataIndex: 'autoRenew',
-      width: 90,
-      render: (val) => (
-        <Tag color={val ? 'green' : 'default'}>{val ? '是' : '否'}</Tag>
-      ),
-      search: false,
-    },
-    {
-      title: '开始时间',
+      title: '生效时间',
       dataIndex: 'startedAt',
       valueType: 'dateTime',
       width: 170,
@@ -182,6 +187,24 @@ const SubscriptionRecords: React.FC = () => {
       dataIndex: 'endedAt',
       valueType: 'dateTime',
       width: 170,
+      search: false,
+    },
+    {
+      title: '订单号',
+      dataIndex: 'orderNo',
+      width: 180,
+      render: (_, record) => {
+        if (!record.orderNo) return '-';
+        return (
+          <a
+            href={`/payments/orders?search=${record.orderNo}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {record.orderNo}
+          </a>
+        );
+      },
       search: false,
     },
   ];
@@ -197,6 +220,9 @@ const SubscriptionRecords: React.FC = () => {
               page: params.current,
               limit: params.pageSize,
               search: params.keyword || params.userId || params.planName || '',
+              status: params.status,
+              subscriptionType: params.subscriptionType,
+              slug: params.slug,
             },
           });
           return {
