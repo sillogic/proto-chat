@@ -79,9 +79,12 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
         .limit(1);
 
       if (plan && plan.length > 0) {
-        // Query the most recent paid order for this user's current plan to get paidAmount
+        // Query the most recent paid order for this user's current plan to get paidAmount and planValue
         const recentOrder = await ctx.serverDB
-          .select({ amount: paymentOrders.amount })
+          .select({
+            amount: paymentOrders.amount,
+            planValue: paymentOrders.planValue,
+          })
           .from(paymentOrders)
           .where(
             and(
@@ -94,6 +97,7 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
           .limit(1);
 
         const paidAmount = recentOrder.length > 0 ? recentOrder[0].amount : 0;
+        const planValue = recentOrder.length > 0 ? recentOrder[0].planValue : undefined;
 
         return {
           autoRenew: user.autoRenew ?? false,
@@ -104,12 +108,13 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
           durationMonths: user.durationMonths,
           features: plan[0].features,
           nextCreditGrantAt: user.nextCreditGrantAt,
-          paidAmount, // 实付金额（分）
+          paidAmount, // 实付金额（分）- 仅用于显示
           planExpiresAt: user.planExpiresAt,
           planId: user.planId,
           planName: plan[0].name,
           planSlug: user.currentPlan,
           planType: plan[0].type,
+          planValue, // 套餐价值（分）- 用于残值计算
           previousPlanName: user.previousPlanName,
           previousPlanSlug: user.previousPlanSlug,
           subscriptionType: user.subscriptionType || 'recurring',
@@ -133,6 +138,7 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
       planName: 'Free',
       planSlug: user.currentPlan || 'free',
       planType: 'individual',
+      planValue: undefined,
       previousPlanName: user.previousPlanName,
       previousPlanSlug: user.previousPlanSlug,
       subscriptionType: 'recurring',

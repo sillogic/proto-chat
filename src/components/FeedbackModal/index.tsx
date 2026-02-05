@@ -20,8 +20,8 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
   header: css`
     display: flex;
-    align-items: center;
     gap: 8px;
+    align-items: center;
 
     margin-block-end: 16px;
 
@@ -51,7 +51,9 @@ const FeedbackModal = memo<FeedbackModalProps>(({ open, onClose }) => {
       setLoading(true);
 
       // 模拟提交反馈
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => {
+        setTimeout(resolve, 500);
+      });
 
       message.success(t('feedback.submitSuccess'));
       form.resetFields();

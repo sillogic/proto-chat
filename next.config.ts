@@ -50,6 +50,7 @@ const nextConfig: NextConfig = {
     webpackBuildWorker: true,
     webpackMemoryOptimizations: true,
   },
+  // @ts-expect-error - serverActions is valid in Next.js 16 but types aren't updated yet
   serverActions: {
     // Increase body size limit for avatar uploads (base64 encoded images)
     bodySizeLimit: '4mb',

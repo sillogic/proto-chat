@@ -140,6 +140,7 @@ const Client = memo<ClientProps>(() => {
                   currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
                   currentPlanName={currentPlan?.planName}
                   currentPlanSlug={currentPlan?.planSlug || undefined}
+                  currentPlanValue={currentPlan?.planValue ?? undefined}
                   currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                   key={plan.id}
                   plan={plan}
@@ -156,6 +157,7 @@ const Client = memo<ClientProps>(() => {
                   currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
                   currentPlanName={currentPlan?.planName}
                   currentPlanSlug={currentPlan?.planSlug || undefined}
+                  currentPlanValue={currentPlan?.planValue ?? undefined}
                   currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                   key={plan.id}
                   plan={plan}
@@ -194,6 +196,7 @@ const Client = memo<ClientProps>(() => {
                 currentPlanExpiresAt={currentPlan?.planExpiresAt ? new Date(currentPlan.planExpiresAt) : null}
                 currentPlanName={currentPlan?.planName}
                 currentPlanSlug={currentPlan?.planSlug || undefined}
+                currentPlanValue={currentPlan?.planValue ?? undefined}
                 currentSubscriptionType={currentPlan?.subscriptionType as 'recurring' | 'onetime' | null}
                 key={plan.id}
                 plan={plan}

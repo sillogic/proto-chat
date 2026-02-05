@@ -253,8 +253,8 @@ const FileRenderItem = memo<FileRenderItemProps>(
             )}
             <div className={styles.hover}>
               <DropdownMenu
-                filename={name}
                 fileType={fileType}
+                filename={name}
                 id={id}
                 knowledgeBaseId={knowledgeBaseId}
                 sourceType={sourceType}

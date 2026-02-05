@@ -50,7 +50,7 @@ export class PaymentService {
     expiredAt: Date;
     orderNo: string;
   }> {
-    const { userId, planId, planInterval, payChannel, subscriptionType, durationMonths } = input;
+    const { userId, planId, planInterval, payChannel, subscriptionType, durationMonths, residualValue, discountAmount } = input;
 
     // 1. Validate input parameters
     if (subscriptionType === 'onetime' && !durationMonths) {
@@ -84,28 +84,53 @@ export class PaymentService {
 
     const planData = plan[0];
 
-    // 4. Calculate amount based on subscription type
-    let amount: number;
+    // 4. Calculate base amount based on subscription type
+    let baseAmount: number;
 
     if (subscriptionType === 'onetime') {
       // One-time payment pricing
       if (durationMonths === 12) {
         // 12 months uses yearly price (same discount as yearly subscription)
-        amount = planData.yearlyPrice || 0;
+        baseAmount = planData.yearlyPrice || 0;
       } else {
         // 1, 3, 6 months use monthly price × duration
-        amount = (planData.monthlyPrice || 0) * durationMonths!;
+        baseAmount = (planData.monthlyPrice || 0) * durationMonths!;
       }
     } else {
       // Recurring subscription pricing
-      amount = (planInterval === 'year' ? planData.yearlyPrice : planData.monthlyPrice) || 0;
+      baseAmount = (planInterval === 'year' ? planData.yearlyPrice : planData.monthlyPrice) || 0;
     }
 
-    if (!amount || amount <= 0) {
+    if (!baseAmount || baseAmount <= 0) {
       throw new Error(`Invalid amount calculated for plan ${planId}`);
     }
 
-    // 5. Check for existing pending order (avoid duplicate orders)
+    // 5. Calculate plan value (for residual value calculation in future upgrades)
+    // Plan value = base amount - promotional discount (but NOT residual value)
+    let planValue = baseAmount;
+    if (discountAmount && discountAmount > 0) {
+      planValue = Math.max(0, baseAmount - discountAmount);
+    }
+
+    // 6. Apply discounts to get final payment amount
+    let amount = baseAmount;
+
+    // Subtract promotional discount
+    if (discountAmount && discountAmount > 0) {
+      amount = Math.max(0, amount - discountAmount);
+    }
+
+    // Subtract residual value (from previous plan)
+    if (residualValue && residualValue > 0) {
+      amount = Math.max(0, amount - residualValue);
+    }
+
+    // Final amount must be non-negative
+    if (amount < 0) {
+      amount = 0;
+    }
+
+    // 7. Check for existing pending order (avoid duplicate orders)
     const existingOrder = await this.db
       .select()
       .from(paymentOrders)
@@ -135,14 +160,14 @@ export class PaymentService {
       }
     }
 
-    // 6. Generate new order number
+    // 8. Generate new order number
     const orderNo = generateOrderNo();
 
-    // 7. Set expiration time (2 hours)
+    // 9. Set expiration time (2 hours)
     const now = new Date();
     const expiredAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
-    // 8. Create order in database
+    // 10. Create order in database
     const newOrder: Omit<PaymentOrder, 'createdAt' | 'updatedAt'> = {
       amount,
       currency: 'CNY',
@@ -153,6 +178,7 @@ export class PaymentService {
       payChannel,
       planId,
       planInterval,
+      planValue,
       status: 'pending',
       subscriptionType,
       userId,
@@ -168,12 +194,13 @@ export class PaymentService {
       payChannel: newOrder.payChannel,
       planId: newOrder.planId,
       planInterval: newOrder.planInterval,
+      planValue: newOrder.planValue,
       status: newOrder.status,
       subscriptionType: newOrder.subscriptionType,
       userId: newOrder.userId,
     });
 
-    // 9. Call payment channel to create payment with plan metadata
+    // 10. Call payment channel to create payment with plan metadata
     const channelResult = await channel.createPayment({
       ...(newOrder as PaymentOrder),
       planName: planData.name,
@@ -190,7 +217,7 @@ export class PaymentService {
       throw new Error(channelResult.errorMessage || 'Failed to create payment');
     }
 
-    // 10. Update order with channel data
+    // 11. Update order with channel data
     await this.db
       .update(paymentOrders)
       .set({
