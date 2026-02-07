@@ -2,7 +2,7 @@ import { ModelProviderCard, UserModelProviderConfig } from '@lobechat/types';
 import { ModelProvider } from 'model-bank';
 
 import * as ModelBankProviderCards from 'model-bank/modelProviders';
-import ProtoChatProviderCard from '../../../src/config/modelProviders/protochat';
+import ProtoChatProviderCard from '../../model-bank/src/modelProviders/protochat';
 
 // Combine model-bank providers with custom ProtoChat provider
 const ProviderCards = {
