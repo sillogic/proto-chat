@@ -13,6 +13,7 @@ import { chunks, documentChunks, unstructuredChunks } from './rag';
 import { sessionGroups, sessions } from './session';
 import { threads, topicDocuments, topics } from './topic';
 import { users } from './user';
+import { userExtensions } from './userExtension';
 
 export const agentsToSessions = pgTable(
   'agents_to_sessions',
@@ -336,4 +337,18 @@ export const messageGroupsRelations = relations(messageGroups, ({ many, one }) =
   }),
   childGroups: many(messageGroups),
   messages: many(messages),
+}));
+
+export const userRelations = relations(users, ({ one }) => ({
+  extension: one(userExtensions, {
+    fields: [users.id],
+    references: [userExtensions.userId],
+  }),
+}));
+
+export const userExtensionsRelations = relations(userExtensions, ({ one }) => ({
+  user: one(users, {
+    fields: [userExtensions.userId],
+    references: [users.id],
+  }),
 }));
