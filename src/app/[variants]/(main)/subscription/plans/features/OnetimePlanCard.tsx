@@ -6,7 +6,7 @@ import { createStyles } from 'antd-style';
 import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Center, Flexbox } from 'react-layout-kit';
+import { Center, Flexbox } from '@lobehub/ui';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
 import UpgradePaymentModal from '@/features/Payment/UpgradePaymentModal';

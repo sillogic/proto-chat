@@ -6,7 +6,7 @@ import { createStyles } from 'antd-style';
 import { Building2, GraduationCap, Users } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Center, Flexbox } from 'react-layout-kit';
+import { Center, Flexbox } from '@lobehub/ui';
 import { Link } from 'react-router-dom';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({

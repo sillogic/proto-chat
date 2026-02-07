@@ -6,7 +6,7 @@ import { createStyles } from 'antd-style';
 import { GraduationCap } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Center, Flexbox } from 'react-layout-kit';
+import { Center, Flexbox } from '@lobehub/ui';
 
 import { useSubscriptionPlans } from '../hooks/useSubscriptionPlans';
 import BillingToggle, { type BillingCycle } from './features/BillingToggle';

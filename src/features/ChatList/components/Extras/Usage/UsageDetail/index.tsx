@@ -5,7 +5,7 @@ import { useTheme } from 'antd-style';
 import { BadgeCent, CoinsIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Center, Flexbox } from 'react-layout-kit';
+import { Center, Flexbox } from '@lobehub/ui';
 
 import InfoTooltip from '@/components/InfoTooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';

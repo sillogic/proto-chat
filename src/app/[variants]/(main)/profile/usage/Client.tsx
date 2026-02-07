@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import { Brain, Codesandbox } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';

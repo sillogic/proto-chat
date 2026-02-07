@@ -1,7 +1,7 @@
 import { useTheme } from 'antd-style';
 import numeral from 'numeral';
 import { memo } from 'react';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 
 export interface TokenProgressItem {
   color: string;

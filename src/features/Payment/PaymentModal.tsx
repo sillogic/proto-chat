@@ -7,7 +7,7 @@ import { createStyles } from 'antd-style';
 import { CheckCircle, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Center, Flexbox } from 'react-layout-kit';
+import { Center, Flexbox } from '@lobehub/ui';
 import { QRCodeSVG } from 'qrcode.react';
 
 import { lambdaClient } from '@/libs/trpc/client';

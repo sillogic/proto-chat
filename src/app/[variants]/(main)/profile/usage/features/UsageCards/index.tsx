@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 
 import { UsageChartProps } from '../../Client';
 import ActiveModels from './ActiveModels';

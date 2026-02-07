@@ -2,7 +2,7 @@
 
 import { useTheme } from 'antd-style';
 import { PropsWithChildren, memo } from 'react';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 import { Outlet } from 'react-router-dom';
 
 const DesktopSubscriptionWrapper = memo<PropsWithChildren>(() => {

@@ -1,5 +1,5 @@
 import { Divider, Typography } from 'antd'
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 import { BarChart, ChartTooltipFrame, ChartTooltipRow, type BarChartProps } from '@lobehub/charts';
 
 export const UsageBarChart = ({ ...props }: BarChartProps) => (

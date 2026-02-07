@@ -4,7 +4,7 @@ import { Tag } from '@lobehub/ui';
 import { Segmented } from 'antd';
 import { createStyles } from 'antd-style';
 import { memo } from 'react';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 
 const useStyles = createStyles(({ css, token }) => ({
   container: css`

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import qs from 'query-string';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 import { useNavigate } from 'react-router-dom';
 
 import { FORM_STYLE } from '@/const/layoutTokens';

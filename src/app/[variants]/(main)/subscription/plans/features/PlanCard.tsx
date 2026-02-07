@@ -7,7 +7,7 @@ import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'l
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Center, Flexbox } from 'react-layout-kit';
+import { Center, Flexbox } from '@lobehub/ui';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
 import UpgradePaymentModal from '@/features/Payment/UpgradePaymentModal';

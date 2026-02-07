@@ -6,7 +6,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { createStyles } from 'antd-style';
 import { AlertCircle, CheckCircle, Clock, Eye, XCircle } from 'lucide-react';
 import { memo, useState } from 'react';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 import { useQuery } from '@tanstack/react-query';
 
 import { lambdaClient } from '@/libs/trpc/client';

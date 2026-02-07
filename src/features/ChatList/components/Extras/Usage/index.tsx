@@ -3,7 +3,7 @@ import { ModelIcon } from '@lobehub/icons';
 import { createStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { memo } from 'react';
-import { Center, Flexbox } from 'react-layout-kit';
+import { Center, Flexbox } from '@lobehub/ui';
 
 import TokenDetail from './UsageDetail';
 

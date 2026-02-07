@@ -5,7 +5,7 @@ import { Skeleton } from 'antd';
 import { useTheme } from 'antd-style';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 
 import InlineTable from '@/components/InlineTable';
 import { UsageLog } from '@/types/usage/usageRecord';

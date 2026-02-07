@@ -5,7 +5,7 @@ import { Descriptions, Modal, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import { AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { memo } from 'react';
-import { Flexbox } from 'react-layout-kit';
+import { Flexbox } from '@lobehub/ui';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   modal: css`
