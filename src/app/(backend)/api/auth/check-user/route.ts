@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { account } from '@/database/schemas/betterAuth';
 import { users } from '@/database/schemas/user';
@@ -60,4 +60,5 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

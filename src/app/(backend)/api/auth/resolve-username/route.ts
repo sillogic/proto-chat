@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { users } from '@/database/schemas/user';
 import { serverDB } from '@/database/server';
@@ -49,4 +49,5 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
