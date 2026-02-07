@@ -1,0 +1,60 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": [
+      "ES2020"
+    ],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "typeRoots": [
+      "./node_modules/@types"
+    ],
+    "baseUrl": "./src",
+    "paths": {
+      "model-bank": ["../node_modules/model-bank/src/index.ts"],
+      "model-bank/*": ["../node_modules/model-bank/src/*"],
+      "@/database/*": [
+        "../../../packages/database/src/*",
+        "../../../src/database/*"
+      ],
+      "@/const/*": [
+        "../../../packages/const/src/*",
+        "../../../src/const/*"
+      ],
+      "@/utils/*": [
+        "../../../packages/utils/src/*",
+        "../../../src/utils/*"
+      ],
+      "@/types/*": [
+        "../../../packages/types/src/*",
+        "../../../src/types/*"
+      ],
+      "@/config/*": [
+        "../../../src/config/*"
+      ],
+      "@/*": [
+        "./*",
+        "../../../src/*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "../../packages/model-runtime",
+    "../../packages/model-bank"
+  ]
+}

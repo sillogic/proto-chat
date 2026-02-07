@@ -1,0 +1,44 @@
+{
+  "name": "protochat-admin-server",
+  "version": "1.0.0",
+  "description": "ProtoChat Admin System API Server",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "test": "jest",
+    "test:dashboard": "tsx test-dashboard.ts",
+    "create-tables": "tsx src/scripts/create-tables.ts",
+    "init-db": "tsx src/scripts/create-tables.ts && tsx src/scripts/init-database.ts",
+    "setup": "npm install && npm run init-db"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "drizzle-orm": "^0.44.7",
+    "drizzle-zod": "^0.5.1",
+    "express": "^4.18.2",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^2.6.7",
+    "postgres": "^3.4.0",
+    "zod": "^3.22.0",
+    "model-bank": "workspace:*",
+    "@lobechat/model-runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.2",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/node": "^20.4.0",
+    "@types/node-fetch": "^2.6.2",
+    "eslint": "^8.45.0",
+    "jest": "^29.6.0",
+    "tsx": "^3.12.7",
+    "typescript": "^5.1.6"
+  }
+}

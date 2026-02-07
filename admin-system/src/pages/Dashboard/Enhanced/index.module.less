@@ -1,0 +1,65 @@
+// 增强版仪表盘样式
+.container {
+  :global {
+    .ant-card {
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      transition: all 0.3s ease;
+
+      &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+    }
+
+    .ant-statistic-title {
+      font-size: 14px;
+      color: #8c8c8c;
+      margin-bottom: 8px;
+    }
+
+    .ant-statistic-content {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .ant-pro-card-header {
+      border-bottom: 1px solid #f0f0f0;
+    }
+  }
+}
+
+.metricCard {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+
+  :global {
+    .ant-statistic-title {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .ant-statistic-content {
+      color: white;
+    }
+  }
+}
+
+.periodSelector {
+  :global {
+    .ant-select-selector {
+      border-radius: 6px;
+    }
+  }
+}
+
+.chartPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+  color: #666;
+  font-size: 14px;
+  flex-direction: column;
+}
