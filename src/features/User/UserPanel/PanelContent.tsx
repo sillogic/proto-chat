@@ -1,4 +1,3 @@
-import { ENABLE_BUSINESS_FEATURES } from '@lobechat/business-const';
 import { Flexbox } from '@lobehub/ui';
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
@@ -6,7 +5,6 @@ import { Link } from 'react-router-dom';
 import { navigateToDesktopOnboarding } from '@/app/[variants]/(desktop)/desktop-onboarding/navigation';
 import { clearDesktopOnboardingCompleted } from '@/app/[variants]/(desktop)/desktop-onboarding/storage';
 import { DesktopOnboardingScreen } from '@/app/[variants]/(desktop)/desktop-onboarding/types';
-import BusinessPanelContent from '@/business/client/features/User/BusinessPanelContent';
 import BrandWatermark from '@/components/BrandWatermark';
 import Menu from '@/components/Menu';
 import { isDesktop } from '@/const/version';
@@ -16,7 +14,9 @@ import { authSelectors } from '@/store/user/selectors';
 import DataStatistics from '../DataStatistics';
 import UserInfo from '../UserInfo';
 import UserLoginOrSignup from '../UserLoginOrSignup';
+import CreditUsage from './CreditUsage';
 import LangButton from './LangButton';
+import ThemeButton from './ThemeButton';
 import { useMenu } from './useMenu';
 
 const PanelContent = memo<{ closePopover: () => void }>(({ closePopover }) => {
@@ -55,20 +55,31 @@ const PanelContent = memo<{ closePopover: () => void }>(({ closePopover }) => {
       {isDesktop || isLoginWithAuth ? (
         <>
           <UserInfo avatarProps={{ clickable: false }} />
-          <Link style={{ color: 'inherit' }} to={'/settings/stats'}>
+          <CreditUsage />
+          <Link style={{ color: 'inherit' }} to={'/profile/stats'}>
             <DataStatistics />
           </Link>
-          {ENABLE_BUSINESS_FEATURES && <BusinessPanelContent />}
         </>
       ) : (
         <UserLoginOrSignup onClick={handleSignIn} />
       )}
 
       <Menu items={mainItems} onClick={closePopover} />
-      <Menu items={logoutItems} onClick={handleSignOut} />
-      <Flexbox gap={4} horizontal justify={'space-between'} style={{ padding: '6px 8px 6px 16px' }}>
-        <BrandWatermark />
-        <LangButton placement={'right' as any} />
+      <Flexbox
+        align={'center'}
+        horizontal
+        justify={'space-between'}
+        style={isLoginWithAuth ? { paddingRight: 6 } : { padding: '6px 6px 6px 16px' }}
+      >
+        {isLoginWithAuth ? (
+          <Menu items={logoutItems} onClick={handleSignOut} />
+        ) : (
+          <BrandWatermark />
+        )}
+        <Flexbox align={'center'} flex={'none'} gap={2} horizontal>
+          <LangButton />
+          <ThemeButton />
+        </Flexbox>
       </Flexbox>
     </Flexbox>
   );
