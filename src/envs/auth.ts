@@ -2,11 +2,32 @@
 import { createEnv } from '@t3-oss/env-nextjs';
 import { z } from 'zod';
 
+import { appEnv } from './app';
+
+/**
+ * Resolve public auth URL with compatibility fallbacks.
+ */
+const resolvePublicAuthUrl = () => {
+  if (process.env.NEXT_PUBLIC_AUTH_URL) return process.env.NEXT_PUBLIC_AUTH_URL;
+
+  if (process.env.APP_URL) {
+    try {
+      return new URL(process.env.APP_URL).origin;
+    } catch {
+      // ignore invalid APP_URL
+    }
+  }
+
+  // Fallback to appEnv.APP_URL if available
+  return appEnv.APP_URL;
+};
+
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace NodeJS {
     interface ProcessEnv {
       // ===== Better Auth ===== //
+      NEXT_PUBLIC_AUTH_URL?: string;
       AUTH_SECRET?: string;
       AUTH_EMAIL_VERIFICATION?: string;
       AUTH_ENABLE_MAGIC_LINK?: string;
@@ -107,7 +128,9 @@ declare global {
 
 export const getAuthConfig = () => {
   return createEnv({
-    client: {},
+    client: {
+      NEXT_PUBLIC_AUTH_URL: z.string().optional(),
+    },
     server: {
       AUTH_SECRET: z.string().optional(),
       AUTH_SSO_PROVIDERS: z.string().optional().default(''),
@@ -199,6 +222,7 @@ export const getAuthConfig = () => {
     },
 
     runtimeEnv: {
+      NEXT_PUBLIC_AUTH_URL: resolvePublicAuthUrl(),
       AUTH_EMAIL_VERIFICATION: process.env.AUTH_EMAIL_VERIFICATION === '1',
       AUTH_ENABLE_MAGIC_LINK: process.env.AUTH_ENABLE_MAGIC_LINK === '1',
       AUTH_SECRET: process.env.AUTH_SECRET,

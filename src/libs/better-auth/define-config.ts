@@ -101,7 +101,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       },
     },
 
-    baseURL: appEnv.APP_URL,
+    baseURL: authEnv.NEXT_PUBLIC_AUTH_URL,
     secret: authEnv.AUTH_SECRET,
     trustedOrigins: getTrustedOrigins(enabledSSOProviders),
 
