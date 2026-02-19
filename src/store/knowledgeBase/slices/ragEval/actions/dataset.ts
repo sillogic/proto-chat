@@ -41,7 +41,7 @@ export const createRagEvalDatasetSlice: StateCreator<
     const fileType = file.name.split('.').pop();
 
     if (fileType === 'jsonl') {
-      // jsonl 文件 需要拆分成单个条，然后逐一校验格式
+      // jsonl files need to be split into individual items, then each one is validated for format
       const jsonl = await file.text();
       const { default: JSONL } = await import('jsonl-parse-stringify');
 

@@ -70,18 +70,18 @@ export interface SystemStatus {
   imagePanelWidth: number;
   imageTopicPanelWidth?: number;
   /**
-   * 应用初始化时不启用 PGLite，只有当用户手动开启时才启用
+   * PGLite is not enabled during application initialization; it is only enabled when the user manually activates it
    */
   isEnablePglite?: boolean;
   isShowCredit?: boolean;
   knowledgeBaseModalViewMode?: 'list' | 'masonry';
   language?: LocaleMode;
   /**
-   * 记住用户最后选择的图像生成模型
+   * Remembers the last image generation model selected by the user
    */
   lastSelectedImageModel?: string;
   /**
-   * 记住用户最后选择的图像生成提供商
+   * Remembers the last image generation provider selected by the user
    */
   lastSelectedImageProvider?: string;
   latestChangelogId?: string;
@@ -103,7 +103,7 @@ export interface SystemStatus {
    */
   themeMode?: ThemeMode;
   /**
-   * 是否使用短格式显示 token
+   * Whether to display tokens in short format
    */
   tokenDisplayFormatShort?: boolean;
   zenMode?: boolean;
@@ -119,8 +119,8 @@ export interface GlobalState {
 
   initClientDBProcess?: { costTime?: number; phase: 'wasm' | 'dependencies'; progress: number };
   /**
-   * 客户端数据库初始化状态
-   * 启动时为 Idle，完成为 Ready，报错为 Error
+   * Client database initialization status
+   * Idle at startup, Ready when complete, Error when an error occurs
    */
   initClientDBStage: DatabaseLoadingState;
   isMobile?: boolean;

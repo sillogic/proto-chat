@@ -34,7 +34,7 @@ const getAgentSystemRoleExpanded =
   (agentId: string) =>
   (s: GlobalState): boolean => {
     const map = s.status.systemRoleExpandedMap || {};
-    return map[agentId] !== false; // 角色设定默认为展开状态
+    return map[agentId] !== false; // Role settings default to expanded state
   };
 
 const disabledModelProvidersSortType = (s: GlobalState) =>

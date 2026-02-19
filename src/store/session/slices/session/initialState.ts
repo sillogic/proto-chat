@@ -2,8 +2,8 @@ import { LobeSessions } from '@/types/session';
 
 export interface SessionState {
   /**
-   * @title 当前活动的会话
-   * @description 当前正在编辑或查看的会话
+   * @title Current active session
+   * @description Session currently being edited or viewed
    */
   activeId: string;
   defaultSessions: LobeSessions;
