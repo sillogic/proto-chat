@@ -62,7 +62,7 @@ export const createFileSlice: StateCreator<
     let isFinished = false;
 
     while (!isFinished) {
-      // 每间隔 2s 查询一次任务状态
+      // Query task status every 2s
       await sleep(2000);
 
       let fileItem: FileListItem | undefined = undefined;
