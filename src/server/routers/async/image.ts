@@ -309,43 +309,6 @@ export const imageRouter = router({
 
           const { modelUsage } = response;
 
-          if (ENABLE_BUSINESS_FEATURES) {
-            await chargeAfterGenerate({
-              duration: genDuration,
-              height: response.height,
-              metadata: {
-                asyncTaskId: taskId,
-                generationBatchId,
-                modelId: model,
-                topicId: generationTopicId,
-              },
-              modelUsage,
-              provider,
-              userId: ctx.userId,
-              width: response.width,
-            });
-          } else {
-            // Deduct credits for image generation (uses perRequestPrice from model_pricings)
-            try {
-              const cost = await ctx.creditService.calculateCost(model, provider, 0, 0);
-              if (cost > 0) {
-                await ctx.creditService.deductCredits(
-                  cost,
-                  `Image generation: ${model}`,
-                  generationId,
-                  { model, provider, type: 'image' },
-                );
-                log('Credits deducted for image generation: %s, cost: %s', taskId, cost);
-              }
-            } catch (creditError: any) {
-              log(
-                'Failed to deduct credits for image generation: %s, error: %s',
-                taskId,
-                creditError.message,
-              );
-            }
-          }
-
           // Check if operation has been cancelled
           checkAbortSignal(signal);
 
@@ -415,10 +378,50 @@ export const imageRouter = router({
             },
           );
 
-          log('Updating task status to Success: %s', taskId);
+          const duration = Date.now() - generationBatch.createdAt.getTime();
+
+          log('Updating task status to Success: %s, duration: %dms', taskId, duration);
           await ctx.asyncTaskModel.update(taskId, {
+            duration,
             status: AsyncTaskStatus.Success,
           });
+
+          if (ENABLE_BUSINESS_FEATURES) {
+            await chargeAfterGenerate({
+              height: response.height,
+              metrics: { latency: duration },
+              metadata: {
+                asyncTaskId: taskId,
+                generationBatchId,
+                modelId: model,
+                topicId: generationTopicId,
+              },
+              modelUsage,
+              provider,
+              userId: ctx.userId,
+              width: response.width,
+            });
+          } else {
+            // Deduct credits for image generation (uses perRequestPrice from model_pricings)
+            try {
+              const cost = await ctx.creditService.calculateCost(model, provider, 0, 0);
+              if (cost > 0) {
+                await ctx.creditService.deductCredits(
+                  cost,
+                  `Image generation: ${model}`,
+                  generationId,
+                  { model, provider, type: 'image' },
+                );
+                log('Credits deducted for image generation: %s, cost: %s', taskId, cost);
+              }
+            } catch (creditError: any) {
+              log(
+                'Failed to deduct credits for image generation: %s, error: %s',
+                taskId,
+                creditError.message,
+              );
+            }
+          }
 
           log('Async image generation completed successfully: %s', taskId);
           return { success: true };

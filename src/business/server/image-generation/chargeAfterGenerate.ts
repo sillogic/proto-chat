@@ -1,7 +1,7 @@
 import debug from 'debug';
 
 import { serverDB } from '@/database/server';
-import { type ModelUsage } from '@/types/index';
+import { type ModelPerformance, type ModelUsage } from '@/types/index';
 
 import { CreditService } from '../../../server/services/credit';
 
@@ -18,6 +18,7 @@ interface ChargeParams {
     modelId: string;
     topicId?: string;
   };
+  metrics?: ModelPerformance;
   modelUsage?: ModelUsage;
   provider: string;
   userId: string;
