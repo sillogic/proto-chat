@@ -1,7 +1,7 @@
 /* eslint-disable sort-keys-fix/sort-keys-fix */
 // ******* Runtime Biz Error ******* //
 export const AgentRuntimeErrorType = {
-  AgentRuntimeError: 'AgentRuntimeError', // Agent Runtime 模块运行时错误
+  AgentRuntimeError: 'AgentRuntimeError', // Agent Runtime module runtime error
   LocationNotSupportError: 'LocationNotSupportError',
 
   QuotaLimitReached: 'QuotaLimitReached',
@@ -70,7 +70,7 @@ export const StandardErrorType = {
 export type ErrorType = (typeof StandardErrorType)[keyof typeof StandardErrorType];
 
 /**
- * 聊天消息错误对象
+ * Chat message error object
  */
 export interface ChatMessageError {
   body?: any;
