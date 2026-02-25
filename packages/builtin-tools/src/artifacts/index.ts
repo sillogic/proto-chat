@@ -1,6 +1,6 @@
 import { type BuiltinToolManifest } from '@lobechat/types';
 
-import { systemPrompt } from '@/tools/artifacts/systemRole';
+import { systemPrompt } from './systemRole';
 
 export const ArtifactsManifest: BuiltinToolManifest = {
   api: [],

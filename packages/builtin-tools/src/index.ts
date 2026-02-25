@@ -8,6 +8,7 @@ import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MemoryManifest } from '@lobechat/builtin-tool-memory';
 import { NotebookManifest } from '@lobechat/builtin-tool-notebook';
 import { PageAgentManifest } from '@lobechat/builtin-tool-page-agent';
+import { LobeToolsManifest } from '@lobechat/builtin-tool-tools';
 import { WebBrowsingManifest } from '@lobechat/builtin-tool-web-browsing';
 import { isDesktop } from '@lobechat/const';
 import { type LobeBuiltinTool } from '@lobechat/types';
@@ -80,6 +81,12 @@ export const builtinTools: LobeBuiltinTool[] = [
   {
     identifier: NotebookManifest.identifier,
     manifest: NotebookManifest,
+    type: 'builtin',
+  },
+  {
+    hidden: true,
+    identifier: LobeToolsManifest.identifier,
+    manifest: LobeToolsManifest,
     type: 'builtin',
   },
 ];

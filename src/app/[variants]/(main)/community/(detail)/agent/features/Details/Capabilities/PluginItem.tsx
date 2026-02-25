@@ -1,3 +1,4 @@
+import { builtinTools } from '@lobechat/builtin-tools';
 import {
   getLobehubSkillProviderById,
   KLAVIS_SERVER_TYPES,
@@ -13,23 +14,22 @@ import { Link } from 'react-router-dom';
 import urlJoin from 'url-join';
 
 import { useDiscoverStore } from '@/store/discover';
-import { builtinTools } from '@/tools';
 
 /**
  * Icon component for built-in tools (Klavis & LobehubSkill)
  * For string type icon, use Image component to render
  * For IconType type icon, use Icon component to render with theme fill color
  */
-const BuiltinToolIcon = memo<
-  Pick<KlavisServerType | LobehubSkillProviderType, 'icon' | 'label'>
->(({ icon, label }) => {
-  if (typeof icon === 'string') {
-    return <Image alt={label} height={40} src={icon} style={{ flex: 'none' }} width={40} />;
-  }
+const BuiltinToolIcon = memo<Pick<KlavisServerType | LobehubSkillProviderType, 'icon' | 'label'>>(
+  ({ icon, label }) => {
+    if (typeof icon === 'string') {
+      return <Image alt={label} height={40} src={icon} style={{ flex: 'none' }} width={40} />;
+    }
 
-  // Use theme color fill, automatically adapts in dark mode
-  return <Icon fill={cssVar.colorText} icon={icon} size={40} />;
-});
+    // Use theme color fill, automatically adapts in dark mode
+    return <Icon fill={cssVar.colorText} icon={icon} size={40} />;
+  },
+);
 
 BuiltinToolIcon.displayName = 'BuiltinToolIcon';
 
