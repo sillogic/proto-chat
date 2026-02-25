@@ -13,7 +13,7 @@ import {
   EvalDatasetRecordModel,
   EvalEvaluationModel,
   EvaluationRecordModel,
-} from '@/database/server/models/ragEval';
+} from '@/database/models/ragEval';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { ChunkService } from '@/server/services/chunk';
@@ -40,7 +40,7 @@ export const ragEvalRouter = router({
   runRecordEvaluation: ragEvalProcedure
     .input(
       z.object({
-        evalRecordId: z.number(),
+        evalRecordId: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

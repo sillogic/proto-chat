@@ -553,6 +553,13 @@
       "when": 1772005916028,
       "tag": "0078_easy_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1770392264696,
+      "tag": "0079_add_agent_skills",
+      "breakpoints": true
     }
   ],
   "version": "6"

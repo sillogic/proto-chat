@@ -12,8 +12,12 @@ import { LobeVertexAI } from '../../providers/vertexai';
 import {
   CreateImagePayload,
   CreateImageResponse,
+  CreateVideoPayload,
+  CreateVideoResponse,
   GenerateObjectOptions,
   GenerateObjectPayload,
+  HandleCreateVideoWebhookPayload,
+  HandleCreateVideoWebhookResult,
   ILobeAgentRuntimeErrorType,
 } from '../../types';
 import {
@@ -28,7 +32,11 @@ import {
 import { postProcessModelList } from '../../utils/postProcessModelList';
 import { safeParseJSON } from '../../utils/safeParseJSON';
 import { LobeRuntimeAI } from '../BaseAI';
-import { CreateImageOptions, CustomClientOptions } from '../openaiCompatibleFactory';
+import {
+  CreateImageOptions,
+  CreateVideoOptions,
+  CustomClientOptions,
+} from '../openaiCompatibleFactory';
 import type { ApiType, RuntimeClass } from './apiTypes';
 
 const log = debug('lobe-model-runtime:router-runtime');
@@ -61,6 +69,7 @@ type RouterOptions = RouterOptionItem | RouterOptionItem[];
 interface RouterInstance {
   apiType: ApiType;
   baseURLPattern?: RegExp;
+  id?: string;
   models?: string[];
   options: RouterOptions;
   runtime?: RuntimeClass;
@@ -76,6 +85,18 @@ type Routers =
         model?: string;
       },
     ) => RouterInstance[] | Promise<RouterInstance[]>);
+
+export interface RouteAttemptResult {
+  apiType: string;
+  channelId?: string;
+  durationMs: number;
+  error?: unknown;
+  model: string;
+  providerId: string;
+  remark?: string;
+  routerId?: string;
+  success: boolean;
+}
 
 export interface CreateRouterRuntimeOptions<T extends Record<string, any> = any> {
   apiKey?: string;
@@ -107,6 +128,10 @@ export interface CreateRouterRuntimeOptions<T extends Record<string, any> = any>
     payload: CreateImagePayload,
     options: CreateImageOptions,
   ) => Promise<CreateImageResponse>;
+  createVideo?: (
+    payload: CreateVideoPayload,
+    options: CreateVideoOptions,
+  ) => Promise<CreateVideoResponse>;
   customClient?: CustomClientOptions<T>;
   debug?: {
     chatCompletion: () => boolean;
@@ -117,12 +142,17 @@ export interface CreateRouterRuntimeOptions<T extends Record<string, any> = any>
     bizError: ILobeAgentRuntimeErrorType;
     invalidAPIKey: ILobeAgentRuntimeErrorType;
   };
+  handleCreateVideoWebhook?: (
+    payload: HandleCreateVideoWebhookPayload,
+    options: CreateVideoOptions,
+  ) => Promise<HandleCreateVideoWebhookResult>;
   id: string;
   models?:
     | ((params: { client: OpenAI }) => Promise<ChatModelCard[]>)
     | {
         transformModel?: (model: OpenAI.Model) => ChatModelCard;
       };
+  onRouteAttempt?: (result: RouteAttemptResult) => Promise<void>;
   responses?: {
     handlePayload?: (
       payload: ChatStreamPayload,
@@ -287,6 +317,7 @@ export const createRouterRuntime = ({
 
       for (const [index, optionItem] of routerOptions.entries()) {
         const attempt = index + 1;
+        const startTime = Date.now();
         const {
           channelId,
           id: resolvedApiType,
@@ -309,9 +340,40 @@ export const createRouterRuntime = ({
             );
           }
 
+          params
+            .onRouteAttempt?.({
+              apiType: resolvedApiType,
+              channelId,
+              durationMs: Date.now() - startTime,
+              model,
+              providerId: id,
+              remark,
+              routerId: matchedRouter.id,
+              success: true,
+            })
+            .catch((e) => {
+              log('onRouteAttempt callback error: %O', e);
+            });
+
           return result;
         } catch (error) {
           lastError = error;
+
+          params
+            .onRouteAttempt?.({
+              apiType: resolvedApiType,
+              channelId,
+              durationMs: Date.now() - startTime,
+              error,
+              model,
+              providerId: id,
+              remark,
+              routerId: matchedRouter.id,
+              success: false,
+            })
+            .catch((e) => {
+              log('onRouteAttempt callback error: %O', e);
+            });
 
           if (attempt < totalOptions) {
             log(
@@ -395,6 +457,18 @@ export const createRouterRuntime = ({
 
     async createImage(payload: CreateImagePayload) {
       return this.runWithFallback(payload.model, (runtime) => runtime.createImage!(payload));
+    }
+
+    async createVideo(payload: CreateVideoPayload) {
+      return this.runWithFallback(payload.model, (runtime) => runtime.createVideo!(payload));
+    }
+
+    async handleCreateVideoWebhook(payload: HandleCreateVideoWebhookPayload) {
+      const model = (payload.body as any)?.model;
+      const resolvedRouters = await this.resolveRouters(model);
+      const routerOptions = this.normalizeRouterOptions(resolvedRouters[0]);
+      const { runtime } = await this.createRuntimeFromOption(resolvedRouters[0], routerOptions[0]);
+      return runtime.handleCreateVideoWebhook!(payload);
     }
 
     async generateObject(payload: GenerateObjectPayload, options?: GenerateObjectOptions) {

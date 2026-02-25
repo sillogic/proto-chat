@@ -2,7 +2,8 @@ import { Plans } from '@lobechat/types';
 import { Center, Flexbox, Icon, Tag } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { Atom, Box, CircleSlash, Sparkle, Zap } from 'lucide-react';
-import { type CSSProperties, type MouseEvent, memo } from 'react';
+import { type CSSProperties, type MouseEvent } from 'react';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export const themes = {
@@ -80,7 +81,7 @@ const PlanIcon = memo<PlanIconProps>(
       return (
         <Tag
           className={className}
-          onClick={onClick}
+          variant={'filled'}
           style={{
             ...(theme || { background: cssVar.colorFillSecondary, color: cssVar.colorText }),
             border: 'none',
@@ -90,7 +91,7 @@ const PlanIcon = memo<PlanIconProps>(
             margin: 0,
             ...style,
           }}
-          variant={'filled'}
+          onClick={onClick}
         >
           {planTitle}
         </Tag>
@@ -101,13 +102,13 @@ const PlanIcon = memo<PlanIconProps>(
       <Center
         className={styles.icon}
         height={size}
-        onClick={onClick}
+        width={size}
         style={
           mono
             ? style
             : { ...theme, border: isFree ? undefined : `2px solid ${theme.color}`, ...style }
         }
-        width={size}
+        onClick={onClick}
       >
         <Icon color={mono ? undefined : theme.color} icon={icon} size={size / 2} />
       </Center>
@@ -120,7 +121,7 @@ const PlanIcon = memo<PlanIconProps>(
         : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
       return (
-        <Flexbox align={'center'} gap={8} horizontal>
+        <Flexbox horizontal align={'center'} gap={8}>
           {iconContent}
           <span>{planTitle}</span>
         </Flexbox>

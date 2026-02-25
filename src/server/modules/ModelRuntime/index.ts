@@ -7,6 +7,7 @@ import {
   type ClientSecretPayload,
   type CloudflareKeyVault,
   type ComfyUIKeyVault,
+  type GithubCopilotKeyVault,
   type OpenAICompatibleKeyVault,
   type VertexAIKeyVault,
 } from '@lobechat/types';
@@ -32,6 +33,7 @@ type ProviderKeyVaults = OpenAICompatibleKeyVault &
   AWSBedrockKeyVault &
   CloudflareKeyVault &
   ComfyUIKeyVault &
+  GithubCopilotKeyVault &
   VertexAIKeyVault;
 
 /**
@@ -130,6 +132,19 @@ export const buildPayloadFromKeyVaults = (
       };
     }
 
+    case ModelProvider.GithubCopilot: {
+      // Support both traditional PAT (apiKey) and OAuth tokens
+      return {
+        apiKey: keyVaults.apiKey,
+        bearerToken: keyVaults.bearerToken,
+        bearerTokenExpiresAt: keyVaults.bearerTokenExpiresAt
+          ? Number(keyVaults.bearerTokenExpiresAt)
+          : undefined,
+        oauthAccessToken: keyVaults.oauthAccessToken,
+        runtimeProvider,
+      };
+    }
+
     default: {
       return {
         apiKey: keyVaults.apiKey,
@@ -220,6 +235,16 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
           : CLOUDFLARE_BASE_URL_OR_ACCOUNT_ID;
 
       return { apiKey, baseURLOrAccountID };
+    }
+
+    case ModelProvider.GithubCopilot: {
+      // Support both traditional PAT (apiKey) and OAuth tokens
+      return {
+        apiKey: payload.apiKey,
+        bearerToken: payload.bearerToken,
+        bearerTokenExpiresAt: payload.bearerTokenExpiresAt,
+        oauthAccessToken: payload.oauthAccessToken,
+      };
     }
 
     case ModelProvider.ComfyUI: {

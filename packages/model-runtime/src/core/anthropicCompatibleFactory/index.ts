@@ -1,16 +1,10 @@
-import Anthropic, { ClientOptions } from '@anthropic-ai/sdk';
+import Anthropic, { type ClientOptions } from '@anthropic-ai/sdk';
 import type { Stream } from '@anthropic-ai/sdk/streaming';
 import type { ChatModelCard } from '@lobechat/types';
 import debug from 'debug';
 
 import { hasTemperatureTopPConflict } from '../../const/models';
-import {
-  buildAnthropicMessages,
-  buildAnthropicTools,
-  buildSearchTool,
-} from '../contextBuilders/anthropic';
-import { resolveParameters } from '../parameterResolver';
-import {
+import type {
   ChatCompletionErrorPayload,
   ChatMethodOptions,
   ChatStreamCallbacks,
@@ -18,16 +12,23 @@ import {
   GenerateObjectOptions,
   GenerateObjectPayload,
 } from '../../types';
-import { AgentRuntimeErrorType, ILobeAgentRuntimeErrorType } from '../../types/error';
+import type { ILobeAgentRuntimeErrorType } from '../../types/error';
+import { AgentRuntimeErrorType } from '../../types/error';
 import { AgentRuntimeError } from '../../utils/createError';
 import { debugStream } from '../../utils/debugStream';
 import { desensitizeUrl } from '../../utils/desensitizeUrl';
 import { getModelPricing } from '../../utils/getModelPricing';
 import { MODEL_LIST_CONFIGS, processModelList } from '../../utils/modelParse';
 import { StreamingResponse } from '../../utils/response';
-import { LobeRuntimeAI } from '../BaseAI';
+import type { LobeRuntimeAI } from '../BaseAI';
+import {
+  buildAnthropicMessages,
+  buildAnthropicTools,
+  buildSearchTool,
+} from '../contextBuilders/anthropic';
+import { resolveParameters } from '../parameterResolver';
 import { AnthropicStream } from '../streams';
-import type { ComputeChatCostOptions } from '../usageConverters/utils/computeChatCost';
+import { type ComputeChatCostOptions } from '../usageConverters/utils/computeChatCost';
 import { createAnthropicGenerateObject } from './generateObject';
 import { handleAnthropicError } from './handleAnthropicError';
 import { resolveCacheTTL } from './resolveCacheTTL';
@@ -95,11 +96,10 @@ export interface AnthropicCompatibleFactoryOptions<T extends Record<string, any>
   provider: string;
 }
 
-export interface AnthropicCompatibleParamsInput<T extends Record<string, any> = any>
-  extends Omit<
-    AnthropicCompatibleFactoryOptions<T>,
-    'chatCompletion' | 'customClient' | 'generateObject' | 'models'
-  > {
+export interface AnthropicCompatibleParamsInput<T extends Record<string, any> = any> extends Omit<
+  AnthropicCompatibleFactoryOptions<T>,
+  'chatCompletion' | 'customClient' | 'generateObject' | 'models'
+> {
   chatCompletion?: Partial<NonNullable<AnthropicCompatibleFactoryOptions<T>['chatCompletion']>>;
   customClient?: CustomClientOptions<T>;
   generateObject?: AnthropicCompatibleFactoryOptions<T>['generateObject'];
@@ -120,6 +120,7 @@ export const buildDefaultAnthropicPayload = async (
     top_p,
     tools,
     thinking,
+    effort,
     enabledContextCaching = true,
     enabledSearch,
   } = payload;
@@ -148,6 +149,11 @@ export const buildDefaultAnthropicPayload = async (
 
   const postMessages = await buildAnthropicMessages(userMessages, { enabledContextCaching });
 
+  // Claude 4.6 models do not support assistant turn prefill
+  if (model.includes('-4-6') && postMessages.at(-1)?.role === 'assistant') {
+    postMessages.pop();
+  }
+
   let postTools = buildAnthropicTools(tools, { enabledContextCaching }) as
     | AnthropicTools[]
     | undefined;
@@ -157,20 +163,24 @@ export const buildDefaultAnthropicPayload = async (
     postTools = postTools?.length ? [...postTools, webSearchTool] : [webSearchTool];
   }
 
-  if (!!thinking && thinking.type === 'enabled') {
+  if (!!thinking && (thinking.type === 'enabled' || thinking.type === 'adaptive')) {
+    const resolvedThinking: Anthropic.MessageCreateParams['thinking'] =
+      thinking.type === 'enabled'
+        ? {
+            budget_tokens: Math.min(thinking?.budget_tokens || 1024, resolvedMaxTokens - 1),
+            type: 'enabled',
+          }
+        : { type: 'adaptive' };
+
     return {
       max_tokens: resolvedMaxTokens,
       messages: postMessages,
       model,
+      ...(effort ? { output_config: { effort } } : {}),
       system: systemPrompts,
-      thinking: {
-        ...thinking,
-        budget_tokens: thinking?.budget_tokens
-          ? Math.min(thinking.budget_tokens, resolvedMaxTokens - 1)
-          : 1024,
-      },
+      thinking: resolvedThinking,
       tools: postTools as Anthropic.MessageCreateParams['tools'],
-    } satisfies Anthropic.MessageCreateParams;
+    } as Anthropic.MessageCreateParams;
   }
 
   const hasConflict = hasTemperatureTopPConflict(model);
@@ -179,7 +189,8 @@ export const buildDefaultAnthropicPayload = async (
     { hasConflict, normalizeTemperature: true, preferTemperature: true },
   );
 
-  return {
+  // Support effort parameter even without thinking (per Claude 4.6 guidance)
+  const basePayload: Anthropic.MessageCreateParams = {
     max_tokens: resolvedMaxTokens,
     messages: postMessages,
     model,
@@ -187,7 +198,17 @@ export const buildDefaultAnthropicPayload = async (
     temperature: resolvedParams.temperature,
     tools: postTools as Anthropic.MessageCreateParams['tools'],
     top_p: resolvedParams.top_p,
-  } satisfies Anthropic.MessageCreateParams;
+  };
+
+  // If effort is specified without thinking mode, add output_config
+  if (effort) {
+    return {
+      ...basePayload,
+      output_config: { effort },
+    } as Anthropic.MessageCreateParams;
+  }
+
+  return basePayload;
 };
 
 /**
@@ -295,7 +316,11 @@ export const createDefaultAnthropicModels = async ({
   }
 
   const json = await response.json();
-  const modelList = (json['data'] || []) as Array<{ created_at: string; display_name: string; id: string }>;
+  const modelList = (json['data'] || []) as Array<{
+    created_at: string;
+    display_name: string;
+    id: string;
+  }>;
 
   const standardModelList = modelList.map((model) => ({
     created: model.created_at,
@@ -363,17 +388,30 @@ export const createAnthropicCompatibleRuntime = <T extends Record<string, any> =
     protected _options: ConstructorOptions<T>;
 
     constructor(options: ClientOptions & Record<string, any> = {}) {
+      const apiKey = typeof options.apiKey === 'string' ? options.apiKey.trim() : options.apiKey;
+      const baseURL =
+        typeof options.baseURL === 'string' ? options.baseURL.trim() : options.baseURL;
+
       const resolvedOptions = {
         ...options,
-        apiKey: options.apiKey?.trim() || DEFAULT_API_KEY,
-        baseURL: options.baseURL?.trim() || DEFAULT_BASE_URL,
+        apiKey: apiKey || DEFAULT_API_KEY,
+        baseURL: baseURL || DEFAULT_BASE_URL,
       };
-      const { apiKey, baseURL = DEFAULT_BASE_URL, ...rest } = resolvedOptions;
+      const {
+        apiKey: finalApiKey,
+        baseURL: finalBaseURL = DEFAULT_BASE_URL,
+        ...rest
+      } = resolvedOptions;
       this._options = resolvedOptions as ConstructorOptions<T>;
 
-      if (!apiKey) throw AgentRuntimeError.createError(ErrorType.invalidAPIKey);
+      if (!finalApiKey) throw AgentRuntimeError.createError(ErrorType.invalidAPIKey);
 
-      const initOptions = { apiKey, baseURL, ...constructorOptions, ...rest };
+      const initOptions = {
+        apiKey: finalApiKey,
+        baseURL: finalBaseURL,
+        ...constructorOptions,
+        ...rest,
+      };
 
       if (customClient?.createClient) {
         this.client = customClient.createClient(initOptions as ConstructorOptions<T>);
@@ -402,7 +440,9 @@ export const createAnthropicCompatibleRuntime = <T extends Record<string, any> =
         const finalPayload = { ...postPayload, stream: shouldStream };
 
         if (debugParams?.chatCompletion?.()) {
+          // eslint-disable-next-line no-console
           console.log('[requestPayload]');
+          // eslint-disable-next-line no-console
           console.log(JSON.stringify(finalPayload), '\n');
         }
 
@@ -476,7 +516,10 @@ export const createAnthropicCompatibleRuntime = <T extends Record<string, any> =
                 } satisfies Anthropic.MessageStreamEvent);
 
                 controller.enqueue({
-                  delta: { partial_json: JSON.stringify(block.input ?? {}), type: 'input_json_delta' },
+                  delta: {
+                    partial_json: JSON.stringify(block.input ?? {}),
+                    type: 'input_json_delta',
+                  },
                   index,
                   type: 'content_block_delta',
                 } satisfies Anthropic.MessageStreamEvent);
@@ -555,7 +598,7 @@ export const createAnthropicCompatibleRuntime = <T extends Record<string, any> =
     async models() {
       if (!models) return [];
       return models({
-        apiKey: this._options.apiKey ?? undefined,
+        apiKey: (this._options.apiKey as string) ?? undefined,
         baseURL: this.baseURL,
         client: this.client,
       });

@@ -17,11 +17,10 @@ import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { CreditService } from '@/server/services/credit';
 import { GenerationService } from '@/server/services/generation';
+import { sanitizeFileName } from '@/utils/sanitizeFileName';
 
 const log = debug('lobe-image:async');
 
-// Constants for better maintainability
-const FILENAME_MAX_LENGTH = 50;
 const IMAGE_URL_PREVIEW_LENGTH = 100;
 
 const imageProcedure = asyncAuthedProcedure.use(async (opts) => {
@@ -272,7 +271,7 @@ export const imageRouter = router({
             await chargeAfterGenerate({
               metadata: {
                 asyncTaskId: taskId,
-                generationBatchId: generationBatchId,
+                generationBatchId,
                 modelId: model,
                 topicId: generationTopicId,
               },
@@ -361,8 +360,7 @@ export const imageRouter = router({
                 path: uploadedImageUrl,
                 width: image.width,
               },
-              name: `${params.prompt.slice(0, FILENAME_MAX_LENGTH)}.${image.extension}`,
-              // Use first 50 characters of prompt as filename
+              name: `${sanitizeFileName(params.prompt, generationId)}.${image.extension}`,
               size: image.size,
               url: uploadedImageUrl,
             },

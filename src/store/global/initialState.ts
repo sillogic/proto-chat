@@ -1,6 +1,7 @@
-import type { NavigateFunction } from 'react-router-dom';
+import { type NavigateFunction } from 'react-router-dom';
 
-import { DatabaseLoadingState, type MigrationSQL, type MigrationTableItem } from '@/types/clientDB';
+import { type MigrationSQL, type MigrationTableItem } from '@/types/clientDB';
+import { DatabaseLoadingState } from '@/types/clientDB';
 import { type LocaleMode } from '@/types/locale';
 import { SessionDefaultGroup } from '@/types/session';
 import { AsyncLocalStorage } from '@/utils/localStorage';
@@ -16,6 +17,7 @@ export enum SidebarTabKey {
   Pages = 'pages',
   Resource = 'resource',
   Setting = 'settings',
+  Video = 'video',
 }
 
 export enum ChatSettingsTabs {
@@ -35,31 +37,32 @@ export enum GroupSettingsTabs {
 }
 
 export enum SettingsTabs {
-  APIKey = 'apikey',
   About = 'about',
   Agent = 'agent',
+  APIKey = 'apikey',
+  Billing = 'billing',
   ChatAppearance = 'chat-appearance',
   Common = 'common',
+  Funds = 'funds',
   Hotkey = 'hotkey',
   Image = 'image',
   LLM = 'llm',
   Memory = 'memory',
+  // business
+  Plans = 'plans',
   Profile = 'profile',
   Provider = 'provider',
   Proxy = 'proxy',
+  Referral = 'referral',
   Security = 'security',
   Skill = 'skill',
-  Stats = 'stats',
-  Storage = 'storage',
-  TTS = 'tts',
 
   /* eslint-disable typescript-sort-keys/string-enum */
-  // business
-  Plans = 'plans',
-  Funds = 'funds',
+  Stats = 'stats',
+  Storage = 'storage',
+  SystemTools = 'system-tools',
+  TTS = 'tts',
   Usage = 'usage',
-  Billing = 'billing',
-  Referral = 'referral',
   /* eslint-enable typescript-sort-keys/string-enum */
 }
 
@@ -119,6 +122,8 @@ export interface SystemStatus {
    * Remember user's last selected image generation provider
    */
   lastSelectedImageProvider?: string;
+  lastSelectedVideoModel?: string;
+  lastSelectedVideoProvider?: string;
   latestChangelogId?: string;
   leftPanelWidth: number;
   mobileShowPortal?: boolean;
@@ -155,6 +160,8 @@ export interface SystemStatus {
   showLeftPanel?: boolean;
   showRightPanel?: boolean;
   showSystemRole?: boolean;
+  showVideoPanel?: boolean;
+  showVideoTopicPanel?: boolean;
   systemRoleExpandedMap: Record<string, boolean>;
   /**
    * Whether to display tokens in short format
@@ -164,6 +171,8 @@ export interface SystemStatus {
    * number of topics to display per page
    */
   topicPageSize?: number;
+  videoPanelWidth: number;
+  videoTopicPanelWidth?: number;
   zenMode?: boolean;
 }
 
@@ -239,9 +248,13 @@ export const INITIAL_STATUS = {
   showLeftPanel: true,
   showRightPanel: true,
   showSystemRole: false,
+  showVideoPanel: true,
+  showVideoTopicPanel: true,
   systemRoleExpandedMap: {},
   tokenDisplayFormatShort: true,
   topicPageSize: 20,
+  videoPanelWidth: 320,
+  videoTopicPanelWidth: 80,
   zenMode: false,
 } satisfies SystemStatus;
 

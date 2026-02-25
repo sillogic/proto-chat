@@ -22,12 +22,8 @@ import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { ChunkService } from '@/server/services/chunk';
 import { FileService } from '@/server/services/file';
-import {
-  AsyncTaskError,
-  AsyncTaskErrorType,
-  AsyncTaskStatus,
-  type IAsyncTaskError,
-} from '@/types/asyncTask';
+import { type IAsyncTaskError } from '@/types/asyncTask';
+import { AsyncTaskError, AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
 import { safeParseJSON } from '@/utils/safeParseJSON';
 import { sanitizeUTF8 } from '@/utils/sanitizeUTF8';
 
@@ -139,8 +135,8 @@ export const fileRouter = router({
 
           const startAt = Date.now();
 
-          const CHUNK_SIZE = 50;
-          const CONCURRENCY = 10;
+          const CHUNK_SIZE = fileEnv.EMBEDDING_BATCH_SIZE;
+          const CONCURRENCY = fileEnv.EMBEDDING_CONCURRENCY;
 
           const chunks = await ctx.chunkModel.getChunksTextByFileId(input.fileId);
           const requestArray = chunk(chunks, CHUNK_SIZE);
