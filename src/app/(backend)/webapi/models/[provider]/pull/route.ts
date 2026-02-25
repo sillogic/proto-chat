@@ -9,10 +9,10 @@ export const POST = checkAuth(async (req, { params, userId, serverDB }) => {
   const provider = (await params)!.provider!;
 
   try {
-    // Read user's provider config from database
-    const agentRuntime = await initModelRuntimeFromDB(serverDB, userId, provider);
-
     const data = (await req.json()) as PullModelParams;
+
+    // Read user's provider config from database
+    const agentRuntime = await initModelRuntimeFromDB(serverDB, userId, provider, { model: data.model });
 
     const res = await agentRuntime.pullModel(data, { signal: req.signal });
     if (res) return res;

@@ -14,13 +14,16 @@ import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { ChunkModel } from '@/database/models/chunk';
 import { DocumentModel } from '@/database/models/document';
 import { EmbeddingModel } from '@/database/models/embedding';
+import { EmbeddingUsageLogModel } from '@/database/models/embeddingUsageLog';
 import { FileModel } from '@/database/models/file';
 import { MessageModel } from '@/database/models/message';
+import { SystemEmbeddingModel } from '@/database/models/systemEmbedding';
 import { knowledgeBaseFiles } from '@/database/schemas';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { keyVaults, serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { getServerDefaultFilesConfig } from '@/server/globalConfig';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+import { initModelRuntimeFromDB, initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { ChunkService } from '@/server/services/chunk';
 import { DocumentService } from '@/server/services/document';
 
@@ -38,8 +41,10 @@ const chunkProcedure = authedProcedure
         documentModel: new DocumentModel(ctx.serverDB, ctx.userId),
         documentService: new DocumentService(ctx.serverDB, ctx.userId),
         embeddingModel: new EmbeddingModel(ctx.serverDB, ctx.userId),
+        embeddingUsageLogModel: new EmbeddingUsageLogModel(ctx.serverDB),
         fileModel: new FileModel(ctx.serverDB, ctx.userId),
         messageModel: new MessageModel(ctx.serverDB, ctx.userId),
+        systemEmbeddingModel: new SystemEmbeddingModel(ctx.serverDB),
       },
     });
   });
@@ -109,7 +114,9 @@ export const chunkRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      console.log('[createParseFileTask] Received request - fileId:', input.id, 'skipExist:', input.skipExist);
       const asyncTaskId = await ctx.chunkService.asyncParseFileToChunks(input.id, input.skipExist);
+      console.log('[createParseFileTask] asyncParseFileToChunks returned taskId:', asyncTaskId);
 
       return { id: asyncTaskId, success: true };
     }),
@@ -224,16 +231,86 @@ export const chunkRouter = router({
     )
     .use(checkBudgetsUsage)
     .mutation(async ({ ctx, input }) => {
-      const { model, provider } =
-        getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
-      // Read user's provider config from database
-      const agentRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider);
+      // Try to get system embedding configuration from database
+      const systemConfig = await ctx.systemEmbeddingModel.getConfig();
+
+      let model: string;
+      let provider: string;
+      let modelInputPrice: number | null = null;
+      let agentRuntime;
+
+      if (systemConfig && systemConfig.providerId && systemConfig.modelId) {
+        // Use system configuration from database
+        provider = systemConfig.providerId;
+        model = systemConfig.modelId;
+        modelInputPrice = systemConfig.inputPrice ? parseFloat(systemConfig.inputPrice) : null;
+
+        // Decrypt API Key from system config
+        let decryptedApiKey: string | undefined;
+        if (systemConfig.apiKey) {
+          try {
+            const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+            const result = await gateKeeper.decrypt(systemConfig.apiKey);
+            if (result.wasAuthentic) {
+              decryptedApiKey = result.plaintext;
+            }
+          } catch (e) {
+            console.error('[Embedding] Failed to decrypt API key:', e);
+          }
+        }
+
+        // Create custom payload with system config
+        const embeddingPayload = {
+          apiKey: decryptedApiKey,
+          baseURL: systemConfig.baseUrl || undefined,
+        };
+
+        // Initialize runtime with system payload
+        const result = await initModelRuntimeWithUserPayload(provider, embeddingPayload, { model });
+        agentRuntime = result.runtime;
+      } else {
+        // Fallback to environment variable configuration
+        const envConfig = getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
+        provider = envConfig.provider;
+        model = envConfig.model;
+
+        // Read user's provider config from database
+        agentRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider, { model });
+      }
 
       const embeddings = await agentRuntime.embeddings({
         dimensions: 1024,
         input: input.query,
         model,
       });
+
+      // Record semantic search embedding usage (for cost analysis, not charging users)
+      try {
+        // Calculate query tokens (estimate: characters / 4)
+        const queryTokens = Math.ceil(input.query.length / 4);
+
+        // Calculate cost in USD
+        let costPrice: string | undefined;
+        if (modelInputPrice) {
+          const costInUSD = (queryTokens / 1_000_000) * modelInputPrice;
+          costPrice = costInUSD.toFixed(8);
+        }
+
+        await ctx.embeddingUsageLogModel.create({
+          userId: ctx.userId,
+          modelId: model,
+          providerId: provider,
+          inputTokens: queryTokens,
+          totalTokens: queryTokens,
+          costPrice: costPrice,
+          userPrice: null, // Not charging users for semantic search
+          operationType: 'semantic_search',
+          chunkCount: 1, // Single query
+        });
+      } catch (logError) {
+        console.error('[Semantic Search] Failed to log usage:', logError);
+        // Don't fail the search if logging fails
+      }
 
       return ctx.chunkModel.semanticSearch({
         embedding: embeddings![0],
@@ -246,12 +323,54 @@ export const chunkRouter = router({
     .input(SemanticSearchSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { model, provider } =
-          getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
-        let embedding: number[];
+        // Try to get system embedding configuration from database
+        const systemConfig = await ctx.systemEmbeddingModel.getConfig();
 
-        // Read user's provider config from database
-        const modelRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider);
+        let model: string;
+        let provider: string;
+        let modelInputPrice: number | null = null;
+        let modelRuntime;
+
+        if (systemConfig && systemConfig.providerId && systemConfig.modelId) {
+          // Use system configuration from database
+          provider = systemConfig.providerId;
+          model = systemConfig.modelId;
+          modelInputPrice = systemConfig.inputPrice ? parseFloat(systemConfig.inputPrice) : null;
+
+          // Decrypt API Key from system config
+          let decryptedApiKey: string | undefined;
+          if (systemConfig.apiKey) {
+            try {
+              const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+              const result = await gateKeeper.decrypt(systemConfig.apiKey);
+              if (result.wasAuthentic) {
+                decryptedApiKey = result.plaintext;
+              }
+            } catch (e) {
+              console.error('[Embedding] Failed to decrypt API key:', e);
+            }
+          }
+
+          // Create custom payload with system config
+          const embeddingPayload = {
+            apiKey: decryptedApiKey,
+            baseURL: systemConfig.baseUrl || undefined,
+          };
+
+          // Initialize runtime with system payload
+          const result = await initModelRuntimeWithUserPayload(provider, embeddingPayload, { model });
+          modelRuntime = result.runtime;
+        } else {
+          // Fallback to environment variable configuration
+          const envConfig = getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
+          provider = envConfig.provider;
+          model = envConfig.model;
+
+          // Read user's provider config from database
+          modelRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider, { model });
+        }
+
+        let embedding: number[];
 
         // slice content to make sure in the context window limit
         const query = input.query.length > 8000 ? input.query.slice(0, 8000) : input.query;
@@ -263,6 +382,34 @@ export const chunkRouter = router({
         });
 
         embedding = embeddings![0];
+
+        // Record semantic search embedding usage (for cost analysis, not charging users)
+        try {
+          // Calculate query tokens (estimate: characters / 4)
+          const queryTokens = Math.ceil(query.length / 4);
+
+          // Calculate cost in USD
+          let costPrice: string | undefined;
+          if (modelInputPrice) {
+            const costInUSD = (queryTokens / 1_000_000) * modelInputPrice;
+            costPrice = costInUSD.toFixed(8);
+          }
+
+          await ctx.embeddingUsageLogModel.create({
+            userId: ctx.userId,
+            modelId: model,
+            providerId: provider,
+            inputTokens: queryTokens,
+            totalTokens: queryTokens,
+            costPrice: costPrice,
+            userPrice: null, // Not charging users for semantic search
+            operationType: 'semantic_search',
+            chunkCount: 1, // Single query
+          });
+        } catch (logError) {
+          console.error('[Semantic Search] Failed to log usage:', logError);
+          // Don't fail the search if logging fails
+        }
 
         let finalFileIds = input.fileIds ?? [];
 

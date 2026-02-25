@@ -12,10 +12,11 @@ import { ThreadModel } from '@/database/models/thread';
 import { TopicModel } from '@/database/models/topic';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { resolveContext } from '@/server/routers/lambda/_helpers/resolveContext';
 import { AiChatService } from '@/server/services/aiChat';
 import { FileService } from '@/server/services/file';
+import { getXorPayload } from '@/utils/server';
 
 const log = debug('lobe-lambda-router:ai-chat');
 
@@ -40,14 +41,19 @@ export const aiChatRouter = router({
     log('messages count: %d', input.messages.length);
     log('schema: %O', input.schema);
 
-    log('initializing model runtime from DB with provider: %s', input.provider);
-    // Read user's provider config from database
-    const modelRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, input.provider);
+    log('initializing model runtime with provider: %s, model: %s', input.provider, input.model);
+    const payload = getXorPayload(ctx.jwtPayload);
+    const { runtime: modelRuntime, actualModel } = await initModelRuntimeWithUserPayload(
+      input.provider,
+      payload,
+      { model: input.model },
+    );
+    const modelId = actualModel || input.model;
 
-    log('calling generateObject');
+    log('calling generateObject with model: %s', modelId);
     const result = await modelRuntime.generateObject({
       messages: input.messages,
-      model: input.model,
+      model: modelId,
       schema: input.schema,
       tools: input.tools,
     });

@@ -20,7 +20,9 @@ import { merge, mergeArrayById } from '@/utils/merge';
 
 import { AiModelModel } from '../../models/aiModel';
 import { AiProviderModel } from '../../models/aiProvider';
+import { protochatModels, protochatProviders } from '../../schemas/protochat';
 import { LobeChatDatabase } from '../../type';
+import { and, eq } from 'drizzle-orm';
 
 type DecryptUserKeyVaults = (encryptKeyVaultsStr: string | null) => Promise<any>;
 
@@ -156,7 +158,9 @@ export class AiInfraRepos {
       description: item.description,
       enabled:
         userProviders.some((provider) => provider.id === item.id && provider.enabled) ||
-        this.providerConfigs[item.id]?.enabled,
+        this.providerConfigs[item.id]?.enabled ||
+        // Fallback to DEFAULT_MODEL_PROVIDER_LIST enabled property (for protochat etc special providers)
+        item.enabled,
       id: item.id,
       name: item.name,
       source: 'builtin',
@@ -272,6 +276,8 @@ export class AiInfraRepos {
       return allModels.some((model) => model.providerId === provider.id && model.type === 'chat');
     });
     const enabledImageAiProviders = enabledAiProviders.filter((provider) => {
+      // Only allow protochat provider for image models to avoid showing other providers' builtin image models
+      if (provider.id !== 'protochat') return false;
       return allModels.some((model) => model.providerId === provider.id && model.type === 'image');
     });
 
@@ -433,6 +439,11 @@ export class AiInfraRepos {
   private fetchBuiltinModels = async (
     providerId: string,
   ): Promise<AiProviderModelListItem[] | undefined> => {
+    // Special handling for ProtoChat - fetch from database
+    if (providerId === 'protochat') {
+      return this.fetchProtoChatModels();
+    }
+
     try {
       // TODO: when model-bank is a separate module, we will try import from model-bank/[prividerId] again
       // @ts-expect-error providerId is string
@@ -450,6 +461,55 @@ export class AiInfraRepos {
     } catch (error) {
       console.error(error);
       // maybe provider id not exist
+    }
+  };
+
+  /**
+   * Fetch ProtoChat models from database
+   * ProtoChat is a wrapper provider that gets its model list from the database
+   * Only returns models from enabled providers
+   */
+  private fetchProtoChatModels = async (): Promise<AiProviderModelListItem[]> => {
+    try {
+      // Query models with JOIN to check if the provider is also enabled
+      const models = await this.db
+        .select({
+          id: protochatModels.id,
+          displayName: protochatModels.displayName,
+          type: protochatModels.type,
+          capabilities: protochatModels.capabilities,
+          contextTokens: protochatModels.contextTokens,
+          maxOutput: protochatModels.maxOutput,
+          parameters: protochatModels.parameters,
+          settings: protochatModels.settings,
+        })
+        .from(protochatModels)
+        .innerJoin(
+          protochatProviders,
+          eq(protochatModels.originalProvider, protochatProviders.id),
+        )
+        .where(
+          and(
+            eq(protochatModels.enabled, true),
+            eq(protochatProviders.enabled, true), // Only return models from enabled sub-providers
+          ),
+        );
+
+      return models.map((m) => ({
+        abilities: (m.capabilities as Record<string, boolean>) || {},
+        contextWindowTokens: m.contextTokens || 0,
+        displayName: m.displayName,
+        enabled: true,
+        id: m.id,
+        maxOutput: m.maxOutput || undefined,
+        parameters: (m.parameters as Record<string, any>) || undefined,
+        settings: (m.settings as Record<string, any>) || undefined,
+        source: AiModelSourceEnum.Builtin,
+        type: m.type as 'chat' | 'image' | 'embedding',
+      }));
+    } catch (error) {
+      console.error('[ProtoChat] Failed to fetch models from database:', error);
+      return [];
     }
   };
 }

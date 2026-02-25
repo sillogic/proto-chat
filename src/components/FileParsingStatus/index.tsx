@@ -1,8 +1,8 @@
 import { Button, Flexbox, Icon, Tag, Tooltip } from '@lobehub/ui';
-import { Badge } from 'antd';
+import { Badge, Modal } from 'antd';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
-import { BoltIcon, Loader2Icon, RotateCwIcon } from 'lucide-react';
-import { memo } from 'react';
+import { BoltIcon, FileWarningIcon, Loader2Icon, RotateCwIcon } from 'lucide-react';
+import { memo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AsyncTaskStatus, type FileParsingTask } from '@/types/asyncTask';
@@ -46,6 +46,40 @@ const FileParsingStatus = memo<FileParsingStatusProps>(
     hideEmbeddingButton,
   }) => {
     const { t } = useTranslation(['components', 'common']);
+
+    // Show friendly modal for .doc format error
+    useEffect(() => {
+      if (
+        chunkingStatus === AsyncTaskStatus.Error &&
+        chunkingError &&
+        chunkingError.name === 'LangChainChunkingError' &&
+        chunkingError.body &&
+        typeof chunkingError.body !== 'string' &&
+        chunkingError.body.detail?.includes('Old Word format (.doc) is not supported')
+      ) {
+        Modal.warning({
+          title: t('FileParsingStatus.chunks.docFormatError.title', '不支持的文件格式'),
+          icon: <Icon icon={FileWarningIcon} />,
+          content: (
+            <Flexbox gap={12}>
+              <div>
+                {t(
+                  'FileParsingStatus.chunks.docFormatError.message',
+                  '此文件使用的是旧版 Word 格式（.doc），目前仅支持新版 Word 格式（.docx）。',
+                )}
+              </div>
+              <div>
+                {t(
+                  'FileParsingStatus.chunks.docFormatError.solution',
+                  '请使用 Microsoft Word 或在线转换工具将文件转换为 .docx 格式后重新上传。',
+                )}
+              </div>
+            </Flexbox>
+          ),
+          okText: t('common:confirm'),
+        });
+      }
+    }, [chunkingStatus, chunkingError, t]);
 
     switch (chunkingStatus) {
       case AsyncTaskStatus.Processing: {

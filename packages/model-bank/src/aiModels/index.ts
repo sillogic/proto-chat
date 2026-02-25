@@ -46,6 +46,7 @@ import { default as openai } from './openai';
 import { default as openrouter } from './openrouter';
 import { default as perplexity } from './perplexity';
 import { default as ppio } from './ppio';
+import { default as protochat } from './protochat';
 import { default as qiniu } from './qiniu';
 import { default as qwen } from './qwen';
 import { default as replicate } from './replicate';
@@ -98,6 +99,7 @@ export const LOBE_DEFAULT_MODEL_LIST = buildDefaultModelList({
   aihubmix,
   akashchat,
   anthropic,
+  protochat,
   azure,
   azureai,
   baichuan,
@@ -209,6 +211,7 @@ export { gptImage1ParamsSchema, default as openai, openaiChatModels } from './op
 export { default as openrouter } from './openrouter';
 export { default as perplexity } from './perplexity';
 export { default as ppio } from './ppio';
+export { default as protochat } from './protochat';
 export { default as qiniu } from './qiniu';
 export { default as qwen } from './qwen';
 export { default as replicate } from './replicate';

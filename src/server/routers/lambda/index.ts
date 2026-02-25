@@ -4,7 +4,6 @@
 import { accountDeletionRouter } from '@/business/server/lambda-routers/accountDeletion';
 import { referralRouter } from '@/business/server/lambda-routers/referral';
 import { spendRouter } from '@/business/server/lambda-routers/spend';
-import { subscriptionRouter } from '@/business/server/lambda-routers/subscription';
 import { topUpRouter } from '@/business/server/lambda-routers/topUp';
 import { publicProcedure, router } from '@/libs/trpc/lambda';
 
@@ -33,12 +32,14 @@ import { knowledgeBaseRouter } from './knowledgeBase';
 import { marketRouter } from './market';
 import { messageRouter } from './message';
 import { notebookRouter } from './notebook';
+import { paymentRouter } from './payment';
 import { pluginRouter } from './plugin';
 import { ragEvalRouter } from './ragEval';
 import { searchRouter } from './search';
 import { sessionRouter } from './session';
 import { sessionGroupRouter } from './sessionGroup';
 import { shareRouter } from './share';
+import { subscriptionRouter } from './subscription';
 import { threadRouter } from './thread';
 import { topicRouter } from './topic';
 import { uploadRouter } from './upload';
@@ -74,6 +75,7 @@ export const lambdaRouter = router({
   market: marketRouter,
   message: messageRouter,
   notebook: notebookRouter,
+  payment: paymentRouter,
   plugin: pluginRouter,
   ragEval: ragEvalRouter,
   search: searchRouter,

@@ -125,7 +125,7 @@ export const createRuntimeExecutors = (
       let hasReasoningImages = false;
 
       // Initialize ModelRuntime (read user's keyVaults from database)
-      const modelRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId!, provider);
+      const modelRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId!, provider, { model });
 
       // Construct ChatStreamPayload
       const chatPayload = {

@@ -1,8 +1,6 @@
-'use client';
-
+import { DocRenderer } from '@cyntler/react-doc-viewer';
 import { Flexbox } from '@lobehub/ui';
 import { css, cx } from 'antd-style';
-import { memo } from 'react';
 
 const container = css`
   position: relative;
@@ -20,24 +18,51 @@ const content = css`
   border: 0;
 `;
 
-interface MSDocViewerProps {
-  fileId: string;
-  url: string | null;
-}
+const MSDocRenderer: DocRenderer = ({ mainState: { currentDocument } }) => {
+  if (!currentDocument) return null;
 
-const MSDocViewer = memo<MSDocViewerProps>(({ url }) => {
-  if (!url) return null;
+  // Use en-US to avoid 404 error with zh-CN/strings.js
+  // Office Online Viewer doesn't support Chinese localization
+  const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
+    currentDocument.uri,
+  )}&ui=en-US`;
 
   return (
     <Flexbox className={cx(container)} height={'100%'} id="msdoc-renderer" width={'100%'}>
       <iframe
         className={cx(content)}
         id="msdoc-iframe"
-        src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
+        src={viewerUrl}
         title="msdoc-iframe"
       />
     </Flexbox>
   );
-});
+};
 
-export default MSDocViewer;
+export default MSDocRenderer;
+
+const MSDocFTMaps = {
+  doc: ['doc', 'application/msword'],
+  docx: [
+    'docx',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/octet-stream',
+  ],
+  odt: ['odt', 'application/vnd.oasis.opendocument.text'],
+  ppt: ['ppt', 'application/vnd.ms-powerpoint'],
+  pptx: ['pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  xls: ['xls', 'application/vnd.ms-excel'],
+  xlsx: ['xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+};
+
+MSDocRenderer.fileTypes = [
+  ...MSDocFTMaps.odt,
+  ...MSDocFTMaps.doc,
+  ...MSDocFTMaps.docx,
+  ...MSDocFTMaps.xls,
+  ...MSDocFTMaps.xlsx,
+  ...MSDocFTMaps.ppt,
+  ...MSDocFTMaps.pptx,
+];
+MSDocRenderer.weight = 0;
+MSDocRenderer.fileLoader = ({ fileLoaderComplete }) => fileLoaderComplete();

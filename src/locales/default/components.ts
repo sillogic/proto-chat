@@ -68,6 +68,11 @@ export default {
     'Text chunks are being embedded, please be patient.',
   'FileParsingStatus.chunks.embeddingStatus.success': 'All current text chunks have been embedded',
   'FileParsingStatus.chunks.embeddings': 'Embedding',
+  'FileParsingStatus.chunks.docFormatError.message':
+    'This file uses the old Word format (.doc), only the new Word format (.docx) is currently supported.',
+  'FileParsingStatus.chunks.docFormatError.solution':
+    'Please use Microsoft Word or an online converter to convert the file to .docx format and upload again.',
+  'FileParsingStatus.chunks.docFormatError.title': 'Unsupported File Format',
   'FileParsingStatus.chunks.status.error': 'Chunking failed',
   'FileParsingStatus.chunks.status.errorResult':
     'Chunking failed, please check and try again. Error detail:',

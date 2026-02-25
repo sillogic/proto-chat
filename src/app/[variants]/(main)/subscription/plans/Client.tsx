@@ -1,12 +1,11 @@
 'use client';
 
-import { Icon } from '@lobehub/ui';
+import { Center, Flexbox, Icon } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { createStyles } from 'antd-style';
 import { GraduationCap } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Center, Flexbox } from '@lobehub/ui';
 
 import { useSubscriptionPlans } from '../hooks/useSubscriptionPlans';
 import BillingToggle, { type BillingCycle } from './features/BillingToggle';

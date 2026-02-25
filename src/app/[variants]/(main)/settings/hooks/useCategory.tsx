@@ -109,11 +109,12 @@ export const useCategory = () => {
         key: SettingsTabs.Plans,
         label: tSubscription('tab.plans'),
       },
-      {
-        icon: Coins,
-        key: SettingsTabs.Funds,
-        label: tSubscription('tab.funds'),
-      },
+      // Temporarily hidden - not yet implemented
+      // {
+      //   icon: Coins,
+      //   key: SettingsTabs.Funds,
+      //   label: tSubscription('tab.funds'),
+      // },
       {
         icon: PieChart,
         key: SettingsTabs.Usage,
@@ -124,11 +125,12 @@ export const useCategory = () => {
         key: SettingsTabs.Billing,
         label: tSubscription('tab.billing'),
       },
-      {
-        icon: Gift,
-        key: SettingsTabs.Referral,
-        label: tSubscription('tab.referral'),
-      },
+      // Temporarily hidden - not yet implemented
+      // {
+      //   icon: Gift,
+      //   key: SettingsTabs.Referral,
+      //   label: tSubscription('tab.referral'),
+      // },
     ];
 
     if (ENABLE_BUSINESS_FEATURES) {

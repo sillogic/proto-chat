@@ -63,13 +63,20 @@ interface PlanIconProps {
 
 const PlanIcon = memo<PlanIconProps>(
   ({ type = 'icon', plan, size = 36, mono, style, className, onClick }) => {
-    const { icon, theme } = themes[plan];
+    // Fallback to Free theme if plan is not defined in themes
+    const planTheme = themes[plan] || themes[Plans.Free];
+    const { icon, theme } = planTheme;
     const { t } = useTranslation('subscription');
     const isTag = type === 'tag';
     const isCombine = type === 'combine';
-    const isFree = plan === Plans.Free;
+    const isFree = plan === Plans.Free || !themes[plan];
 
     if (isTag) {
+      // For unknown plans, display the plan name directly
+      const planTitle = themes[plan]
+        ? t(`plans.plan.${plan}.title`)
+        : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
       return (
         <Tag
           className={className}
@@ -85,7 +92,7 @@ const PlanIcon = memo<PlanIconProps>(
           }}
           variant={'filled'}
         >
-          {t(`plans.plan.${plan}.title`)}
+          {planTitle}
         </Tag>
       );
     }
@@ -107,10 +114,15 @@ const PlanIcon = memo<PlanIconProps>(
     );
 
     if (isCombine) {
+      // For unknown plans, display the plan name directly
+      const planTitle = themes[plan]
+        ? t(`plans.plan.${plan}.title`)
+        : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
       return (
         <Flexbox align={'center'} gap={8} horizontal>
           {iconContent}
-          <span>{t(`plans.plan.${plan}.title`)}</span>
+          <span>{planTitle}</span>
         </Flexbox>
       );
     }

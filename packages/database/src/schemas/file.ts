@@ -100,6 +100,12 @@ export const documents = pgTable(
 
     slug: varchar('slug', { length: 255 }).$defaultFn(() => randomSlug(3)),
 
+    // Task tracking
+    chunkTaskId: uuid('chunk_task_id').references(() => asyncTasks.id, { onDelete: 'set null' }),
+    embeddingTaskId: uuid('embedding_task_id').references(() => asyncTasks.id, {
+      onDelete: 'set null',
+    }),
+
     // Timestamps
     ...timestamps,
   },
@@ -111,6 +117,8 @@ export const documents = pgTable(
     index('documents_file_id_idx').on(table.fileId),
     index('documents_parent_id_idx').on(table.parentId),
     index('documents_knowledge_base_id_idx').on(table.knowledgeBaseId),
+    index('documents_chunk_task_id_idx').on(table.chunkTaskId),
+    index('documents_embedding_task_id_idx').on(table.embeddingTaskId),
     uniqueIndex('documents_client_id_user_id_unique').on(table.clientId, table.userId),
     uniqueIndex('documents_slug_user_id_unique')
       .on(table.slug, table.userId)

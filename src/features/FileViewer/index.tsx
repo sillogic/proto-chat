@@ -1,15 +1,22 @@
 'use client';
 
-import { type CSSProperties, memo } from 'react';
+import DocViewer from '@cyntler/react-doc-viewer';
+import { css, cx } from 'antd-style';
+import { CSSProperties, memo } from 'react';
 
-import { type FileListItem } from '@/types/files';
+import { FileListItem } from '@/types/files';
 
 import NotSupport from './NotSupport';
-import CodeViewer from './Renderer/Code';
-import ImageViewer from './Renderer/Image';
-import MSDocViewer from './Renderer/MSDoc';
-import PDFViewer from './Renderer/PDF';
-import VideoViewer from './Renderer/Video';
+import { FileViewRenderers } from './Renderer';
+import PDFRenderer from './Renderer/PDF';
+
+const container = css`
+  background: transparent !important;
+
+  #proxy-renderer {
+    height: 100%;
+  }
+`;
 
 // File type definitions
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'];
@@ -235,44 +242,23 @@ interface FileViewerProps extends FileListItem {
   style?: CSSProperties;
 }
 
-/**
- * Preview any file type.
- */
 const FileViewer = memo<FileViewerProps>(({ id, style, fileType, url, name }) => {
-  // PDF files
   if (fileType?.toLowerCase() === 'pdf' || name?.toLowerCase().endsWith('.pdf')) {
-    return <PDFViewer fileId={id} url={url} />;
+    return <PDFRenderer fileId={id} url={url} />;
   }
 
-  // Image files
-  if (matchesFileType(fileType, name, IMAGE_EXTENSIONS, IMAGE_MIME_TYPES)) {
-    return <ImageViewer fileId={id} url={url} />;
-  }
-
-  // Video files
-  if (matchesFileType(fileType, name, VIDEO_EXTENSIONS, VIDEO_MIME_TYPES)) {
-    return <VideoViewer fileId={id} url={url} />;
-  }
-
-  // Archive files (zip, rar, 7z, etc.) - not supported for preview
-  // Check before code files to avoid false matches
-  if (matchesFileType(fileType, name, ARCHIVE_EXTENSIONS, ARCHIVE_MIME_TYPES)) {
-    return <NotSupport fileName={name} style={style} url={url} />;
-  }
-
-  // Microsoft Office documents - check before code files to avoid false matches
-  // (e.g., 'doc' contains 'c' which would match CODE_EXTENSIONS)
-  if (matchesFileType(fileType, name, MSDOC_EXTENSIONS, MSDOC_MIME_TYPES)) {
-    return <MSDocViewer fileId={id} url={url} />;
-  }
-
-  // Code files (JavaScript, TypeScript, Python, Java, C++, Go, Rust, Markdown, etc.)
-  if (matchesFileType(fileType, name, CODE_EXTENSIONS, CODE_MIME_TYPES)) {
-    return <CodeViewer fileId={id} fileName={name} url={url} />;
-  }
-
-  // Unsupported file type
-  return <NotSupport fileName={name} style={style} url={url} />;
+  return (
+    <DocViewer
+      className={cx(container)}
+      config={{
+        header: { disableHeader: true },
+        noRenderer: { overrideComponent: NotSupport },
+      }}
+      documents={[{ fileName: name, fileType, uri: url }]}
+      pluginRenderers={FileViewRenderers}
+      style={style}
+    />
+  );
 });
 
 export default FileViewer;

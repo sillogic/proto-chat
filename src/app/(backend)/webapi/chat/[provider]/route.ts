@@ -6,10 +6,11 @@ import {
 import { ChatErrorType } from '@lobechat/types';
 
 import { checkAuth } from '@/app/(backend)/middleware/auth';
-import { createTraceOptions, initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { createTraceOptions, initModelRuntimeFromDB, initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { type ChatStreamPayload } from '@/types/openai/chat';
 import { createErrorResponse } from '@/utils/errorResponse';
 import { getTracePayload } from '@/utils/trace';
+import { ProtoChatService } from '@/server/services/protochat';
 
 // If user don't use fluid compute, will build  failed
 // this enforce user to enable fluid compute
@@ -19,30 +20,45 @@ export const POST = checkAuth(
   async (req: Request, { params, userId, serverDB, createRuntime, jwtPayload }) => {
     const provider = (await params)!.provider!;
 
+    // ============  1. Read request data first  ============ //
+    // ProtoChat needs model ID to determine the actual provider
+    const data = (await req.json()) as ChatStreamPayload;
+
+    // ============  2. Init services with model info  ============ //
+
     try {
-      // ============  1. init chat model   ============ //
       let modelRuntime: ModelRuntime;
+      let actualModel: string | undefined;
+
       if (createRuntime) {
-        // Legacy support for custom runtime creation
         modelRuntime = createRuntime(jwtPayload);
       } else {
-        // Read user's provider config from database
-        modelRuntime = await initModelRuntimeFromDB(serverDB, userId, provider);
+        // Special handling for ProtoChat provider
+        if (ProtoChatService.isProtoChatProvider(provider)) {
+          // Pass model info to runtime initialization for ProtoChat routing
+          const result = await initModelRuntimeWithUserPayload(provider, jwtPayload, { model: data.model });
+          modelRuntime = result.runtime;
+          actualModel = result.actualModel;
+        } else {
+          // Regular providers: read user's provider config from database
+          modelRuntime = await initModelRuntimeFromDB(serverDB, userId, provider);
+        }
       }
 
-      // ============  2. create chat completion   ============ //
+      // ============  3. Create chat completion  ============ //
 
-      const data = (await req.json()) as ChatStreamPayload;
+      // For ProtoChat, replace model ID with the actual underlying model ID
+      const requestData = actualModel ? { ...data, model: actualModel } : data;
 
       const tracePayload = getTracePayload(req);
 
       let traceOptions = {};
       // If user enable trace
       if (tracePayload?.enabled) {
-        traceOptions = createTraceOptions(data, { provider, trace: tracePayload });
+        traceOptions = createTraceOptions(requestData, { provider, trace: tracePayload });
       }
 
-      return await modelRuntime.chat(data, {
+      return await modelRuntime.chat(requestData, {
         user: userId,
         ...traceOptions,
         signal: req.signal,

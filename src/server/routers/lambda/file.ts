@@ -237,17 +237,25 @@ export const fileRouter = router({
         )
       : itemsToProcess;
 
-    // Process files (add chunk info and async task status)
+    // Process files and documents (add chunk info and async task status)
     const fileItems = filteredItems.filter((item) => item.sourceType === 'file');
-    const fileIds = fileItems.map((item) => item.id);
-    const chunks = await ctx.chunkModel.countByFileIds(fileIds);
+    const documentItems = filteredItems.filter((item) => item.sourceType !== 'file');
 
-    const chunkTaskIds = fileItems.map((item) => item.chunkTaskId).filter(Boolean) as string[];
+    // Collect all IDs for chunk count query (both files and documents)
+    const allIds = [...fileItems.map((item) => item.id), ...documentItems.map((item) => item.id)];
+    const chunks = await ctx.chunkModel.countByFileIds(allIds);
+
+    // Collect all task IDs (from both files and documents)
+    const chunkTaskIds = [
+      ...fileItems.map((item) => item.chunkTaskId),
+      ...documentItems.map((item) => item.chunkTaskId),
+    ].filter(Boolean) as string[];
     const chunkTasks = await ctx.asyncTaskModel.findByIds(chunkTaskIds, AsyncTaskType.Chunking);
 
-    const embeddingTaskIds = fileItems
-      .map((item) => item.embeddingTaskId)
-      .filter(Boolean) as string[];
+    const embeddingTaskIds = [
+      ...fileItems.map((item) => item.embeddingTaskId),
+      ...documentItems.map((item) => item.embeddingTaskId),
+    ].filter(Boolean) as string[];
     const embeddingTasks = await ctx.asyncTaskModel.findByIds(
       embeddingTaskIds,
       AsyncTaskType.Embedding,
@@ -256,14 +264,14 @@ export const fileRouter = router({
     // Combine all items with their metadata
     const resultItems = [] as any[];
     for (const item of filteredItems) {
-      if (item.sourceType === 'file') {
-        const chunkTask = item.chunkTaskId
-          ? chunkTasks.find((task) => task.id === item.chunkTaskId)
-          : null;
-        const embeddingTask = item.embeddingTaskId
-          ? embeddingTasks.find((task) => task.id === item.embeddingTaskId)
-          : null;
+      const chunkTask = item.chunkTaskId
+        ? chunkTasks.find((task) => task.id === item.chunkTaskId)
+        : null;
+      const embeddingTask = item.embeddingTaskId
+        ? embeddingTasks.find((task) => task.id === item.embeddingTaskId)
+        : null;
 
+      if (item.sourceType === 'file') {
         resultItems.push({
           ...item,
           chunkCount: chunks.find((chunk) => chunk.id === item.id)?.count ?? null,
@@ -276,15 +284,15 @@ export const fileRouter = router({
           url: getFileProxyUrl(item.id),
         } as FileListItem);
       } else {
-        // Document item - no chunk processing needed, includes editorData
+        // Document item - now includes chunk processing
         const documentItem = {
           ...item,
-          chunkCount: null,
-          chunkingError: null,
-          chunkingStatus: null,
-          embeddingError: null,
-          embeddingStatus: null,
-          finishEmbedding: false,
+          chunkCount: chunks.find((chunk) => chunk.id === item.id)?.count ?? null,
+          chunkingError: chunkTask?.error ?? null,
+          chunkingStatus: chunkTask?.status as AsyncTaskStatus,
+          embeddingError: embeddingTask?.error ?? null,
+          embeddingStatus: embeddingTask?.status as AsyncTaskStatus,
+          finishEmbedding: embeddingTask?.status === AsyncTaskStatus.Success,
         } as FileListItem;
         resultItems.push(documentItem);
       }

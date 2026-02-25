@@ -19,6 +19,8 @@ import {
   UserItem,
   UserSettingsItem,
   nextauthAccounts,
+  subscriptionPlans,
+  userExtensions,
   userSettings,
   users,
 } from '../schemas';
@@ -84,6 +86,7 @@ export class UserModel {
     const result = await this.db
       .select({
         avatar: users.avatar,
+        currentPlan: userExtensions.currentPlan,
         email: users.email,
         firstName: users.firstName,
         fullName: users.fullName,
@@ -104,11 +107,20 @@ export class UserModel {
         settingsSystemAgent: userSettings.systemAgent,
         settingsTTS: userSettings.tts,
         settingsTool: userSettings.tool,
+        subscriptionPlanName: subscriptionPlans.name,
         username: users.username,
       })
       .from(users)
       .where(eq(users.id, this.userId))
       .leftJoin(userSettings, eq(users.id, userSettings.id))
+      .leftJoin(userExtensions, eq(users.id, userExtensions.userId))
+      .leftJoin(
+        subscriptionPlans,
+        or(
+          eq(userExtensions.planId, subscriptionPlans.id),
+          eq(userExtensions.currentPlan, subscriptionPlans.slug),
+        ),
+      )
       .limit(1);
 
     if (!result || !result[0]) {
@@ -151,6 +163,7 @@ export class UserModel {
       onboarding: state.onboarding || undefined,
       preference: state.preference as UserPreference,
       settings,
+      subscriptionPlan: (state.subscriptionPlanName || state.currentPlan) as any,
       userId: this.userId,
       username: state.username || undefined,
     };

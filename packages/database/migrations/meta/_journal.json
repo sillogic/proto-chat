@@ -539,6 +539,20 @@
       "when": 1770179814971,
       "tag": "0076_add_message_group_index",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1770180000000,
+      "tag": "0077_fix_missing_user_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1772005916028,
+      "tag": "0078_easy_aqueduct",
+      "breakpoints": true
     }
   ],
   "version": "6"

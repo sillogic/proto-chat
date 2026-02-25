@@ -66,7 +66,9 @@ export class ContentChunk {
     filename: string,
     content: Uint8Array,
   ): Promise<ChunkResult> => {
+    console.log('[ContentChunk] Starting langchain partition, filename:', filename, 'content size:', content.length);
     const res = await this.langchainClient.partitionContent(filename, content);
+    console.log('[ContentChunk] Partition result:', res.length, 'documents');
 
     const documents = res.map((item, index) => ({
       id: item.id,
@@ -75,6 +77,12 @@ export class ContentChunk {
       text: item.pageContent,
       type: 'LangChainElement',
     }));
+
+    console.log('[ContentChunk] Mapped documents:', documents.length, 'chunks');
+    if (documents.length > 0) {
+      console.log('[ContentChunk] First chunk text length:', documents[0].text.length);
+      console.log('[ContentChunk] First chunk preview:', documents[0].text.substring(0, 100));
+    }
 
     return { chunks: documents };
   };

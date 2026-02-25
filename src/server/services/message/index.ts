@@ -6,7 +6,10 @@ import {
 } from '@lobechat/types';
 
 import { MessageModel } from '@/database/models/message';
+import { aiProviders } from '@/database/schemas';
+import { and, eq } from 'drizzle-orm';
 
+import { CreditService } from '../credit';
 import { FileService } from '../file';
 
 interface QueryOptions {
@@ -32,11 +35,17 @@ export class MessageService {
   private messageModel: MessageModel;
   private fileService: FileService;
   private compressionRepository: CompressionRepository;
+  private creditService: CreditService;
+  private db: LobeChatDatabase;
+  private userId: string;
 
   constructor(db: LobeChatDatabase, userId: string) {
+    this.db = db;
+    this.userId = userId;
     this.messageModel = new MessageModel(db, userId);
     this.fileService = new FileService(db, userId);
     this.compressionRepository = new CompressionRepository(db, userId);
+    this.creditService = new CreditService(db, userId);
   }
 
   /**
@@ -196,8 +205,86 @@ export class MessageService {
    * Pattern: update + conditional query
    */
   async updateMetadata(id: string, value: any, options?: QueryOptions) {
+    // 1. Update the metadata in database
     await this.messageModel.updateMetadata(id, value);
+
+    // 2. Handle credit deduction if tokens are provided
+    await this.handleCreditDeduction(id, value);
+
     return this.queryWithSuccess(options);
+  }
+
+  /**
+   * Private helper to handle credit deduction logic
+   */
+  private async handleCreditDeduction(id: string, incomingMetadata: any) {
+    const { totalInputTokens, totalOutputTokens } = incomingMetadata;
+
+    if (totalInputTokens || totalOutputTokens) {
+      try {
+        const message = await this.messageModel.findById(id);
+        if (message && message.role === 'assistant' && message.model && message.provider) {
+          // Check if credits have already been deducted for this message
+          const metadata = (message.metadata || {}) as any;
+          if (!metadata.creditsDeducted) {
+            // Check if user is using their own API key for this provider
+            const isUserConfig = await this.isUserUsingOwnConfig(message.provider);
+
+            const cost = await this.creditService.calculateCost(
+              message.model,
+              message.provider,
+              totalInputTokens || 0,
+              totalOutputTokens || 0,
+              isUserConfig, // Pass the flag to determine if user is using own config
+            );
+            if (cost > 0) {
+              await this.creditService.deductCredits(cost, `Chat completion: ${message.model}`, id, {
+                model: message.model,
+                provider: message.provider,
+                totalInputTokens: totalInputTokens || 0,
+                totalOutputTokens: totalOutputTokens || 0,
+              });
+              // Mark as deducted in database
+              await this.messageModel.updateMetadata(id, { cost, creditsDeducted: true });
+            } else if (isUserConfig) {
+              // Mark as deducted (but free) to avoid re-checking
+              await this.messageModel.updateMetadata(id, { cost: 0, creditsDeducted: true, userConfig: true });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[MessageService] Failed to deduct credits:', error);
+      }
+    }
+  }
+
+  /**
+   * Check if user has configured their own API key for a provider
+   *
+   * Billing logic:
+   * - Only global providers (ProtoChat) are billable
+   * - If user configured their own API key, they use their own service and won't be charged
+   *
+   * @param provider - Provider ID
+   * @returns true if user is using their own API key (no charge), false if using global provider (will charge)
+   */
+  private async isUserUsingOwnConfig(provider: string): Promise<boolean> {
+    try {
+      // Check if user has a personal configuration for this provider
+      const userConfig = await this.db.query.aiProviders.findFirst({
+        where: and(
+          eq(aiProviders.userId, this.userId),
+          eq(aiProviders.id, provider),
+        ),
+      });
+
+      // If user has configured their own API key, they won't be charged
+      return !!userConfig;
+    } catch (error) {
+      console.error('[MessageService] Failed to check user config:', error);
+      // Default to charging if we can't determine
+      return false;
+    }
   }
 
   /**

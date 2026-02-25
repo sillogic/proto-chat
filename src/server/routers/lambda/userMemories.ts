@@ -27,6 +27,8 @@ import {
   UserMemoryIdentityModel,
   UserMemoryModel,
 } from '@/database/models/userMemory';
+import { SystemEmbeddingModel } from '@/database/models/systemEmbedding';
+import { EmbeddingUsageLogModel } from '@/database/models/embeddingUsageLog';
 import { UserMemoryTopicRepository } from '@/database/repositories/userMemory';
 import {
   userMemories,
@@ -37,9 +39,11 @@ import {
   userMemoriesPreferences,
 } from '@/database/schemas';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
-import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { keyVaults, serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { getServerDefaultFilesConfig } from '@/server/globalConfig';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
+import { getXorPayload } from '@/utils/server';
 
 const EMPTY_SEARCH_RESULT: SearchMemoryResult = {
   activities: [],
@@ -49,8 +53,11 @@ const EMPTY_SEARCH_RESULT: SearchMemoryResult = {
 };
 
 type MemorySearchContext = {
+  embeddingUsageLogModel: EmbeddingUsageLogModel;
+  jwtPayload: any;
   memoryModel: UserMemoryModel;
   serverDB: LobeChatDatabase;
+  systemEmbeddingModel: SystemEmbeddingModel;
   userId: string;
 };
 
@@ -134,16 +141,99 @@ const searchUserMemories = async (
   ctx: MemorySearchContext,
   input: z.infer<typeof searchMemorySchema>,
 ): Promise<SearchMemoryResult> => {
-  const { provider, model: embeddingModel } =
-    getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
-  // Read user's provider config from database
-  const modelRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider);
+  // Try to get system embedding configuration from database
+  const systemConfig = await ctx.systemEmbeddingModel.getConfig();
+
+  let provider: string;
+  let embeddingModel: string;
+  let modelInputPrice: number | null = null;
+  let modelRuntime;
+  let actualModel: string | undefined;
+
+  if (systemConfig && systemConfig.providerId && systemConfig.modelId) {
+    // Use system configuration from database
+    provider = systemConfig.providerId;
+    embeddingModel = systemConfig.modelId;
+    modelInputPrice = systemConfig.inputPrice ? parseFloat(systemConfig.inputPrice) : null;
+
+    // Decrypt API Key from system config
+    let decryptedApiKey: string | undefined;
+    if (systemConfig.apiKey) {
+      try {
+        const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+        const result = await gateKeeper.decrypt(systemConfig.apiKey);
+        if (result.wasAuthentic) {
+          decryptedApiKey = result.plaintext;
+        }
+      } catch (e) {
+        console.error('[Memory Embedding] Failed to decrypt API key:', e);
+      }
+    }
+
+    // Create custom payload with system config
+    const embeddingPayload = {
+      apiKey: decryptedApiKey,
+      baseURL: systemConfig.baseUrl || undefined,
+    };
+
+    const result = await initModelRuntimeWithUserPayload(
+      provider,
+      embeddingPayload,
+      { model: embeddingModel },
+    );
+    modelRuntime = result.runtime;
+    actualModel = result.actualModel;
+  } else {
+    // Fallback to environment variable configuration
+    const envConfig = getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
+    provider = envConfig.provider;
+    embeddingModel = envConfig.model;
+
+    // ctx.jwtPayload is already a ClientSecretPayload object (parsed by keyVaults middleware)
+    const result = await initModelRuntimeWithUserPayload(
+      provider,
+      ctx.jwtPayload,
+      { model: embeddingModel },
+    );
+    modelRuntime = result.runtime;
+    actualModel = result.actualModel;
+  }
+
+  const modelId = actualModel || embeddingModel;
 
   const queryEmbeddings = await modelRuntime.embeddings({
     dimensions: DEFAULT_USER_MEMORY_EMBEDDING_DIMENSIONS,
     input: input.query,
-    model: embeddingModel,
+    model: modelId,
   });
+
+  // Record memory search embedding usage (for cost analysis, not charging users)
+  try {
+    // Calculate query tokens (estimate: characters / 4)
+    const queryTokens = Math.ceil(input.query.length / 4);
+
+    // Calculate cost in USD
+    let costPrice: string | undefined;
+    if (modelInputPrice) {
+      const costInUSD = (queryTokens / 1_000_000) * modelInputPrice;
+      costPrice = costInUSD.toFixed(8);
+    }
+
+    await ctx.embeddingUsageLogModel.create({
+      userId: ctx.userId,
+      modelId: embeddingModel,
+      providerId: provider,
+      inputTokens: queryTokens,
+      totalTokens: queryTokens,
+      costPrice: costPrice,
+      userPrice: null, // Not charging users for memory search
+      operationType: 'memory_search',
+      chunkCount: 1, // Single query
+    });
+  } catch (logError) {
+    console.error('[Memory Search] Failed to log usage:', logError);
+    // Don't fail the search if logging fails
+  }
 
   const limits = {
     activities: input.topK?.activities ?? DEFAULT_SEARCH_USER_MEMORY_TOP_K.activities,
@@ -160,17 +250,24 @@ const searchUserMemories = async (
   return mapMemorySearchResult(layeredResults);
 };
 
-const getEmbeddingRuntime = async (serverDB: LobeChatDatabase, userId: string) => {
+const getEmbeddingRuntime = async (
+  serverDB: LobeChatDatabase,
+  userId: string,
+  jwtPayload: any,
+) => {
   const { provider, model: embeddingModel } =
     getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
-  // Read user's provider config from database
-  const agentRuntime = await initModelRuntimeFromDB(
-    serverDB,
-    userId,
-    ENABLE_BUSINESS_FEATURES ? BRANDING_PROVIDER : provider,
-  );
 
-  return { agentRuntime, embeddingModel };
+  const effectiveProvider = ENABLE_BUSINESS_FEATURES ? BRANDING_PROVIDER : provider;
+  const payload = getXorPayload(jwtPayload);
+  const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(
+    effectiveProvider,
+    payload,
+    { model: embeddingModel },
+  );
+  const modelId = actualModel || embeddingModel;
+
+  return { agentRuntime, embeddingModel: modelId };
 };
 
 const createEmbedder = (agentRuntime: any, embeddingModel: string) => {
@@ -227,17 +324,22 @@ const normalizeEmbeddable = (value?: string | null): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const memoryProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
-  const { ctx } = opts;
-  return opts.next({
-    ctx: {
-      activityModel: new UserMemoryActivityModel(ctx.serverDB, ctx.userId),
-      experienceModel: new UserMemoryExperienceModel(ctx.serverDB, ctx.userId),
-      identityModel: new UserMemoryIdentityModel(ctx.serverDB, ctx.userId),
-      memoryModel: new UserMemoryModel(ctx.serverDB, ctx.userId),
-    },
+const memoryProcedure = authedProcedure
+  .use(serverDatabase)
+  .use(keyVaults)
+  .use(async (opts) => {
+    const { ctx } = opts;
+    return opts.next({
+      ctx: {
+        activityModel: new UserMemoryActivityModel(ctx.serverDB, ctx.userId),
+        embeddingUsageLogModel: new EmbeddingUsageLogModel(ctx.serverDB),
+        experienceModel: new UserMemoryExperienceModel(ctx.serverDB, ctx.userId),
+        identityModel: new UserMemoryIdentityModel(ctx.serverDB, ctx.userId),
+        memoryModel: new UserMemoryModel(ctx.serverDB, ctx.userId),
+        systemEmbeddingModel: new SystemEmbeddingModel(ctx.serverDB),
+      },
+    });
   });
-});
 
 export const userMemoriesRouter = router({
   getMemoryDetail: memoryProcedure
@@ -433,6 +535,7 @@ export const userMemoriesRouter = router({
         const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
           ctx.serverDB,
           ctx.userId,
+          ctx.jwtPayload,
         );
         const concurrency = options.concurrency ?? 10;
         const shouldProcess = (key: ReEmbedTableKey) =>
@@ -929,6 +1032,7 @@ export const userMemoriesRouter = router({
         const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
           ctx.serverDB,
           ctx.userId,
+          ctx.jwtPayload,
         );
         const embed = createEmbedder(agentRuntime, embeddingModel);
 
@@ -991,6 +1095,7 @@ export const userMemoriesRouter = router({
         const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
           ctx.serverDB,
           ctx.userId,
+          ctx.jwtPayload,
         );
         const embed = createEmbedder(agentRuntime, embeddingModel);
 
@@ -1046,6 +1151,7 @@ export const userMemoriesRouter = router({
         const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
           ctx.serverDB,
           ctx.userId,
+          ctx.jwtPayload,
         );
         const embed = createEmbedder(agentRuntime, embeddingModel);
 
@@ -1102,6 +1208,7 @@ export const userMemoriesRouter = router({
         const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
           ctx.serverDB,
           ctx.userId,
+          ctx.jwtPayload,
         );
         const embed = createEmbedder(agentRuntime, embeddingModel);
 
@@ -1170,6 +1277,7 @@ export const userMemoriesRouter = router({
         const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
           ctx.serverDB,
           ctx.userId,
+          ctx.jwtPayload,
         );
         const embed = createEmbedder(agentRuntime, embeddingModel);
 
@@ -1263,6 +1371,7 @@ export const userMemoriesRouter = router({
         const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
           ctx.serverDB,
           ctx.userId,
+          ctx.jwtPayload,
         );
         const embed = createEmbedder(agentRuntime, embeddingModel);
 

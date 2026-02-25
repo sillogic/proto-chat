@@ -2,7 +2,7 @@ import { LOBE_CHAT_CLOUD, UTM_SOURCE } from '@lobechat/business-const';
 import { DOWNLOAD_URL, isDesktop } from '@lobechat/const';
 import { Flexbox, Hotkey, Icon, Tag } from '@lobehub/ui';
 import { type ItemType } from 'antd/es/menu/interface';
-import { Cloudy, Download, HardDriveDownload, LogOut, Settings2 } from 'lucide-react';
+import { Cloudy, CreditCard, Download, HardDriveDownload, LogOut, Settings2 } from 'lucide-react';
 import { type PropsWithChildren, memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -77,6 +77,14 @@ export const useMenu = () => {
     },
   ];
 
+  const subscription: MenuProps['items'] = [
+    {
+      icon: <Icon icon={CreditCard} />,
+      key: 'subscription',
+      label: <Link to="/settings/plans">{t('userPanel.plans')}</Link>,
+    },
+  ];
+
   const downloadClient: MenuProps['items'] = [
     {
       icon: <Icon icon={Download} />,
@@ -127,6 +135,7 @@ export const useMenu = () => {
     },
 
     ...(isLogin ? settings : []),
+    ...(isLogin ? subscription : []),
     ...businessMenuItems,
     ...(!isDesktop ? downloadClient : []),
     ...data,

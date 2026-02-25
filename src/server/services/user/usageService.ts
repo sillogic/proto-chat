@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 
 import {
     embeddings,
+    embeddingUsageLogs,
     files,
     messages,
     subscriptionPlans,
@@ -232,12 +233,15 @@ export class UserUsageService {
 
     /**
      * Get paginated usage consumption details
+     * Includes both credit transactions and embedding usage logs
      */
     async getUsageDetails(limit: number = 20, offset: number = 0, mo?: string) {
         let whereClause = and(
             eq(userTransactions.userId, this.userId),
             eq(userTransactions.type, 'CONSUMPTION'),
         );
+
+        let embeddingWhereClause = eq(embeddingUsageLogs.userId, this.userId);
 
         if (mo) {
             const startAt = dayjs(mo, 'YYYY-MM').startOf('month').toDate();
@@ -247,9 +251,15 @@ export class UserUsageService {
                 sql`${userTransactions.createdAt} >= ${startAt.toISOString()}`,
                 sql`${userTransactions.createdAt} <= ${endAt.toISOString()}`,
             );
+            embeddingWhereClause = and(
+                embeddingWhereClause,
+                sql`${embeddingUsageLogs.createdAt} >= ${startAt.toISOString()}`,
+                sql`${embeddingUsageLogs.createdAt} <= ${endAt.toISOString()}`,
+            );
         }
 
-        const records = await this.db
+        // Query credit transactions
+        const transactionRecords = await this.db
             .select({
                 message: messages,
                 transaction: userTransactions,
@@ -257,56 +267,107 @@ export class UserUsageService {
             .from(userTransactions)
             .leftJoin(messages, eq(userTransactions.refId, messages.id))
             .where(whereClause)
-            .limit(limit)
-            .offset(offset)
             .orderBy(desc(userTransactions.createdAt));
 
-        const totalStats = await this.db
+        // Query embedding logs
+        const embeddingLogs = await this.db
+            .select()
+            .from(embeddingUsageLogs)
+            .where(embeddingWhereClause)
+            .orderBy(desc(embeddingUsageLogs.createdAt));
+
+        // Map transaction records to unified format
+        const transactionList = transactionRecords.map(({ transaction: r, message: m }) => {
+            const metadata = (r.metadata as any) || {};
+            const msgMetadata = (m?.metadata as any) || {};
+
+            const model = metadata.model || m?.model || '-';
+            const provider = metadata.provider || m?.provider || '-';
+            const inputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
+            const outputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
+            const duration = metadata.duration || msgMetadata.duration || 0;
+
+            // Determine usage type
+            let usageType = 'chat';
+            if (metadata.type) {
+                usageType = metadata.type.toLowerCase();
+            } else if (m) {
+                usageType = 'chat';
+            } else if (r.refId && r.refId.startsWith('gen_')) {
+                usageType = 'image';
+            } else if (r.category) {
+                usageType = r.category.toLowerCase();
+            }
+
+            return {
+                ...r,
+                credits: Math.abs(Number(r.amount)),
+                duration,
+                model,
+                operationType: null,
+                provider,
+                source: 'transaction' as const,
+                totalInputTokens: inputTokens,
+                totalOutputTokens: outputTokens,
+                totalTokens: inputTokens + outputTokens,
+                usageType,
+            };
+        });
+
+        // Map embedding logs to unified format
+        const embeddingList = embeddingLogs.map((log) => ({
+            amount: 0, // No credits charged for embeddings
+            category: null,
+            createdAt: log.createdAt,
+            credits: 0, // Display as 0 credits since no charge
+            description: null,
+            duration: null,
+            id: `emb_${log.id}`,
+            metadata: {
+                chunkCount: log.chunkCount,
+                costPrice: log.costPrice, // Backend cost for analysis
+                fileId: log.fileId,
+            },
+            model: log.modelId,
+            operationType: log.operationType, // 'file_embedding', 'semantic_search', 'memory_search'
+            provider: log.providerId,
+            refId: log.fileId,
+            source: 'embedding' as const,
+            totalInputTokens: log.inputTokens,
+            totalOutputTokens: 0, // Embeddings don't have output tokens
+            totalTokens: log.totalTokens,
+            type: null,
+            updatedAt: null,
+            userId: log.userId,
+            usageType: 'embedding',
+        }));
+
+        // Combine and sort by createdAt
+        const combined = [...transactionList, ...embeddingList].sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0).getTime();
+            const dateB = new Date(b.createdAt || 0).getTime();
+            return dateB - dateA; // Descending order
+        });
+
+        // Calculate total count
+        const transactionCount = await this.db
             .select({ count: sql<number>`count(*)` })
             .from(userTransactions)
             .where(whereClause);
 
+        const embeddingCount = await this.db
+            .select({ count: sql<number>`count(*)` })
+            .from(embeddingUsageLogs)
+            .where(embeddingWhereClause);
+
+        const totalCount = Number(transactionCount[0]?.count || 0) + Number(embeddingCount[0]?.count || 0);
+
+        // Apply pagination to combined results
+        const paginatedList = combined.slice(offset, offset + limit);
+
         return {
-            list: records.map(({ transaction: r, message: m }) => {
-                const metadata = (r.metadata as any) || {};
-                const msgMetadata = (m?.metadata as any) || {};
-
-                // Fallback to message table if metadata is missing in transaction
-                const model = metadata.model || m?.model || '-';
-                const provider = metadata.provider || m?.provider || '-';
-                const inputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
-                const outputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
-                const duration = metadata.duration || msgMetadata.duration || 0;
-
-                // Determine usage type (text, embedding, image, etc.)
-                let usageType = 'chat';
-                // Check metadata.type first to distinguish between chat/image/embedding
-                if (metadata.type) {
-                    usageType = metadata.type.toLowerCase();
-                } else if (m) {
-                    // If associated with a message, it's chat
-                    usageType = 'chat';
-                } else if (r.refId && r.refId.startsWith('gen_')) {
-                    // If refId starts with 'gen_', it's image generation
-                    usageType = 'image';
-                } else if (r.category) {
-                    // Fallback to category
-                    usageType = r.category.toLowerCase();
-                }
-
-                return {
-                    ...r,
-                    credits: Math.abs(Number(r.amount)),
-                    duration,
-                    model,
-                    provider,
-                    totalInputTokens: inputTokens,
-                    totalOutputTokens: outputTokens,
-                    totalTokens: inputTokens + outputTokens,
-                    usageType,
-                };
-            }),
-            total: Number(totalStats[0]?.count || 0),
+            list: paginatedList,
+            total: totalCount,
         };
     }
 }

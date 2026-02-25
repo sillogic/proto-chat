@@ -85,8 +85,16 @@ export class ChunkingLoader {
       return 'ppt';
     }
 
-    if (filename.endsWith('docx') || filename.endsWith('doc')) {
+    // Only .docx is supported, not the old .doc format
+    if (filename.endsWith('docx')) {
       return 'doc';
+    }
+
+    // Old .doc format (Word 97-2003) is not supported
+    if (filename.endsWith('.doc')) {
+      throw new Error(
+        'Old Word format (.doc) is not supported. Please convert your file to .docx format using Microsoft Word or an online converter.',
+      );
     }
 
     if (filename.endsWith('pdf')) {

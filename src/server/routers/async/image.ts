@@ -14,7 +14,8 @@ import { FileModel } from '@/database/models/file';
 import { GenerationModel } from '@/database/models/generation';
 import { GenerationBatchModel } from '@/database/models/generationBatch';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
+import { CreditService } from '@/server/services/credit';
 import { GenerationService } from '@/server/services/generation';
 
 const log = debug('lobe-image:async');
@@ -29,6 +30,7 @@ const imageProcedure = asyncAuthedProcedure.use(async (opts) => {
   return opts.next({
     ctx: {
       asyncTaskModel: new AsyncTaskModel(ctx.serverDB, ctx.userId),
+      creditService: new CreditService(ctx.serverDB, ctx.userId),
       fileModel: new FileModel(ctx.serverDB, ctx.userId),
       generationBatchModel: new GenerationBatchModel(ctx.serverDB, ctx.userId),
       generationModel: new GenerationModel(ctx.serverDB, ctx.userId),
@@ -239,16 +241,16 @@ export const imageRouter = router({
 
       try {
         const imageGenerationPromise = async (signal: AbortSignal) => {
-          log('Initializing agent runtime for provider: %s', provider);
+          log('Initializing agent runtime for provider: %s, model: %s', provider, model);
 
-          // Read user's provider config from database
-          const modelRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider);
+          const { runtime: modelRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload, { model });
+          const modelId = actualModel || model;
 
           // Check if operation has been cancelled
           checkAbortSignal(signal);
-          log('Agent runtime initialized, calling createImage');
+          log('Agent runtime initialized, calling createImage with model: %s', modelId);
           const response = await modelRuntime.createImage!({
-            model,
+            model: modelId,
             params: params as unknown as RuntimeImageGenParams,
           });
 
@@ -278,6 +280,22 @@ export const imageRouter = router({
               provider,
               userId: ctx.userId,
             });
+          } else {
+            // Deduct credits for image generation (uses perRequestPrice from model_pricings)
+            try {
+              const cost = await ctx.creditService.calculateCost(model, provider, 0, 0);
+              if (cost > 0) {
+                await ctx.creditService.deductCredits(
+                  cost,
+                  `Image generation: ${model}`,
+                  generationId,
+                  { model, provider, type: 'image' },
+                );
+                log('Credits deducted for image generation: %s, cost: %s', taskId, cost);
+              }
+            } catch (creditError: any) {
+              log('Failed to deduct credits for image generation: %s, error: %s', taskId, creditError.message);
+            }
           }
 
           // Check if operation has been cancelled

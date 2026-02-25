@@ -5,6 +5,7 @@ import { memo } from 'react';
 
 import { NavPanelPortal } from '@/features/NavPanel';
 import SideBarLayout from '@/features/NavPanel/SideBarLayout';
+import UsageFooter from '@/features/ResourceManager/components/UsageFooter';
 
 import SidebarBody from './Body';
 import Header from './Header';
@@ -24,6 +25,7 @@ const Sidebar = memo(() => {
             </Accordion>
           </Flexbox>
         }
+        footer={<UsageFooter />}
         header={<Header />}
       />
     </NavPanelPortal>

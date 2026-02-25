@@ -6,6 +6,7 @@ import {
   NewChunkItem,
   NewUnstructuredChunkItem,
   chunks,
+  documentChunks,
   embeddings,
   fileChunks,
   files,
@@ -29,14 +30,31 @@ export class ChunkModel {
 
       const result = await trx.insert(chunks).values(params).returning();
 
-      const fileChunksData = result.map((chunk) => ({
-        chunkId: chunk.id,
-        fileId,
-        userId: this.userId,
-      }));
+      // Detect if this is a document (docs_ prefix) or file
+      const isDocument = fileId.startsWith('docs_');
 
-      if (fileChunksData.length > 0) {
-        await trx.insert(fileChunks).values(fileChunksData);
+      if (isDocument) {
+        // Use documentChunks table for documents
+        const documentChunksData = result.map((chunk) => ({
+          chunkId: chunk.id,
+          documentId: fileId,
+          userId: this.userId,
+        }));
+
+        if (documentChunksData.length > 0) {
+          await trx.insert(documentChunks).values(documentChunksData);
+        }
+      } else {
+        // Use fileChunks table for files
+        const fileChunksData = result.map((chunk) => ({
+          chunkId: chunk.id,
+          fileId,
+          userId: this.userId,
+        }));
+
+        if (fileChunksData.length > 0) {
+          await trx.insert(fileChunks).values(fileChunksData);
+        }
       }
 
       return result;
@@ -79,37 +97,80 @@ export class ChunkModel {
   };
 
   findByFileId = async (id: string, page = 0) => {
-    const data = await this.db
-      .select({
-        abstract: chunks.abstract,
-        createdAt: chunks.createdAt,
-        id: chunks.id,
-        index: chunks.index,
-        metadata: chunks.metadata,
-        text: chunks.text,
-        type: chunks.type,
-        updatedAt: chunks.updatedAt,
-      })
-      .from(chunks)
-      .innerJoin(fileChunks, eq(chunks.id, fileChunks.chunkId))
-      .where(and(eq(fileChunks.fileId, id), eq(chunks.userId, this.userId)))
-      .limit(20)
-      .offset(page * 20)
-      .orderBy(asc(chunks.index));
+    const isDocument = id.startsWith('docs_');
 
-    return data.map((item) => {
-      const metadata = item.metadata as ChunkMetadata;
+    if (isDocument) {
+      // Query using documentChunks table
+      const data = await this.db
+        .select({
+          abstract: chunks.abstract,
+          createdAt: chunks.createdAt,
+          id: chunks.id,
+          index: chunks.index,
+          metadata: chunks.metadata,
+          text: chunks.text,
+          type: chunks.type,
+          updatedAt: chunks.updatedAt,
+        })
+        .from(chunks)
+        .innerJoin(documentChunks, eq(chunks.id, documentChunks.chunkId))
+        .where(and(eq(documentChunks.documentId, id), eq(chunks.userId, this.userId)))
+        .limit(20)
+        .offset(page * 20)
+        .orderBy(asc(chunks.index));
 
-      return { ...item, metadata, pageNumber: metadata?.pageNumber } as FileChunk;
-    });
+      return data.map((item) => {
+        const metadata = item.metadata as ChunkMetadata;
+
+        return { ...item, metadata, pageNumber: metadata?.pageNumber } as FileChunk;
+      });
+    } else {
+      // Query using fileChunks table
+      const data = await this.db
+        .select({
+          abstract: chunks.abstract,
+          createdAt: chunks.createdAt,
+          id: chunks.id,
+          index: chunks.index,
+          metadata: chunks.metadata,
+          text: chunks.text,
+          type: chunks.type,
+          updatedAt: chunks.updatedAt,
+        })
+        .from(chunks)
+        .innerJoin(fileChunks, eq(chunks.id, fileChunks.chunkId))
+        .where(and(eq(fileChunks.fileId, id), eq(chunks.userId, this.userId)))
+        .limit(20)
+        .offset(page * 20)
+        .orderBy(asc(chunks.index));
+
+      return data.map((item) => {
+        const metadata = item.metadata as ChunkMetadata;
+
+        return { ...item, metadata, pageNumber: metadata?.pageNumber } as FileChunk;
+      });
+    }
   };
 
   getChunksTextByFileId = async (id: string): Promise<{ id: string; text: string }[]> => {
-    const data = await this.db
-      .select()
-      .from(chunks)
-      .innerJoin(fileChunks, eq(chunks.id, fileChunks.chunkId))
-      .where(eq(fileChunks.fileId, id));
+    const isDocument = id.startsWith('docs_');
+
+    let data;
+    if (isDocument) {
+      // Query using documentChunks table
+      data = await this.db
+        .select()
+        .from(chunks)
+        .innerJoin(documentChunks, eq(chunks.id, documentChunks.chunkId))
+        .where(eq(documentChunks.documentId, id));
+    } else {
+      // Query using fileChunks table
+      data = await this.db
+        .select()
+        .from(chunks)
+        .innerJoin(fileChunks, eq(chunks.id, fileChunks.chunkId))
+        .where(eq(fileChunks.fileId, id));
+    }
 
     return data
       .map((item) => item.chunks)
@@ -120,27 +181,71 @@ export class ChunkModel {
   countByFileIds = async (ids: string[]) => {
     if (ids.length === 0) return [];
 
-    return this.db
-      .select({
-        count: count(fileChunks.chunkId),
-        id: fileChunks.fileId,
-      })
-      .from(fileChunks)
-      .where(inArray(fileChunks.fileId, ids))
-      .groupBy(fileChunks.fileId);
+    // Separate document IDs from file IDs
+    const documentIds = ids.filter((id) => id.startsWith('docs_'));
+    const fileIds = ids.filter((id) => !id.startsWith('docs_'));
+
+    const results: Array<{ count: number; id: string }> = [];
+
+    // Query file chunks
+    if (fileIds.length > 0) {
+      const fileResults = await this.db
+        .select({
+          count: count(fileChunks.chunkId),
+          id: fileChunks.fileId,
+        })
+        .from(fileChunks)
+        .where(inArray(fileChunks.fileId, fileIds))
+        .groupBy(fileChunks.fileId);
+
+      results.push(...fileResults);
+    }
+
+    // Query document chunks
+    if (documentIds.length > 0) {
+      const documentResults = await this.db
+        .select({
+          count: count(documentChunks.chunkId),
+          id: documentChunks.documentId,
+        })
+        .from(documentChunks)
+        .where(inArray(documentChunks.documentId, documentIds))
+        .groupBy(documentChunks.documentId);
+
+      results.push(...documentResults);
+    }
+
+    return results;
   };
 
   countByFileId = async (ids: string) => {
-    const data = await this.db
-      .select({
-        count: count(fileChunks.chunkId),
-        id: fileChunks.fileId,
-      })
-      .from(fileChunks)
-      .where(eq(fileChunks.fileId, ids))
-      .groupBy(fileChunks.fileId);
+    const isDocument = ids.startsWith('docs_');
 
-    return data[0]?.count ?? 0;
+    if (isDocument) {
+      // Query using documentChunks table
+      const data = await this.db
+        .select({
+          count: count(documentChunks.chunkId),
+          id: documentChunks.documentId,
+        })
+        .from(documentChunks)
+        .where(eq(documentChunks.documentId, ids))
+        .groupBy(documentChunks.documentId);
+
+      return data[0]?.count ?? 0;
+    } else {
+      // Query using fileChunks table
+      const data = await this.db
+        .select({
+          count: count(fileChunks.chunkId),
+          id: fileChunks.fileId,
+        })
+        .from(fileChunks)
+        .where(eq(fileChunks.fileId, ids))
+        .groupBy(fileChunks.fileId);
+
+      return data[0]?.count ?? 0;
+    }
   };
 
   semanticSearch = async ({

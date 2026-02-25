@@ -145,7 +145,8 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       sendVerificationEmail: async ({ user, url }, request) => {
         // Skip sending verification link email for mobile clients (Expo/React Native)
         // Mobile clients use OTP verification instead, triggered manually via emailOTP plugin
-        if (request?.headers?.get?.('x-client-type') === 'mobile') {
+        if (request?.headers?.get?.(
+'x-client-type') === 'mobile') {
           return;
         }
 
@@ -159,6 +160,19 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
         await emailService.sendMail({
           to: user.email,
           ...template,
+        });
+      },
+      /**
+       * Initialize user after email verification to prevent spam registrations.
+       * This ensures that only verified users get credits and inbox created.
+       * Ref: https://www.better-auth.com/docs/concepts/email
+       */
+      afterEmailVerification: async (user) => {
+        const userService = new UserService(serverDB);
+        await userService.initUser({
+          email: user.email,
+          id: user.id,
+          username: (user as { username?: string }).username ?? null,
         });
       },
     },
@@ -193,6 +207,24 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       user: {
         create: {
           after: async (user) => {
+            /**
+             * Delay user initialization for email/password registration when email verification is required.
+             * This prevents spam registrations from consuming resources (credits, inbox creation, etc.).
+             *
+             * User initialization will happen in one of these scenarios:
+             * 1. Email verification enabled + password signup: afterEmailVerification callback
+             * 2. OAuth/social login (emailVerified is already true): here, immediately
+             * 3. Email verification disabled: here, immediately
+             */
+            const requiresEmailVerification =
+              authEnv.AUTH_EMAIL_VERIFICATION && !user.emailVerified;
+
+            if (requiresEmailVerification) {
+              // Skip initialization - will be done after email verification
+              return;
+            }
+
+            // Initialize immediately for OAuth users or when email verification is disabled
             const userService = new UserService(serverDB);
             await userService.initUser({
               email: user.email,

@@ -22,6 +22,9 @@ export function defineConfig(config: CustomNextConfig) {
   const enableReactScan = !!process.env.REACT_SCAN_MONITOR_API_KEY;
   const shouldUseCSP = process.env.ENABLED_CSP === '1';
 
+  // Disable code-inspector to avoid port conflicts
+  const enableCodeInspector = process.env.CODE_INSPECTOR !== 'false';
+
   const isTest =
     process.env.NODE_ENV === 'test' || process.env.TEST === '1' || process.env.E2E === '1';
 
@@ -333,7 +336,7 @@ export function defineConfig(config: CustomNextConfig) {
 
     transpilePackages: ['mermaid', 'better-auth-harmony'],
     turbopack: {
-      rules: isTest
+      rules: isTest || !enableCodeInspector
         ? void 0
         : codeInspectorPlugin({
             bundler: 'turbopack',

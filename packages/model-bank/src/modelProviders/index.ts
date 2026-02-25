@@ -72,6 +72,8 @@ import XinferenceProvider from './xinference';
 import ZenMuxProvider from './zenmux';
 import ZeroOneProvider from './zeroone';
 import ZhiPuProvider from './zhipu';
+// ProtoChat - custom wrapper provider
+import ProtoChatProvider from './protochat';
 
 /**
  * @deprecated
@@ -130,7 +132,9 @@ export const LOBE_DEFAULT_MODEL_LIST: ChatModelCard[] = [
 ].flat();
 
 export const DEFAULT_MODEL_PROVIDER_LIST = [
-  ...(ENABLE_BUSINESS_FEATURES ? [LobeHubProvider] : []),
+  ProtoChatProvider, // ProtoChat自有供应商（放在最前面）
+  // LobeHub provider hidden - not needed for commercial deployment
+  // ...(ENABLE_BUSINESS_FEATURES ? [LobeHubProvider] : []),
   AnthropicProvider,
   GoogleProvider,
   OpenAIProvider,
@@ -256,6 +260,7 @@ export { default as OpenAIProviderCard } from './openai';
 export { default as OpenRouterProviderCard } from './openrouter';
 export { default as PerplexityProviderCard } from './perplexity';
 export { default as PPIOProviderCard } from './ppio';
+export { default as ProtoChatProviderCard } from './protochat';
 export { default as QiniuProviderCard } from './qiniu';
 export { default as QwenProviderCard } from './qwen';
 export { default as ReplicateProviderCard } from './replicate';
