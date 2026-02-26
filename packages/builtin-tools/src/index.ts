@@ -15,6 +15,13 @@ import { type LobeBuiltinTool } from '@lobechat/types';
 
 import { ArtifactsManifest } from './artifacts';
 
+export const defaultToolIds = [
+  LobeToolsManifest.identifier,
+  WebBrowsingManifest.identifier,
+  KnowledgeBaseManifest.identifier,
+  MemoryManifest.identifier,
+];
+
 export const builtinTools: LobeBuiltinTool[] = [
   {
     identifier: ArtifactsManifest.identifier,
