@@ -137,7 +137,7 @@ export const useMenu = () => {
     ...(isLogin ? settings : []),
     ...(isLogin ? subscription : []),
     ...businessMenuItems,
-    ...(!isDesktop ? downloadClient : []),
+    // ...(!isDesktop ? downloadClient : []), // 暂时隐藏下载客户端入口
     ...data,
     ...(!hideDocs ? helps : []),
   ].filter(Boolean) as MenuProps['items'];
