@@ -780,6 +780,11 @@ When I am ___, I need ___
   'tools.builtins.lobe-artifacts.readme':
     'Generate and live-preview interactive UI components, data visualizations, charts, SVG graphics, and web applications. Create rich visual content that users can interact with directly.',
   'tools.builtins.lobe-artifacts.title': 'Artifacts',
+  'tools.builtins.lobe-calculator.title': 'Calculator',
+  'tools.builtins.lobe-calculator.description':
+    'Perform mathematical calculations, solve equations, and work with symbolic expressions',
+  'tools.builtins.lobe-calculator.readme':
+    'Advanced mathematical calculator supporting basic arithmetic, algebraic equations, calculus operations, and symbolic math. Includes base conversion, equation solving, differentiation, integration, and more.',
   'tools.builtins.lobe-cloud-sandbox.description':
     'Execute code, run commands, and manage files in a secure cloud environment',
   'tools.builtins.lobe-cloud-sandbox.readme':
@@ -794,8 +799,7 @@ When I am ___, I need ___
   'tools.builtins.lobe-local-system.readme':
     'Access your local filesystem on desktop. Read, write, search, and organize files. Execute shell commands with background task support and grep content with regex patterns.',
   'tools.builtins.lobe-local-system.title': 'Local System',
-  'tools.builtins.lobe-notebook.description':
-    'Create and manage documents in the topic notebook',
+  'tools.builtins.lobe-notebook.description': 'Create and manage documents in the topic notebook',
   'tools.builtins.lobe-notebook.readme':
     'Create and manage persistent documents within conversation topics. Save notes, reports, articles, and markdown content that stays accessible across sessions.',
   'tools.builtins.lobe-notebook.title': 'Notebook',
