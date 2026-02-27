@@ -62,6 +62,13 @@ interface PlanIconProps {
   type?: 'icon' | 'tag' | 'combine';
 }
 
+// ProtoChat plan display names — fixed English labels, no i18n translation
+const PROTOCHAT_PLAN_NAMES: Partial<Record<Plans, string>> = {
+  [Plans.Hobby]: 'Lite',
+  [Plans.Premium]: 'Pro',
+  [Plans.Ultimate]: 'Ultra',
+};
+
 const PlanIcon = memo<PlanIconProps>(
   ({ type = 'icon', plan, size = 36, mono, style, className, onClick }) => {
     // Fallback to Free theme if plan is not defined in themes
@@ -74,9 +81,10 @@ const PlanIcon = memo<PlanIconProps>(
 
     if (isTag) {
       // For unknown plans, display the plan name directly
-      const planTitle = themes[plan]
-        ? t(`plans.plan.${plan}.title`)
-        : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+      const planTitle = PROTOCHAT_PLAN_NAMES[plan]
+        ?? (themes[plan]
+          ? t(`plans.plan.${plan}.title`)
+          : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()));
 
       return (
         <Tag
@@ -116,9 +124,10 @@ const PlanIcon = memo<PlanIconProps>(
 
     if (isCombine) {
       // For unknown plans, display the plan name directly
-      const planTitle = themes[plan]
-        ? t(`plans.plan.${plan}.title`)
-        : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+      const planTitle = PROTOCHAT_PLAN_NAMES[plan]
+        ?? (themes[plan]
+          ? t(`plans.plan.${plan}.title`)
+          : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()));
 
       return (
         <Flexbox horizontal align={'center'} gap={8}>
