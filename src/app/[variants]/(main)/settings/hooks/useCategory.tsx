@@ -209,36 +209,14 @@ export const useCategory = () => {
       title: t('group.aiConfig'),
     });
 
-    // 系统组 - 系统相关设置
-    const systemItems: CategoryItem[] = [
-      isDesktop && {
-        icon: EthernetPort,
-        key: SettingsTabs.Proxy,
-        label: t('tab.proxy'),
-      },
-      isDesktop && {
-        icon: TerminalSquare,
-        key: SettingsTabs.SystemTools,
-        label: t('tab.systemTools'),
-      },
-      // 暂时隐藏数据存储和关于页面
-      // {
-      //   icon: Database,
-      //   key: SettingsTabs.Storage,
-      //   label: t('tab.storage'),
-      // },
-      // !hideDocs && {
-      //   icon: Info,
-      //   key: SettingsTabs.About,
-      //   label: t('tab.about'),
-      // },
-    ].filter(Boolean) as CategoryItem[];
-
-    groups.push({
-      items: systemItems,
-      key: SettingsGroupKey.System,
-      title: t('group.system'),
-    });
+    // 暂时隐藏系统分组（代理、系统工具、数据存储、关于）
+    // const systemItems: CategoryItem[] = [
+    //   isDesktop && { icon: EthernetPort, key: SettingsTabs.Proxy, label: t('tab.proxy') },
+    //   isDesktop && { icon: TerminalSquare, key: SettingsTabs.SystemTools, label: t('tab.systemTools') },
+    //   { icon: Database, key: SettingsTabs.Storage, label: t('tab.storage') },
+    //   !hideDocs && { icon: Info, key: SettingsTabs.About, label: t('tab.about') },
+    // ].filter(Boolean) as CategoryItem[];
+    // groups.push({ items: systemItems, key: SettingsGroupKey.System, title: t('group.system') });
 
     return groups;
   }, [
