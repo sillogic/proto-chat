@@ -14,12 +14,12 @@ export const genParentMessages = (
 ) => {
   if (!startMessageId) return [];
 
-  // 如果是独立话题模式，则只显示话题开始消息
+  // In standalone thread mode, only show the source message
   if (threadMode === ThreadType.Standalone) {
     return messages.filter((m) => m.id === startMessageId);
   }
 
-  // 如果是连续模式下，那么只显示话题开始消息和话题分割线
+  // In continuation mode, only show the source message and the thread divider
   const targetIndex = messages.findIndex((item) => item.id === startMessageId);
 
   if (targetIndex < 0) return [];
