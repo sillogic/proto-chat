@@ -113,11 +113,10 @@ const baseColumns: TableColumnType<any>[] = [
 
 const UsageConsumptionTable = memo(() => {
   const { data, isLoading } = useClientDataSWR('consumption-preview', async () =>
-    usageService.getUsageDetails({ limit: 10, offset: 0 }),
+    usageService.getConsumptionDetails({ limit: 10, offset: 0 }),
   );
 
-  const filteredData =
-    data?.list?.filter((item: any) => item.usageType !== 'embedding') || [];
+  const filteredData = data?.list || [];
 
   return (
     <Table

@@ -479,22 +479,6 @@ export const desktopRoutes: RouteConfig[] = [
         path: 'page',
       },
 
-      // Profile usage detail routes
-      {
-        element: dynamicElement(
-          () => import('../(main)/profile/usage/consumption/features/ConsumptionContent'),
-          'Desktop > Profile > Usage > Consumption',
-        ),
-        path: 'profile/usage/consumption',
-      },
-      {
-        element: dynamicElement(
-          () => import('../(main)/profile/usage/transactions/features/TransactionsContent'),
-          'Desktop > Profile > Usage > Transactions',
-        ),
-        path: 'profile/usage/transactions',
-      },
-
       // Default route - home page (handled by persistent layout)
       {
         index: true,
@@ -512,6 +496,22 @@ export const desktopRoutes: RouteConfig[] = [
   // Onboarding route (outside main layout)
 
   ...BusinessDesktopRoutesWithoutMainLayout,
+
+  // Profile usage detail routes (outside main layout, no nav sidebar)
+  {
+    element: dynamicElement(
+      () => import('../(main)/profile/usage/consumption/features/ConsumptionContent'),
+      'Desktop > Profile > Usage > Consumption',
+    ),
+    path: '/profile/usage/consumption',
+  },
+  {
+    element: dynamicElement(
+      () => import('../(main)/profile/usage/transactions/features/TransactionsContent'),
+      'Desktop > Profile > Usage > Transactions',
+    ),
+    path: '/profile/usage/transactions',
+  },
 
   // Share topic route (outside main layout)
   {
