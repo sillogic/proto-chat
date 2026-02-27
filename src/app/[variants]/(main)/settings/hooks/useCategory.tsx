@@ -195,11 +195,12 @@ export const useCategory = () => {
         key: SettingsTabs.Image,
         label: t('tab.image'),
       },
-      enableSTT && {
-        icon: Mic2,
-        key: SettingsTabs.TTS,
-        label: t('tab.tts'),
-      },
+      // 暂时隐藏语音服务菜单
+      // enableSTT && {
+      //   icon: Mic2,
+      //   key: SettingsTabs.TTS,
+      //   label: t('tab.tts'),
+      // },
     ].filter(Boolean) as CategoryItem[];
 
     groups.push({
