@@ -12,6 +12,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { CreditService } from '../credit';
 import { FileService } from '../file';
+import { ProtoChatService } from '../protochat';
 
 interface QueryOptions {
   agentId?: string | null;
@@ -198,6 +199,10 @@ export class MessageService {
     options: QueryOptions,
   ): Promise<{ messages?: UIChatMessage[]; success: boolean }> {
     await this.messageModel.update(id, value as any);
+    // Handle credit deduction when token usage is included in metadata (e.g., after stream finish)
+    if (value.metadata) {
+      await this.handleCreditDeduction(id, value.metadata);
+    }
     return this.queryWithSuccess(options);
   }
 
@@ -271,6 +276,12 @@ export class MessageService {
    */
   private async isUserUsingOwnConfig(provider: string): Promise<boolean> {
     try {
+      // ProtoChat is the platform's own managed provider.
+      // Users cannot configure their own ProtoChat API keys, so this is never "user config".
+      if (ProtoChatService.isProtoChatProvider(provider)) {
+        return false;
+      }
+
       // Check if user has a personal configuration for this provider
       const userConfig = await this.db.query.aiProviders.findFirst({
         where: and(
