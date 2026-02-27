@@ -3,10 +3,10 @@ import { defineConfig } from './src/libs/next/config/define-config';
 const isVercel = !!process.env.VERCEL_ENV;
 
 const nextConfig = defineConfig({
-  // undici v7 uses `export *` from node:buffer (CJS) which triggers a webpack warning.
-  // Mark it as a server external so Next.js doesn't attempt to bundle it.
-  // Keep the defaults from define-config (pdfkit, @napi-rs/canvas, pdfjs-dist) plus undici.
-  serverExternalPackages: ['pdfkit', '@napi-rs/canvas', 'pdfjs-dist', 'undici'],
+  // undici v7 and jose v5 both use `export *` from node:buffer (CJS) which triggers a webpack
+  // warning. Mark them as server externals so Next.js doesn't attempt to bundle them.
+  // Keep the defaults from define-config (pdfkit, @napi-rs/canvas, pdfjs-dist) plus these.
+  serverExternalPackages: ['pdfkit', '@napi-rs/canvas', 'pdfjs-dist', 'undici', 'jose'],
   // Vercel serverless optimization: exclude musl binaries and ffmpeg from all routes
   // Vercel uses Amazon Linux (glibc), not Alpine Linux (musl)
   // ffmpeg-static (~76MB) is only needed by /api/webhooks/video/* route
