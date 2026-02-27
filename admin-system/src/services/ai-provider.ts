@@ -44,3 +44,16 @@ export async function checkAiProvider(data: { id: string; model: string; keyVaul
         data,
     });
 }
+
+export interface VideoCapableModel {
+    id: string;
+    displayName: string;
+    providerId: string;
+}
+
+/** 获取所有具备视频生成能力的模型（不限供应商，不限启用状态） */
+export async function getVideoCapableModels() {
+    return request<{ data: VideoCapableModel[]; success: boolean }>('/api/admin/ai-providers/video-models', {
+        method: 'GET',
+    });
+}

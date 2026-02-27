@@ -63,6 +63,7 @@ export default {
   'menu.protochat': 'ProtoChat子供应商配置',
   'menu.systemConfig': '系统配置',
   'menu.systemConfig.defaultModel': '默认模型配置',
+  'menu.systemConfig.videoDefaultModel': '视频默认模型',
   'menu.systemConfig.embedding': 'Embedding配置',
   'menu.systemConfig.rules': '系统规则',
 };

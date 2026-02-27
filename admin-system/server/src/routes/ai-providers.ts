@@ -1,6 +1,7 @@
 import express, { Router } from 'express';
 import { db } from '../config/database';
 import { aiProviders, aiModels } from '../db/ai-providers-schema';
+import { protochatModels, protochatProviders } from '../db/protochat-schema';
 import { users } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { authenticateToken, requirePermission } from '../middleware/auth';
@@ -21,6 +22,44 @@ const upsertProviderSchema = z.object({
     logo: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
     settings: z.record(z.any()).optional(),
+});
+
+// GET /api/admin/ai-providers/video-models - 获取已启用子供应商下具备视频生成能力的模型
+router.get('/video-models', authenticateToken, requirePermission('system.admin'), async (req, res) => {
+    try {
+        // 先取所有已启用的子供应商 ID
+        const enabledProviders = await db
+            .select({ id: protochatProviders.id })
+            .from(protochatProviders)
+            .where(eq(protochatProviders.enabled, true));
+
+        const enabledProviderIds = new Set(enabledProviders.map((p) => p.id));
+
+        if (enabledProviderIds.size === 0) {
+            return res.json({ data: [], success: true });
+        }
+
+        // 取所有模型，在 JS 侧过滤（避免 JSONB 字段无法直接用 drizzle where 过滤）
+        const models = await db.select().from(protochatModels);
+
+        const videoModels = models
+            .filter((m) => {
+                if (!enabledProviderIds.has(m.originalProvider)) return false;
+                const caps = m.capabilities as any || {};
+                return caps.video === true;
+            })
+            .map((m) => ({
+                displayName: m.displayName || m.id,
+                id: m.id,
+                // ProtoChat 模型必须通过 'protochat' 供应商路由，不能用底层子供应商 ID
+                providerId: 'protochat',
+            }));
+
+        return res.json({ data: videoModels, success: true });
+    } catch (error) {
+        console.error('Get video models error:', error);
+        return res.status(500).json({ message: '获取视频模型列表失败', success: false });
+    }
 });
 
 // GET /api/admin/ai-providers - 获取所有全局供应商配置

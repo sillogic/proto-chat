@@ -1,15 +1,14 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
+import { lambdaClient } from '@/libs/trpc/client/lambda';
+import { useAiInfraStore } from '@/store/aiInfra';
+import { aiProviderSelectors } from '@/store/aiInfra/slices/aiProvider/selectors';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
 import { useVideoStore } from '@/store/video';
-import {
-  DEFAULT_AI_VIDEO_MODEL,
-  DEFAULT_AI_VIDEO_PROVIDER,
-} from '@/store/video/slices/generationConfig/initialState';
 import { useUserStore } from '@/store/user';
 import { authSelectors } from '@/store/user/selectors';
+import { AiProviderSourceEnum } from '@/types/aiProvider';
 
 const checkModelEnabled = (
   enabledVideoModelList: ReturnType<typeof aiProviderSelectors.enabledVideoModelList>,
@@ -30,11 +29,64 @@ export const useFetchAiVideoConfig = () => {
   const isAuthLoaded = useUserStore(authSelectors.isLoaded);
   const isLogin = useUserStore(authSelectors.isLogin);
   const isActualLogout = isAuthLoaded && isLogin === false;
-
   const isUserStateInit = useUserStore((s) => s.isUserStateInit);
   const isUserStateReady = isUserStateInit || isActualLogout;
 
-  const isReadyForInit = isStatusInit && isInitAiProviderRuntimeState && isUserStateReady;
+  // undefined = 加载中; null = 未配置; object = 已配置
+  const [systemVideoDefault, setSystemVideoDefault] = useState<
+    { displayName: string | null; modelId: string | null; providerId: string | null } | null | undefined
+  >(undefined);
+
+  useEffect(() => {
+    lambdaClient.config.getVideoDefaultModel
+      .query()
+      .then((data) => setSystemVideoDefault(data as any))
+      .catch(() => setSystemVideoDefault(null));
+  }, []);
+
+  const isReadyForInit =
+    isStatusInit &&
+    isInitAiProviderRuntimeState &&
+    isUserStateReady &&
+    systemVideoDefault !== undefined;
+
+  // 当系统配置了视频默认模型时，用该模型替换整个 enabledVideoModelList
+  // （移除内置的 LobeHub/seedance 等硬编码模型，仅保留管理员配置的模型）
+  useEffect(() => {
+    if (!isInitAiProviderRuntimeState) return;
+    if (!systemVideoDefault?.modelId || !systemVideoDefault?.providerId) return;
+
+    // ProtoChat 模型必须通过 'protochat' 供应商路由；兼容旧配置中可能保存了子供应商 ID 的情况
+    const normalizedProviderId = systemVideoDefault.modelId?.startsWith('protochat::')
+      ? 'protochat'
+      : systemVideoDefault.providerId!;
+
+    const currentList = useAiInfraStore.getState().enabledVideoModelList || [];
+    const alreadyOnlyThis =
+      currentList.length === 1 &&
+      currentList[0].id === normalizedProviderId &&
+      currentList[0].children.length === 1 &&
+      currentList[0].children[0].id === systemVideoDefault.modelId;
+    if (alreadyOnlyThis) return;
+
+    const syntheticProvider = {
+      children: [
+        {
+          // 最小合法 parameters，满足 VideoModelParamsMetaSchema（仅 prompt 必填）
+          abilities: { video: true },
+          displayName: systemVideoDefault.displayName || systemVideoDefault.modelId,
+          id: systemVideoDefault.modelId!,
+          parameters: { prompt: {} },
+        },
+      ],
+      id: normalizedProviderId,
+      name: normalizedProviderId,
+      source: AiProviderSourceEnum.Custom,
+    };
+
+    // 替换整个列表，去掉内置硬编码模型
+    useAiInfraStore.setState({ enabledVideoModelList: [syntheticProvider] });
+  }, [systemVideoDefault, isInitAiProviderRuntimeState]);
 
   const { lastSelectedVideoModel, lastSelectedVideoProvider } = useGlobalStore((s) => ({
     lastSelectedVideoModel: s.status.lastSelectedVideoModel,
@@ -45,9 +97,8 @@ export const useFetchAiVideoConfig = () => {
 
   const enabledVideoModelList = useAiInfraStore(aiProviderSelectors.enabledVideoModelList);
 
-  // Determine which model/provider to use for initialization
   const initParams = useMemo(() => {
-    // 1. Try lastSelected if enabled
+    // 1. 优先使用上次选择的模型（仍启用时）
     if (
       lastSelectedVideoModel &&
       lastSelectedVideoProvider &&
@@ -56,29 +107,35 @@ export const useFetchAiVideoConfig = () => {
       return { model: lastSelectedVideoModel, provider: lastSelectedVideoProvider };
     }
 
-    // 2. Try default model from any enabled provider (prefer default provider first)
-    if (
-      checkModelEnabled(enabledVideoModelList, DEFAULT_AI_VIDEO_PROVIDER, DEFAULT_AI_VIDEO_MODEL)
-    ) {
-      return { model: undefined, provider: undefined }; // Use initialState defaults
-    }
-    const providerWithDefaultModel = enabledVideoModelList.find((p) =>
-      p.children.some((m) => m.id === DEFAULT_AI_VIDEO_MODEL),
-    );
-    if (providerWithDefaultModel) {
-      return { model: DEFAULT_AI_VIDEO_MODEL, provider: providerWithDefaultModel.id };
+    // 2. 使用后台配置的视频默认模型
+    if (systemVideoDefault?.modelId && systemVideoDefault?.providerId) {
+      if (
+        checkModelEnabled(
+          enabledVideoModelList,
+          systemVideoDefault.providerId,
+          systemVideoDefault.modelId,
+        )
+      ) {
+        return { model: systemVideoDefault.modelId, provider: systemVideoDefault.providerId };
+      }
+      // 跨供应商查找（以防 providerId 映射不同）
+      const providerWithDefault = enabledVideoModelList.find((p) =>
+        p.children.some((m) => m.id === systemVideoDefault.modelId),
+      );
+      if (providerWithDefault) {
+        return { model: systemVideoDefault.modelId, provider: providerWithDefault.id };
+      }
     }
 
-    // 3. Fallback to first enabled model
+    // 3. 降级到第一个可用模型
     const firstProvider = enabledVideoModelList[0];
     const firstModel = firstProvider?.children[0];
     if (firstProvider && firstModel) {
       return { model: firstModel.id, provider: firstProvider.id };
     }
 
-    // No enabled models
     return { model: undefined, provider: undefined };
-  }, [lastSelectedVideoModel, lastSelectedVideoProvider, enabledVideoModelList]);
+  }, [lastSelectedVideoModel, lastSelectedVideoProvider, enabledVideoModelList, systemVideoDefault]);
 
   useEffect(() => {
     if (!isInitializedVideoConfig && isReadyForInit) {

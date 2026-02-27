@@ -18,8 +18,9 @@ import {
 import { appEnv } from '@/envs/app';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { keyVaults, serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { initModelRuntimeFromDB, initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { FileService } from '@/server/services/file';
+import { ProtoChatService } from '@/server/services/protochat';
 import {
   AsyncTaskError,
   AsyncTaskErrorType,
@@ -204,7 +205,21 @@ export const videoRouter = router({
 
     // Step 2: Call model runtime to submit video generation task
     try {
-      const modelRuntime = await initModelRuntimeFromDB(serverDB, userId, provider);
+      // ProtoChat 供应商需要解析实际底层模型 ID（如 protochat::a1::seed-1.6-flash → seed-1.6-flash）
+      let modelToUse = model;
+      const modelRuntime = await (async () => {
+        if (ProtoChatService.isProtoChatProvider(provider)) {
+          // 视频模型的 enabled 字段控制聊天页面可见性，与视频能力无关，需忽略该检查
+          const { runtime, actualModel } = await initModelRuntimeWithUserPayload(
+            provider,
+            {},
+            { ignoreModelEnabled: true, model },
+          );
+          if (actualModel) modelToUse = actualModel;
+          return runtime;
+        }
+        return initModelRuntimeFromDB(serverDB, userId, provider);
+      })();
 
       const callbackBaseUrl = process.env.WEBHOOK_PROXY_URL || appEnv.APP_URL;
       const callbackUrl = `${callbackBaseUrl}/api/webhooks/video/${provider}?token=${webhookToken}`;
@@ -212,7 +227,7 @@ export const videoRouter = router({
 
       const response = await modelRuntime.createVideo({
         callbackUrl,
-        model,
+        model: modelToUse,
         params: generationParams,
       });
 

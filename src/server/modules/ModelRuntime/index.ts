@@ -368,8 +368,10 @@ const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = 
   // 1. 创建ProtoChat服务实例
   const protochatService = new ProtoChatService(serverDB);
 
-  // 2. 查询模型映射（从数据库）
-  const mapping = await protochatService.getModelMapping(modelId);
+  // 2. 查询模型映射（从数据库）；视频生成时忽略模型的 chat enabled 检查
+  const mapping = await protochatService.getModelMapping(modelId, {
+    ignoreModelEnabled: params?.ignoreModelEnabled,
+  });
 
   // 3. 转换模型ID: 'openrouter::openai/gpt-4o' → 'openai/gpt-4o'
   const actualModelId = protochatService.convertModelId(mapping.originalId);

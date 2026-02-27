@@ -124,6 +124,11 @@ export default [
         component: './SystemConfig/DefaultModel',
       },
       {
+        path: '/system-config/video-default-model',
+        name: 'videoDefaultModel',
+        component: './SystemConfig/VideoDefaultModel',
+      },
+      {
         path: '/system-config/embedding',
         name: 'embedding',
         component: './SystemConfig/Embedding',

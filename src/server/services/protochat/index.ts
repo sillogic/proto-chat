@@ -55,7 +55,10 @@ export class ProtoChatService {
    * 获取模型映射信息
    * @param modelId ProtoChat模型ID，支持完整格式 'protochat::a1::gpt-4o' 或简短格式 'gpt-4o'
    */
-  async getModelMapping(modelId: string): Promise<ProtoChatModelMapping> {
+  async getModelMapping(
+    modelId: string,
+    options: { ignoreModelEnabled?: boolean } = {},
+  ): Promise<ProtoChatModelMapping> {
     // 首先尝试精确匹配
     let model = await this.db
       .select()
@@ -84,7 +87,7 @@ export class ProtoChatService {
 
     const modelData = model[0];
 
-    if (!modelData.enabled) {
+    if (!options.ignoreModelEnabled && !modelData.enabled) {
       throw new Error(`ProtoChat model is disabled: ${modelId}`);
     }
 

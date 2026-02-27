@@ -60,7 +60,7 @@ const Nav = memo(() => {
         url: '/page',
       },
       {
-        hidden: !enableBusinessFeatures,
+        hidden: true, // TODO: 视频生成暂不支持，待 ProtoChat sdkType 改造完成后恢复
         icon: getRouteById('video')!.icon,
         isNew: true,
         key: SidebarTabKey.Video,

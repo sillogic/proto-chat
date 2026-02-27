@@ -19,6 +19,7 @@ import dashboardRoutes from './routes/dashboard';
 import subscriptionRoutes from './routes/subscriptions';
 import protochatRoutes from './routes/protochat';
 import systemDefaultModelRoutes from './routes/system-default-model';
+import systemVideoModelRoutes from './routes/system-video-model';
 import systemEmbeddingRoutes from './routes/system-embedding';
 import analyticsRoutes from './routes/analytics';
 import paymentsRoutes from './routes/payments';
@@ -80,6 +81,7 @@ app.use('/api/admin/subscriptions', subscriptionRoutes);
 app.use('/api/admin/payments', paymentsRoutes);
 app.use('/api/admin/protochat', protochatRoutes);
 app.use('/api/admin/system-config/default-model', systemDefaultModelRoutes);
+app.use('/api/admin/system-config/video-default-model', systemVideoModelRoutes);
 app.use('/api/admin/system-embedding', systemEmbeddingRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 
