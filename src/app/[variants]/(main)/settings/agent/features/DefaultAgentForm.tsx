@@ -22,9 +22,7 @@ const DefaultAgentForm = memo(() => {
     s.isUserStateInit,
   ]);
 
-  const defaultAgentConfig = useUserStore(
-    (s) => settingsSelectors.currentSettings(s).defaultAgent?.config,
-  );
+  const defaultAgentConfig = useUserStore(settingsSelectors.defaultAgentConfig);
 
   if (!isUserStateInit) return <Skeleton active paragraph={{ rows: 3 }} title={false} />;
 
