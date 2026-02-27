@@ -221,16 +221,17 @@ export const useCategory = () => {
         key: SettingsTabs.SystemTools,
         label: t('tab.systemTools'),
       },
-      {
-        icon: Database,
-        key: SettingsTabs.Storage,
-        label: t('tab.storage'),
-      },
-      !hideDocs && {
-        icon: Info,
-        key: SettingsTabs.About,
-        label: t('tab.about'),
-      },
+      // 暂时隐藏数据存储和关于页面
+      // {
+      //   icon: Database,
+      //   key: SettingsTabs.Storage,
+      //   label: t('tab.storage'),
+      // },
+      // !hideDocs && {
+      //   icon: Info,
+      //   key: SettingsTabs.About,
+      //   label: t('tab.about'),
+      // },
     ].filter(Boolean) as CategoryItem[];
 
     groups.push({
