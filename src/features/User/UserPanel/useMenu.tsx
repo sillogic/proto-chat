@@ -100,18 +100,7 @@ export const useMenu = () => {
     },
   ];
 
-  const data = !isLogin
-    ? []
-    : ([
-        {
-          icon: <Icon icon={HardDriveDownload} />,
-          key: 'import',
-          label: <DataImporter>{t('importData')}</DataImporter>,
-        },
-        {
-          type: 'divider',
-        },
-      ].filter(Boolean) as ItemType[]);
+  const data: ItemType[] = []; // 暂时隐藏导入数据入口
 
   const helps: MenuProps['items'] = [
     showCloudPromotion && {
