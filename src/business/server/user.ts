@@ -3,7 +3,14 @@ import { Plans, type ReferralStatusString } from '@lobechat/types';
 import { eq } from 'drizzle-orm';
 
 import { serverDB } from '@lobechat/database';
-import { userExtensions } from '@lobechat/database/schemas';
+import {
+  subscriptionPlans,
+  userBalances,
+  userExtensions,
+  userTransactions,
+} from '@lobechat/database/schemas';
+
+import { AgentService } from '@/server/services/agent';
 
 export async function getReferralStatus(userId: string): Promise<ReferralStatusString | undefined> {
   return undefined;
@@ -61,4 +68,59 @@ export async function getIsInviteCodeRequired(userId: string): Promise<boolean> 
 export async function initNewUserForBusiness(
   userId: string,
   createdAt: Date | null | undefined,
-): Promise<void> {}
+): Promise<void> {
+  // Step 1: Create inbox
+  const agentService = new AgentService(serverDB, userId);
+  await agentService.createInbox();
+
+  // Step 2: Look up the free plan
+  const freePlan = await serverDB
+    .select()
+    .from(subscriptionPlans)
+    .where(eq(subscriptionPlans.slug, 'free'))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  if (!freePlan) {
+    console.warn(`[initNewUserForBusiness] Free plan not found, user ${userId} will have no initial credits`);
+  } else {
+    // Step 3: Create userExtensions record with free plan
+    const nextCreditGrantAt = new Date();
+    nextCreditGrantAt.setMonth(nextCreditGrantAt.getMonth() + 1);
+
+    await serverDB
+      .insert(userExtensions)
+      .values({
+        currentPlan: freePlan.slug,
+        nextCreditGrantAt,
+        planId: freePlan.id,
+        subscriptionType: 'recurring',
+        userId,
+      })
+      .onConflictDoNothing();
+  }
+
+  // Step 4: Initialize user balance with free plan credits (or 0 if no plan found)
+  const initialCredits = freePlan?.credits ? parseFloat(freePlan.credits) : 0;
+
+  await serverDB
+    .insert(userBalances)
+    .values({
+      balance: initialCredits.toFixed(4),
+      totalPurchased: '0',
+      userId,
+    })
+    .onConflictDoNothing();
+
+  // Step 5: Record initial credit grant transaction
+  if (initialCredits > 0) {
+    await serverDB.insert(userTransactions).values({
+      amount: initialCredits.toFixed(4),
+      balanceAfter: initialCredits.toFixed(4),
+      category: 'SUBSCRIPTION_GRANT',
+      description: `Initial Free plan credits: ${initialCredits}`,
+      type: 'SUBSCRIPTION_GRANT',
+      userId,
+    });
+  }
+}
