@@ -133,65 +133,13 @@ const Footer = memo(() => {
   const helpMenuItems: MenuProps['items'] = useMemo(
     () => [
       {
-        icon: <Icon icon={Book} />,
-        key: 'docs',
-        label: (
-          <a href={DOCUMENTS_REFER_URL} rel="noopener noreferrer" target="_blank">
-            {t('userPanel.docs')}
-          </a>
-        ),
-      },
-      {
         icon: <Icon icon={Feather} />,
         key: 'feedback',
         label: t('userPanel.feedback'),
         onClick: handleOpenFeedbackModal,
       },
-      {
-        icon: <Icon icon={DiscordIcon} />,
-        key: 'discord',
-        label: (
-          <a href={SOCIAL_URL.discord} rel="noopener noreferrer" target="_blank">
-            {t('userPanel.discord')}
-          </a>
-        ),
-      },
-      {
-        icon: <Icon icon={Mail} />,
-        key: 'email',
-        label: (
-          <a href={mailTo(BRANDING_EMAIL.support)} rel="noopener noreferrer" target="_blank">
-            {t('userPanel.email')}
-          </a>
-        ),
-      },
-      {
-        type: 'divider',
-      },
-      {
-        icon: <Icon icon={FileClockIcon} />,
-        key: 'changelog',
-        label: t('changelog'),
-        onClick: handleOpenChangelogModal,
-      },
-      {
-        icon: <Icon icon={FlaskConical} />,
-        key: 'labs',
-        label: t('labs'),
-        onClick: handleOpenLabsModal,
-      },
-      ...(isWithinTimeWindow
-        ? [
-            {
-              icon: <Icon icon={Rocket} />,
-              key: 'productHunt',
-              label: 'Product Hunt',
-              onClick: handleOpenProductHuntCard,
-            },
-          ]
-        : []),
     ],
-    [t, isWithinTimeWindow],
+    [t],
   );
 
   return (
