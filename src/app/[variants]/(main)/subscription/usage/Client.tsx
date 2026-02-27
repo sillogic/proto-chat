@@ -37,25 +37,35 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
       <AccountSummary data={statsData} isLoading={isStatsLoading} />
       <Flexbox gap={40}>
         <Flexbox gap={16}>
-          <Flexbox gap={4}>
-            <Typography.Title level={5} style={{ margin: 0 }}>
-              计算积分使用明细
-            </Typography.Title>
-            <Typography.Text style={{ fontSize: '12px' }} type="secondary">
-              文本生成、文生图等计算积分使用明细
-            </Typography.Text>
+          <Flexbox align="center" horizontal justify="space-between">
+            <Flexbox gap={4}>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                计算积分使用明细
+              </Typography.Title>
+              <Typography.Text style={{ fontSize: '12px' }} type="secondary">
+                文本生成、文生图等计算积分使用明细（最新10条）
+              </Typography.Text>
+            </Flexbox>
+            <a href="/profile/usage/consumption" rel="noopener noreferrer" target="_blank">
+              <Typography.Link style={{ fontSize: '13px' }}>查看全部 ↗</Typography.Link>
+            </a>
           </Flexbox>
           <UsageConsumptionTable />
         </Flexbox>
 
         <Flexbox gap={16}>
-          <Flexbox gap={4}>
-            <Typography.Title level={5} style={{ margin: 0 }}>
-              账户流水记录
-            </Typography.Title>
-            <Typography.Text style={{ fontSize: '12px' }} type="secondary">
-              余额变更明细，包含充值、赠送、周期重置及系统扣费流水
-            </Typography.Text>
+          <Flexbox align="center" horizontal justify="space-between">
+            <Flexbox gap={4}>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                账户流水记录
+              </Typography.Title>
+              <Typography.Text style={{ fontSize: '12px' }} type="secondary">
+                余额变更明细，包含充值、赠送、周期重置及系统扣费流水（最新10条）
+              </Typography.Text>
+            </Flexbox>
+            <a href="/profile/usage/transactions" rel="noopener noreferrer" target="_blank">
+              <Typography.Link style={{ fontSize: '13px' }}>查看全部 ↗</Typography.Link>
+            </a>
           </Flexbox>
           <UsageTable />
         </Flexbox>

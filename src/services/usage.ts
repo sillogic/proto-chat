@@ -13,7 +13,24 @@ class UsageService {
         return lambdaClient.usage.getAccountStatistics.query(params);
     }
 
-    getTransactions = async (params: { limit?: number; mo?: string, offset?: number; } = {}) => {
+    getConsumptionDetails = async (params: {
+        dateFrom?: string;
+        dateTo?: string;
+        limit?: number;
+        model?: string;
+        offset?: number;
+        type?: string;
+    } = {}) => {
+        return lambdaClient.usage.getConsumptionDetails.query(params);
+    }
+
+    getTransactions = async (params: {
+        dateFrom?: string;
+        dateTo?: string;
+        limit?: number;
+        mo?: string;
+        offset?: number;
+    } = {}) => {
         return lambdaClient.usage.getTransactions.query(params);
     }
 

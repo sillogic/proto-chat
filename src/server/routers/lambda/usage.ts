@@ -42,16 +42,38 @@ export const usageRouter = router({
       return await ctx.userUsageService.getAccountStatistics(input?.mo);
     }),
 
+  getConsumptionDetails: usageProcedure
+    .input(
+      z.object({
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+        limit: z.number().optional(),
+        model: z.string().optional(),
+        offset: z.number().optional(),
+        type: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return await ctx.userUsageService.getConsumptionDetails(input.limit, input.offset, {
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
+        model: input.model,
+        type: input.type,
+      });
+    }),
+
   getTransactions: usageProcedure
     .input(
       z.object({
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
         limit: z.number().optional(),
         mo: z.string().optional(),
         offset: z.number().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
-      return await ctx.userUsageService.getTransactions(input.limit, input.offset, input.mo);
+      return await ctx.userUsageService.getTransactions(input.limit, input.offset, input.mo, input.dateFrom, input.dateTo);
     }),
 
   getUsageDetails: usageProcedure

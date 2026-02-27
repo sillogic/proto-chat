@@ -200,7 +200,7 @@ export class UserUsageService {
     /**
      * Get paginated transaction history
      */
-    async getTransactions(limit: number = 20, offset: number = 0, mo?: string) {
+    async getTransactions(limit: number = 20, offset: number = 0, mo?: string, dateFrom?: string, dateTo?: string) {
         let whereClause = eq(userTransactions.userId, this.userId);
 
         if (mo) {
@@ -211,6 +211,13 @@ export class UserUsageService {
                 sql`${userTransactions.createdAt} >= ${startAt.toISOString()}`,
                 sql`${userTransactions.createdAt} <= ${endAt.toISOString()}`,
             ) as any;
+        } else if (dateFrom || dateTo) {
+            if (dateFrom) {
+                whereClause = and(whereClause, sql`${userTransactions.createdAt} >= ${dateFrom}`) as any;
+            }
+            if (dateTo) {
+                whereClause = and(whereClause, sql`${userTransactions.createdAt} <= ${dateTo}`) as any;
+            }
         }
 
         const records = await this.db.query.userTransactions.findMany({
@@ -227,6 +234,93 @@ export class UserUsageService {
 
         return {
             list: records,
+            total: Number(totalStats[0]?.count || 0),
+        };
+    }
+
+    /**
+     * Get paginated consumption details with DB-level filtering (for detail page)
+     * Excludes embeddings; supports date range, type, and model filters
+     */
+    async getConsumptionDetails(
+        limit: number = 20,
+        offset: number = 0,
+        options?: {
+            dateFrom?: string;
+            dateTo?: string;
+            model?: string;
+            type?: string; // 'chat' | 'image'
+        },
+    ) {
+        let whereClause: any = and(
+            eq(userTransactions.userId, this.userId),
+            eq(userTransactions.type, 'CONSUMPTION'),
+        );
+
+        if (options?.dateFrom) {
+            whereClause = and(whereClause, sql`${userTransactions.createdAt} >= ${options.dateFrom}`);
+        }
+        if (options?.dateTo) {
+            whereClause = and(whereClause, sql`${userTransactions.createdAt} <= ${options.dateTo}`);
+        }
+        if (options?.type === 'image') {
+            whereClause = and(whereClause, sql`${userTransactions.metadata}->>'type' = 'image'`);
+        } else if (options?.type === 'chat') {
+            whereClause = and(
+                whereClause,
+                sql`(${userTransactions.metadata}->>'type' IS NULL OR ${userTransactions.metadata}->>'type' != 'image')`,
+            );
+        }
+        if (options?.model) {
+            whereClause = and(whereClause, sql`${userTransactions.metadata}->>'model' = ${options.model}`);
+        }
+
+        const records = await this.db
+            .select({ message: messages, transaction: userTransactions })
+            .from(userTransactions)
+            .leftJoin(messages, eq(userTransactions.refId, messages.id))
+            .where(whereClause)
+            .orderBy(desc(userTransactions.createdAt))
+            .limit(limit)
+            .offset(offset);
+
+        const totalStats = await this.db
+            .select({ count: sql<number>`count(*)` })
+            .from(userTransactions)
+            .where(whereClause);
+
+        const list = records.map(({ transaction: r, message: m }) => {
+            const metadata = (r.metadata as any) || {};
+            const msgMetadata = (m?.metadata as any) || {};
+
+            const model = metadata.model || m?.model || '-';
+            const provider = metadata.provider || m?.provider || '-';
+            const inputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
+            const outputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
+            const duration = metadata.duration || msgMetadata.duration || 0;
+
+            let usageType = 'chat';
+            if (metadata.type) {
+                usageType = metadata.type.toLowerCase();
+            } else if (r.refId && r.refId.startsWith('gen_')) {
+                usageType = 'image';
+            }
+
+            return {
+                ...r,
+                credits: Math.abs(Number(r.amount)),
+                duration,
+                model,
+                provider,
+                totalInputTokens: inputTokens,
+                totalOutputTokens: outputTokens,
+                totalTokens: inputTokens + outputTokens,
+                usageType,
+            };
+        });
+
+        return {
+            list,
             total: Number(totalStats[0]?.count || 0),
         };
     }

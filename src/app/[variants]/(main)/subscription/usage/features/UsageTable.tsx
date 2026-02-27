@@ -1,33 +1,14 @@
 import { Tag } from '@lobehub/ui';
 import { Table, TableColumnType, Typography } from 'antd';
 import { memo } from 'react';
-import { useTranslation } from 'react-i18next';
 
-import { parseAsInteger, useQueryParam } from '@/hooks/useQueryParam';
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';
 import { formatDate, formatNumber } from '@/utils/format';
 
-import { UsageChartProps } from '../Client';
-
-const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
-  useTranslation('auth');
-
-  const [currentPage, setCurrentPage] = useQueryParam('current', parseAsInteger.withDefault(1), {
-    clearOnDefault: true,
-  });
-  const [pageSize, setPageSize] = useQueryParam('pageSize', parseAsInteger.withDefault(10), {
-    clearOnDefault: true,
-  });
-
-  const { data, isLoading } = useClientDataSWR(
-    ['transactions', currentPage, pageSize, dateStrings],
-    async () =>
-      usageService.getTransactions({
-        limit: pageSize,
-        mo: dateStrings,
-        offset: (currentPage - 1) * pageSize,
-      }),
+const UsageTable = memo(() => {
+  const { data, isLoading } = useClientDataSWR('transactions-preview', async () =>
+    usageService.getTransactions({ limit: 10, offset: 0 }),
   );
 
   const columns: TableColumnType<any>[] = [
@@ -102,18 +83,7 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
       columns={columns}
       dataSource={data?.list || []}
       loading={isLoading}
-      pagination={{
-        current: currentPage,
-        onChange: (page) => {
-          setCurrentPage(page);
-        },
-        onShowSizeChange: (current, size) => {
-          setCurrentPage(current);
-          setPageSize(size);
-        },
-        pageSize,
-        total: data?.total || 0,
-      }}
+      pagination={false}
       rowKey="id"
       size="small"
     />
