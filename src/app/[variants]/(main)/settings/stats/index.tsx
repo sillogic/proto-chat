@@ -22,7 +22,7 @@ import {
   Welcome,
 } from './features/overview';
 import { AssistantsRank, ModelsRank, TopicsRank } from './features/rankings';
-import { AccountSummary, TransactionTable, UsageCards, UsageConsumptionTable, UsageTable, UsageTrends } from './features/usage';
+import { UsageCards, UsageTable, UsageTrends } from './features/usage';
 import { AiHeatmaps } from './features/visualization';
 import { GroupBy } from './types';
 
@@ -34,13 +34,8 @@ const StatsSetting = memo<{ mobile?: boolean }>(({ mobile }) => {
   const [dateRange, setDateRange] = useState<dayjs.Dayjs>(dayjs(new Date()));
   const [dateStrings, setDateStrings] = useState<string>();
 
-  const { data, isLoading, mutate } = useClientDataSWR(['usage-stat', dateStrings], async () =>
+  const { data, isLoading, mutate } = useClientDataSWR('usage-stat', async () =>
     usageService.findAndGroupByDay(dateStrings),
-  );
-
-  const { data: statsData, isLoading: isStatsLoading } = useClientDataSWR(
-    ['account-statistics', dateStrings],
-    async () => usageService.getAccountStatistics({ mo: dateStrings }),
   );
 
   useEffect(() => {
@@ -120,24 +115,9 @@ const StatsSetting = memo<{ mobile?: boolean }>(({ mobile }) => {
       >
         <UsageCards data={data} groupBy={groupBy} isLoading={isLoading} />
         <Divider />
-        <AccountSummary data={statsData} isLoading={isStatsLoading} />
-        <Divider />
         <UsageTrends data={data} groupBy={groupBy} isLoading={isLoading} />
         <div style={{ height: 24 }} />
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ marginBottom: 8, fontWeight: 600 }}>计算积分使用明细</div>
-          <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12, marginBottom: 16 }}>
-            文本生成、向量化、文生图等计算积分使用明细
-          </div>
-          <UsageConsumptionTable dateStrings={dateStrings} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ marginBottom: 8, fontWeight: 600 }}>账户流水记录</div>
-          <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12, marginBottom: 16 }}>
-            余额变更明细，包含充值、赠送、周期重置及系统扣费流水
-          </div>
-          <TransactionTable dateStrings={dateStrings} />
-        </div>
+        <UsageTable dateStrings={dateStrings} />
       </FormGroup>
     </>
   );
