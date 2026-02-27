@@ -7,7 +7,7 @@ import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { PaymentService } from '@/server/modules/payment';
 import { paymentOrders, subscriptionPlans } from '@lobechat/database';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, notInArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 const paymentProcedure = authedProcedure.use(serverDatabase);
@@ -238,7 +238,12 @@ planName: subscriptionPlans.name,
         })
         .from(paymentOrders)
         .leftJoin(subscriptionPlans, eq(paymentOrders.planId, subscriptionPlans.id))
-        .where(eq(paymentOrders.userId, ctx.userId))
+        .where(
+          and(
+            eq(paymentOrders.userId, ctx.userId),
+            notInArray(paymentOrders.status, ['closed', 'pending']),
+          ),
+        )
         .orderBy(desc(paymentOrders.createdAt))
         .limit(input.limit)
         .offset(input.offset);
@@ -247,7 +252,12 @@ planName: subscriptionPlans.name,
       const countResult = await ctx.serverDB
         .select({ count: paymentOrders.id })
         .from(paymentOrders)
-        .where(eq(paymentOrders.userId, ctx.userId));
+        .where(
+          and(
+            eq(paymentOrders.userId, ctx.userId),
+            notInArray(paymentOrders.status, ['closed', 'pending']),
+          ),
+        );
 
       return {
         hasMore: input.offset + input.limit < countResult.length,

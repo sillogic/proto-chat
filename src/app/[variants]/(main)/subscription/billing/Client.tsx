@@ -399,14 +399,8 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
                   : '此金额仅包含订阅服务费用。'}
               </Typography.Text>
             )}
-            <Link className={styles.link} style={{ fontSize: 12 }} to="/profile/usage">
-              查看本月使用情况
-            </Link>
-          </Flexbox>
-          <Flexbox flex={1} gap={8}>
-            <div className={styles.priceLabel}>账单信息</div>
-            <Link className={styles.link} to="/subscription/plans">
-              升级计划 <Icon icon={ArrowUpRight} size={14} />
+            <Link className={styles.link} style={{ fontSize: 12 }} to="/settings/usage">
+              查看使用统计
             </Link>
           </Flexbox>
         </Flexbox>
@@ -429,7 +423,7 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
             )}
             <Link to="/subscription/plans">
               <Button className={styles.upgradeButton} type="primary">
-                {currentPlan?.planSlug === 'free' || !currentPlan?.autoRenew ? '订 阅' : '升 级'}
+                升级
               </Button>
             </Link>
           </Flexbox>
@@ -455,16 +449,10 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
                   </Tag>
                 )}
                 {/* Auto-renewal status tag */}
-                {currentPlan?.subscriptionType === 'recurring' && currentPlan?.planSlug !== 'free' && (
-                  currentPlan?.autoRenew ? (
-                    <Tag color="green" icon={<Icon icon={RefreshCw} size={12} />}>
-                      自动续费已开启
-                    </Tag>
-                  ) : (
-                    <Tag color="orange">
-                      自动续费已关闭
-                    </Tag>
-                  )
+                {currentPlan?.subscriptionType === 'recurring' && currentPlan?.planSlug !== 'free' && currentPlan?.autoRenew && (
+                  <Tag color="green" icon={<Icon icon={RefreshCw} size={12} />}>
+                    自动续费已开启
+                  </Tag>
                 )}
               </Flexbox>
               <div className={styles.planDescription}>
