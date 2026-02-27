@@ -9,6 +9,9 @@ import { formatDate } from '@/utils/format';
 
 const log = debug('lobe-usage:service');
 
+// Fixed conversion rate: 1 USD = 500,000 credits (confirmed from modelPricings data)
+const CREDITS_PER_USD = 500_000;
+
 export class UsageRecordService {
   private userId: string;
   private db: LobeChatDatabase;
@@ -54,10 +57,12 @@ export class UsageRecordService {
         metadata: spend.metadata,
         model,
         provider,
-        spend: Math.abs(Number(spend.amount)),
+        spend: Math.abs(Number(spend.amount)) / CREDITS_PER_USD,
         totalInputTokens: inputTokens,
         totalOutputTokens: outputTokens,
         totalTokens: inputTokens + outputTokens,
+        tps: msgMetadata.tps ?? null,
+        ttft: msgMetadata.ttft ?? null,
         type: 'chat',
         updatedAt: spend.createdAt,
         userId: spend.userId,
@@ -115,10 +120,12 @@ export class UsageRecordService {
         metadata: spend.metadata,
         model,
         provider,
-        spend: Math.abs(Number(spend.amount)),
+        spend: Math.abs(Number(spend.amount)) / CREDITS_PER_USD,
         totalInputTokens: inputTokens,
         totalOutputTokens: outputTokens,
         totalTokens: inputTokens + outputTokens,
+        tps: msgMetadata.tps ?? null,
+        ttft: msgMetadata.ttft ?? null,
         type: 'chat',
         updatedAt: spend.createdAt,
         userId: spend.userId,
