@@ -8,6 +8,10 @@ import { CreditService } from '../../../server/services/credit';
 const log = debug('lobe-image:charge');
 
 interface ChargeParams {
+  /** Generation duration in milliseconds */
+  duration?: number;
+  /** Generated image height in pixels */
+  height?: number;
   metadata: {
     asyncTaskId: string;
     generationBatchId: string;
@@ -17,10 +21,12 @@ interface ChargeParams {
   modelUsage?: ModelUsage;
   provider: string;
   userId: string;
+  /** Generated image width in pixels */
+  width?: number;
 }
 
 export async function chargeAfterGenerate(params: ChargeParams): Promise<void> {
-  const { userId, provider, metadata } = params;
+  const { userId, provider, metadata, duration, width, height } = params;
   const { modelId, asyncTaskId } = metadata;
 
   try {
@@ -35,11 +41,14 @@ export async function chargeAfterGenerate(params: ChargeParams): Promise<void> {
         `Image generation: ${modelId}`,
         metadata.generationBatchId,
         {
+          asyncTaskId,
+          duration,
+          height,
           model: modelId,
           provider,
-          type: 'image',
-          asyncTaskId,
           topicId: metadata.topicId,
+          type: 'image',
+          width,
         },
       );
       log('Credits deducted for image generation: taskId=%s, cost=%s', asyncTaskId, cost);

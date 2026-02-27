@@ -248,10 +248,12 @@ export const imageRouter = router({
           // Check if operation has been cancelled
           checkAbortSignal(signal);
           log('Agent runtime initialized, calling createImage with model: %s', modelId);
+          const genStartTime = Date.now();
           const response = await modelRuntime.createImage!({
             model: modelId,
             params: params as unknown as RuntimeImageGenParams,
           });
+          const genDuration = Date.now() - genStartTime;
 
           if (!response) {
             log('Create image response is empty');
@@ -269,6 +271,8 @@ export const imageRouter = router({
 
           if (ENABLE_BUSINESS_FEATURES) {
             await chargeAfterGenerate({
+              duration: genDuration,
+              height: response.height,
               metadata: {
                 asyncTaskId: taskId,
                 generationBatchId,
@@ -278,6 +282,7 @@ export const imageRouter = router({
               modelUsage,
               provider,
               userId: ctx.userId,
+              width: response.width,
             });
           } else {
             // Deduct credits for image generation (uses perRequestPrice from model_pricings)

@@ -82,15 +82,24 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
     {
       dataIndex: 'totalTokens',
       key: 'totalTokens',
-      render: (_, record) => (
-        <Space size={8}>
-          <Text strong>{Number(record.totalTokens || 0).toLocaleString()}</Text>
-          <Text style={{ fontSize: '11px' }} type="secondary">
-            = ↓ {record.totalInputTokens || 0} + ↑ {record.totalOutputTokens || 0}
-          </Text>
-        </Space>
-      ),
-      title: 'Token 用量',
+      render: (_, record) => {
+        if (record.usageType === 'image') {
+          const meta = (record.metadata as any) || {};
+          if (meta.width && meta.height) {
+            return <Text style={{ fontSize: '12px' }} type="secondary">{meta.width}×{meta.height}px</Text>;
+          }
+          return <Text style={{ fontSize: '11px' }} type="secondary">按次计费</Text>;
+        }
+        return (
+          <Space size={8}>
+            <Text strong>{Number(record.totalTokens || 0).toLocaleString()}</Text>
+            <Text style={{ fontSize: '11px' }} type="secondary">
+              = ↓ {record.totalInputTokens || 0} + ↑ {record.totalOutputTokens || 0}
+            </Text>
+          </Space>
+        );
+      },
+      title: 'Token / 规格',
     },
     {
       align: 'right',
@@ -114,9 +123,21 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
     },
   ];
 
-  // Image-specific columns (no token usage or duration)
+  // Image-specific columns (dimensions + duration)
   const imageColumns: TableColumnType<any>[] = [
     ...baseColumns,
+    {
+      dataIndex: 'metadata',
+      key: 'imageSize',
+      render: (meta: any) => {
+        if (meta?.width && meta?.height) {
+          return <Text style={{ fontSize: '12px' }} type="secondary">{meta.width}×{meta.height}px</Text>;
+        }
+        return <Text type="secondary">-</Text>;
+      },
+      title: '尺寸',
+      width: 100,
+    },
     {
       align: 'right',
       dataIndex: 'credits',
@@ -127,12 +148,23 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
       title: '积分',
       width: 100,
     },
+    {
+      align: 'right',
+      dataIndex: 'duration',
+      key: 'duration',
+      render: (val) => (
+        <Text style={{ fontSize: '12px' }} type="secondary">{val ? `${(Number(val) / 1000).toFixed(2)}s` : '-'}</Text>
+      ),
+      title: '用时',
+      width: 80,
+    },
   ];
 
-  // Filter data based on active tab
+  // Filter data based on active tab; embedding records are for backend cost tracking only
   const filteredData = data?.list?.filter((item: any) => {
+    if (item.usageType === 'embedding') return false;
     if (activeTab === 'all') return true;
-    if (activeTab === 'text') return item.usageType === 'chat' || item.usageType === 'embedding';
+    if (activeTab === 'text') return item.usageType === 'chat';
     if (activeTab === 'image') return item.usageType === 'image';
     return true;
   }) || [];
@@ -145,7 +177,7 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
           children: (
             <Table
               columns={tokenColumns}
-              dataSource={data?.list || []}
+              dataSource={filteredData}
               loading={isLoading}
               pagination={{
                 current: currentPage,
@@ -171,7 +203,7 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
           children: (
             <Table
               columns={tokenColumns}
-              dataSource={filteredData}
+              dataSource={filteredData.filter((item: any) => item.usageType === 'chat')}
               loading={isLoading}
               pagination={{
                 current: currentPage,
@@ -183,7 +215,7 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
                   setPageSize(size);
                 },
                 pageSize,
-                total: filteredData.length,
+                total: filteredData.filter((item: any) => item.usageType === 'chat').length,
               }}
               rowKey="id"
               scroll={{ x: 'max-content' }}
@@ -191,7 +223,7 @@ const UsageConsumptionTable = memo<UsageChartProps>(({ dateStrings }) => {
             />
           ),
           key: 'text',
-          label: '文本/向量',
+          label: '文本生成',
         },
         {
           children: (
