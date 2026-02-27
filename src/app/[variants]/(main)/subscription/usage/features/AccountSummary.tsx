@@ -71,7 +71,7 @@ const AccountSummary = memo<AccountSummaryProps>(({ data, isLoading }) => {
                 <Text style={{ fontSize: '12px' }} type="secondary">
                   下一重置日: {data.resetCountdown?.nextResetDate || '-'}
                 </Text>
-                <Tag bordered={false} color="processing">
+                <Tag variant="filled" color="processing">
                   {data.balance?.currentPlan || '免费版'}
                 </Tag>
               </div>

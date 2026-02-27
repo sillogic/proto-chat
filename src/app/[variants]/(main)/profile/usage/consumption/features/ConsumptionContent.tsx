@@ -106,7 +106,7 @@ const ConsumptionContent = memo(() => {
         };
         const config = typeMap[usageType?.toLowerCase()] || { color: 'default', label: usageType || '其他' };
         return (
-          <Tag bordered={false} color={config.color} style={{ fontWeight: 500 }}>
+          <Tag color={config.color} style={{ fontWeight: 500 }} variant="filled">
             {config.label}
           </Tag>
         );
