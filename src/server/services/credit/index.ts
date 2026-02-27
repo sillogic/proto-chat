@@ -95,7 +95,7 @@ export class CreditService {
                 balanceAfter: newBalance.toFixed(4),
                 category: 'CONSUMPTION',
                 description,
-                id: idGenerator('tx'),
+                id: idGenerator('userTransactions'),
                 metadata,
                 refId,
                 type: 'CONSUMPTION',

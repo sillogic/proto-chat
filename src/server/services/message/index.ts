@@ -201,8 +201,6 @@ export class MessageService {
     await this.messageModel.update(id, value as any);
     // Handle credit deduction when token usage is included in metadata (e.g., after stream finish)
     if (value.metadata) {
-      const { totalInputTokens, totalOutputTokens } = value.metadata as any;
-      console.log('[Credit Debug] updateMessage with metadata:', { id, totalInputTokens, totalOutputTokens, metadataKeys: Object.keys(value.metadata) });
       await this.handleCreditDeduction(id, value.metadata);
     }
     return this.queryWithSuccess(options);
@@ -228,20 +226,15 @@ export class MessageService {
   private async handleCreditDeduction(id: string, incomingMetadata: any) {
     const { totalInputTokens, totalOutputTokens } = incomingMetadata;
 
-    console.log('[Credit Debug] handleCreditDeduction called:', { id, totalInputTokens, totalOutputTokens });
-
     if (totalInputTokens || totalOutputTokens) {
       try {
         const message = await this.messageModel.findById(id);
-        console.log('[Credit Debug] message found:', { id: message?.id, role: message?.role, model: message?.model, provider: message?.provider });
         if (message && message.role === 'assistant' && message.model && message.provider) {
           // Check if credits have already been deducted for this message
           const metadata = (message.metadata || {}) as any;
-          console.log('[Credit Debug] creditsDeducted:', metadata.creditsDeducted);
           if (!metadata.creditsDeducted) {
             // Check if user is using their own API key for this provider
             const isUserConfig = await this.isUserUsingOwnConfig(message.provider);
-            console.log('[Credit Debug] isUserConfig:', isUserConfig);
 
             const cost = await this.creditService.calculateCost(
               message.model,
@@ -250,7 +243,6 @@ export class MessageService {
               totalOutputTokens || 0,
               isUserConfig, // Pass the flag to determine if user is using own config
             );
-            console.log('[Credit Debug] calculated cost:', cost);
             if (cost > 0) {
               await this.creditService.deductCredits(cost, `Chat completion: ${message.model}`, id, {
                 model: message.model,
@@ -260,22 +252,15 @@ export class MessageService {
               });
               // Mark as deducted in database
               await this.messageModel.updateMetadata(id, { cost, creditsDeducted: true });
-              console.log('[Credit Debug] deducted successfully:', cost);
             } else if (isUserConfig) {
               // Mark as deducted (but free) to avoid re-checking
               await this.messageModel.updateMetadata(id, { cost: 0, creditsDeducted: true, userConfig: true });
-            } else {
-              console.log('[Credit Debug] cost=0 and not userConfig, no deduction (free model or missing pricing)');
             }
           }
-        } else {
-          console.log('[Credit Debug] skipping: message null or not assistant or missing model/provider');
         }
       } catch (error) {
         console.error('[MessageService] Failed to deduct credits:', error);
       }
-    } else {
-      console.log('[Credit Debug] no tokens in metadata, skipping');
     }
   }
 

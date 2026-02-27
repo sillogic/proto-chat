@@ -45,7 +45,7 @@ export const userTransactions = pgTable(
 
         id: text('id')
             .primaryKey()
-            .$defaultFn(() => idGenerator('tx')),
+            .$defaultFn(() => idGenerator('userTransactions')),
 
         metadata: jsonb('metadata'),
 
