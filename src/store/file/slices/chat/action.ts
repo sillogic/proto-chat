@@ -164,7 +164,7 @@ export class FileActionImpl {
       if (isChunkingUnsupported(file.type)) return;
 
       const data = await ragService.parseFileContent(fileResult.id);
-      console.log('parseFileContent data:', data);
+      console.info('parseFileContent data:', data);
     });
 
     await Promise.all(pools);

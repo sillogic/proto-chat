@@ -17,7 +17,13 @@ export const BRANDING_URL = {
   terms: 'https://protochat.ai/terms',
 };
 
-export const SOCIAL_URL = {
+export const SOCIAL_URL: {
+  discord: string | undefined;
+  github: string | undefined;
+  medium: string | undefined;
+  x: string | undefined;
+  youtube: string | undefined;
+} = {
   discord: undefined,
   github: undefined,
   medium: undefined,
@@ -25,7 +31,9 @@ export const SOCIAL_URL = {
   youtube: undefined,
 };
 
-export const FILE_URL = {
+export const FILE_URL: {
+  importFromNotionGuide: string | undefined;
+} = {
   importFromNotionGuide: undefined,
 };
 

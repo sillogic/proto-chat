@@ -1,9 +1,8 @@
 'use client';
 
-import { FormGroup, Grid } from '@lobehub/ui';
+import { Flexbox,FormGroup, Grid  } from '@lobehub/ui';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from '@lobehub/ui';
 
 import { FORM_STYLE } from '@/const/layoutTokens';
 
@@ -26,7 +25,7 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
       {mobile ? (
         <Welcome mobile />
       ) : (
-        <Flexbox align={'flex-start'} gap={16} horizontal justify={'space-between'}>
+        <Flexbox horizontal align={'flex-start'} gap={16} justify={'space-between'}>
           <Welcome />
           <ShareButton />
         </Flexbox>

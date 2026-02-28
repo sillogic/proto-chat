@@ -1,4 +1,4 @@
-import { ModelPriceCurrency, Pricing } from 'model-bank';
+import type { ModelPriceCurrency, Pricing } from 'model-bank';
 
 import {
   formatPriceByCurrency,

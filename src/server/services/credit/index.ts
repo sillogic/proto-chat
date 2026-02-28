@@ -1,6 +1,7 @@
-import { LobeChatDatabase } from '@/database/type';
-import { userBalances, userTransactions, modelPricings } from '@/database/schemas';
-import { eq, and } from 'drizzle-orm';
+import { and,eq } from 'drizzle-orm';
+
+import { modelPricings,userBalances, userTransactions } from '@/database/schemas';
+import type { LobeChatDatabase } from '@/database/type';
 import { idGenerator } from '@/database/utils/idGenerator';
 
 export class CreditService {
@@ -33,7 +34,7 @@ export class CreditService {
     ) {
         // If user is using their own API key, don't charge
         if (isUserConfig) {
-            console.log(`[Credit] User using own config for ${provider}, no charge`);
+            console.info(`[Credit] User using own config for ${provider}, no charge`);
             return 0;
         }
 
@@ -56,7 +57,7 @@ export class CreditService {
         const cost = (inputTokens / 1_000_000) * userInputPrice + (outputTokens / 1_000_000) * userOutputPrice + perRequestPrice;
 
         const subProviderInfo = pricing.subProvider ? ` (via ${pricing.subProvider})` : '';
-        console.log(`[Credit] Charging for ${provider}::${model}${subProviderInfo}, cost: ${cost.toFixed(4)} credits`);
+        console.info(`[Credit] Charging for ${provider}::${model}${subProviderInfo}, cost: ${cost.toFixed(4)} credits`);
 
         return cost;
     }

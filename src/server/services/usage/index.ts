@@ -3,8 +3,8 @@ import debug from 'debug';
 import { and, desc, eq, gte, lte } from 'drizzle-orm';
 
 import { messages, userTransactions } from '@/database/schemas';
-import { LobeChatDatabase } from '@/database/type';
-import { UsageLog, UsageRecordItem } from '@/types/usage/usageRecord';
+import type { LobeChatDatabase } from '@/database/type';
+import type { UsageLog, UsageRecordItem } from '@/types/usage/usageRecord';
 import { formatDate } from '@/utils/format';
 
 const log = debug('lobe-usage:service');

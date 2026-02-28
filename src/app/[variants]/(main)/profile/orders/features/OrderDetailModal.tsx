@@ -1,11 +1,10 @@
 'use client';
 
-import { Icon, Tag } from '@lobehub/ui';
+import { Flexbox,Icon, Tag  } from '@lobehub/ui';
 import { Descriptions, Modal, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import { AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { memo } from 'react';
-import { Flexbox } from '@lobehub/ui';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
   modal: css`
@@ -124,10 +123,10 @@ const OrderDetailModal = memo<OrderDetailModalProps>(({ open, onClose, order }) 
     <Modal
       className={styles.modal}
       footer={null}
-      onCancel={onClose}
       open={open}
       title="订单详情"
       width={700}
+      onCancel={onClose}
     >
       <Flexbox gap={24} style={{ paddingTop: 16 }}>
         {/* 基本信息 */}
@@ -135,7 +134,7 @@ const OrderDetailModal = memo<OrderDetailModalProps>(({ open, onClose, order }) 
           <div className={styles.sectionTitle}>基本信息</div>
           <Descriptions bordered column={1} size="small">
             <Descriptions.Item label="订单号">
-              <Typography.Text className={styles.orderNo} copyable>
+              <Typography.Text copyable className={styles.orderNo}>
                 {order.orderNo}
               </Typography.Text>
             </Descriptions.Item>

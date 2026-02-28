@@ -1,4 +1,4 @@
-import { DocRenderer } from '@cyntler/react-doc-viewer';
+import type { DocRenderer } from '@cyntler/react-doc-viewer';
 import { Center, Flexbox } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { useEffect, useState } from 'react';
@@ -7,47 +7,49 @@ import CircleLoading from '@/components/Loading/CircleLoading';
 
 const useStyles = createStyles(({ css, token }) => ({
   container: css`
+    overflow: auto;
+
     width: 100%;
     height: 100%;
-    overflow: auto;
     padding: 24px;
+
     background: ${token.colorBgContainer};
   `,
   content: css`
     max-width: 800px;
-    margin: 0 auto;
+    margin-block: 0;
+    margin-inline: auto;
 
     /* Mammoth-generated HTML styling */
     p {
-      margin-bottom: 1em;
+      margin-block-end: 1em;
       line-height: 1.6;
     }
 
     h1, h2, h3, h4, h5, h6 {
-      margin-top: 1.5em;
-      margin-bottom: 0.5em;
+      margin-block: 1.5em 0.5em;
       font-weight: 600;
     }
 
     ul, ol {
-      margin-bottom: 1em;
-      padding-left: 2em;
+      margin-block-end: 1em;
+      padding-inline-start: 2em;
     }
 
     table {
       border-collapse: collapse;
-      margin-bottom: 1em;
       width: 100%;
+      margin-block-end: 1em;
     }
 
     td, th {
-      border: 1px solid ${token.colorBorder};
       padding: 8px;
+      border: 1px solid ${token.colorBorder};
     }
 
     th {
-      background: ${token.colorBgTextHover};
       font-weight: 600;
+      background: ${token.colorBgTextHover};
     }
 
     img {

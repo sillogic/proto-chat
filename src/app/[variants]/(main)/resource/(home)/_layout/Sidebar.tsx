@@ -18,6 +18,7 @@ const Sidebar = memo(() => {
   return (
     <NavPanelPortal navKey="resource">
       <SideBarLayout
+        footer={<UsageFooter />}
         header={<Header />}
         body={
           <Flexbox paddingBlock={8} paddingInline={4}>
@@ -26,8 +27,6 @@ const Sidebar = memo(() => {
             </Accordion>
           </Flexbox>
         }
-        footer={<UsageFooter />}
-        header={<Header />}
       />
     </NavPanelPortal>
   );

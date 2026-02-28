@@ -71,22 +71,22 @@ export interface PaymentChannel {
   /**
    * Close/cancel an unpaid order
    */
-  closeOrder(orderNo: string): Promise<void>;
+  closeOrder: (orderNo: string) => Promise<void>;
 
   /**
    * Create a payment with the channel
    */
-  createPayment(order: PaymentOrder): Promise<ChannelPaymentResult>;
+  createPayment: (order: PaymentOrder) => Promise<ChannelPaymentResult>;
 
   /**
    * Parse notification callback from the channel
    */
-  parseNotification(rawBody: string | Buffer, headers?: Record<string, any>): Promise<NotificationResult>;
+  parseNotification: (rawBody: string | Buffer, headers?: Record<string, any>) => Promise<NotificationResult>;
 
   /**
    * Query order status from the channel
    */
-  queryOrder(orderNo: string): Promise<OrderStatus>;
+  queryOrder: (orderNo: string) => Promise<OrderStatus>;
 }
 
 // Create order input

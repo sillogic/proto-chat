@@ -1,12 +1,12 @@
 'use client';
 
-import { Icon, Tag } from '@lobehub/ui';
+import { Flexbox,Icon, Tag  } from '@lobehub/ui';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Card, Empty, message, Modal, Pagination, Table, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { createStyles } from 'antd-style';
 import {
   AlertCircle,
-  ArrowUpRight,
   CheckCircle,
   CheckCircle2,
   Clock,
@@ -15,14 +15,13 @@ import {
   XCircle,
   XCircle as XIcon,
 } from 'lucide-react';
-import { memo, useState, useCallback } from 'react';
+import { memo, useCallback,useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Flexbox } from '@lobehub/ui';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { PlanFeatures} from '@/app/[variants]/(main)/subscription/hooks/useSubscriptionPlans';
+import {useSubscriptionPlans } from '@/app/[variants]/(main)/subscription/hooks/useSubscriptionPlans';
 import { lambdaClient } from '@/libs/trpc/client';
-import { useSubscriptionPlans, PlanFeatures } from '@/app/[variants]/(main)/subscription/hooks/useSubscriptionPlans';
 
 import OrderDetailModal from './features/OrderDetailModal';
 
@@ -362,9 +361,9 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
       render: (_, record) => (
         <Button
           icon={<Icon icon={Eye} size={14} />}
-          onClick={() => handleViewDetail(record)}
           size="small"
           type="link"
+          onClick={() => handleViewDetail(record)}
         >
           详情
         </Button>
@@ -408,9 +407,9 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
 
       {/* 当前套餐 */}
       <Card className={styles.card}>
-        <Flexbox align="center" horizontal justify="space-between">
+        <Flexbox horizontal align="center" justify="space-between">
           <div className={styles.sectionTitle}>当前套餐</div>
-          <Flexbox gap={8} horizontal>
+          <Flexbox horizontal gap={8}>
             {/* Cancel auto-renewal button */}
             {currentPlan?.autoRenew && currentPlan?.currentAgreementId && (
               <Button
@@ -430,12 +429,12 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
         </Flexbox>
         <Flexbox gap={16} style={{ marginTop: 16 }}>
           {/* Plan header */}
-          <Flexbox align="center" gap={12} horizontal>
+          <Flexbox horizontal align="center" gap={12}>
             <div className={styles.planIcon}>
               <CheckCircle2 color={theme.colorPrimary} size={24} />
             </div>
             <Flexbox gap={2}>
-              <Flexbox align="center" gap={8} horizontal>
+              <Flexbox horizontal align="center" gap={8}>
                 <div className={styles.planName}>
                   {currentPlan?.planName || '免费版'}
                 </div>
@@ -469,9 +468,9 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
           {/* Downgrade notice */}
           {currentPlan?.downgradeReason && currentPlan?.previousPlanName && (
             <Alert
+              showIcon
               description={`您的 ${currentPlan.previousPlanName} 订阅因${currentPlan.downgradeReason === 'deduct_failed' ? '扣款失败' : currentPlan.downgradeReason === 'user_unsign' ? '您取消了自动续费' : '已到期'}已降级为免费版。您可以随时重新订阅。`}
               message="订阅已变更"
-              showIcon
               type="warning"
             />
           )}
@@ -509,9 +508,9 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
         {/* Error State */}
         {ordersError && (
           <Alert
+            showIcon
             description="加载账单记录失败，请稍后重试"
             message="加载失败"
-            showIcon
             style={{ marginTop: 16 }}
             type="error"
           />
@@ -523,36 +522,36 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
             columns={columns}
             dataSource={ordersData?.orders || []}
             loading={ordersLoading}
+            pagination={false}
+            rowKey="id"
+            scroll={{ x: 700 }}
+            size="small"
             locale={{
               emptyText: (
                 <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ),
             }}
-            pagination={false}
-            rowKey="id"
-            scroll={{ x: 700 }}
-            size="small"
           />
         </div>
 
         {/* Pagination */}
         {ordersData && ordersData.total > 0 && (
-          <Flexbox align="center" horizontal justify="flex-end" style={{ marginTop: 16 }}>
+          <Flexbox horizontal align="center" justify="flex-end" style={{ marginTop: 16 }}>
             <Pagination
+              showQuickJumper
+              showSizeChanger
               current={page}
+              pageSize={pageSize}
+              pageSizeOptions={['10', '20', '50']}
+              showTotal={(total) => `共 ${total} 条记录`}
+              size="small"
+              total={ordersData.total}
               onChange={(newPage, newPageSize) => {
                 setPage(newPage);
                 if (newPageSize !== pageSize) {
                   setPageSize(newPageSize);
                 }
               }}
-              pageSize={pageSize}
-              pageSizeOptions={['10', '20', '50']}
-              showQuickJumper
-              showSizeChanger
-              showTotal={(total) => `共 ${total} 条记录`}
-              size="small"
-              total={ordersData.total}
             />
           </Flexbox>
         )}
@@ -560,12 +559,12 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
 
       {/* Order Detail Modal */}
       <OrderDetailModal
+        open={detailModalOpen}
+        order={selectedOrder}
         onClose={() => {
           setDetailModalOpen(false);
           setSelectedOrder(null);
         }}
-        open={detailModalOpen}
-        order={selectedOrder}
       />
     </Flexbox>
   );

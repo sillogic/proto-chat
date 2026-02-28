@@ -86,7 +86,7 @@ export async function GET(request: Request) {
         )
       );
 
-    console.log(
+    console.info(
       `[Cron] Cleaned up ${unverifiedUsers.length} unverified users:`,
       unverifiedUsers.map((u) => u.email)
     );

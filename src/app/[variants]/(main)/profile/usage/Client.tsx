@@ -1,12 +1,12 @@
 'use client';
 
+import { Flexbox } from '@lobehub/ui';
 import { Typography } from 'antd';
 import { memo } from 'react';
-import { Flexbox } from '@lobehub/ui';
 
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';
-import { UsageLog } from '@/types/usage/usageRecord';
+import type { UsageLog } from '@/types/usage/usageRecord';
 
 import AccountSummary from './features/AccountSummary';
 import UsageConsumptionTable from './features/UsageConsumptionTable';
@@ -37,7 +37,7 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
       <AccountSummary data={statsData} isLoading={isStatsLoading} />
       <Flexbox gap={40}>
         <Flexbox gap={16}>
-          <Flexbox align="center" horizontal justify="space-between">
+          <Flexbox horizontal align="center" justify="space-between">
             <Flexbox gap={4}>
               <Typography.Title level={5} style={{ margin: 0 }}>
                 计算积分使用明细
@@ -54,7 +54,7 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
         </Flexbox>
 
         <Flexbox gap={16}>
-          <Flexbox align="center" horizontal justify="space-between">
+          <Flexbox horizontal align="center" justify="space-between">
             <Flexbox gap={4}>
               <Typography.Title level={5} style={{ margin: 0 }}>
                 账户流水记录

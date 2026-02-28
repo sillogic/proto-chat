@@ -72,26 +72,26 @@ const About = memo<{ mobile?: boolean }>(({ mobile }) => {
               value: 'blog',
             },
             {
-              href: SOCIAL_URL.github,
+              href: SOCIAL_URL.github ?? '',
               icon: SiGithub,
               label: 'GitHub',
               value: 'feedback',
             },
             {
-              href: SOCIAL_URL.discord,
+              href: SOCIAL_URL.discord ?? '',
               icon: SiDiscord,
               label: 'Discord',
               value: 'discord',
             },
             {
-              href: SOCIAL_URL.x,
+              href: SOCIAL_URL.x ?? '',
               icon: SiX as any,
               label: 'X / Twitter',
               value: 'x',
             },
 
             {
-              href: SOCIAL_URL.youtube,
+              href: SOCIAL_URL.youtube ?? '',
               icon: SiYoutube,
               label: 'YouTube',
               value: 'youtube',

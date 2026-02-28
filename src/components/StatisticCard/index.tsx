@@ -132,7 +132,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 interface StatisticCardProps
   extends
     AntdStatisticCardProps,
-    Pick<BlockProps, 'variant' | 'padding' | 'paddingBlock' | 'paddingInline'> {}
+    Pick<BlockProps, 'variant' | 'padding' | 'paddingBlock' | 'paddingInline'> {
+  highlight?: string;
+}
 
 const StatisticCard = memo<StatisticCardProps>(
   ({
@@ -146,6 +148,8 @@ const StatisticCard = memo<StatisticCardProps>(
     padding,
     paddingBlock,
     paddingInline,
+     
+    highlight,
     ...rest
   }) => {
     const { mobile } = useResponsive();

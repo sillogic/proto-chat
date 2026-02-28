@@ -1,10 +1,9 @@
 'use client';
 
-import { Tag } from '@lobehub/ui';
+import { Flexbox,Tag  } from '@lobehub/ui';
 import { Segmented } from 'antd';
 import { createStyles } from 'antd-style';
 import { memo } from 'react';
-import { Flexbox } from '@lobehub/ui';
 
 const useStyles = createStyles(({ css, token }) => ({
   container: css`
@@ -30,13 +29,14 @@ const BillingToggle = memo<BillingToggleProps>(({ value, onChange }) => {
   const { styles } = useStyles();
 
   return (
-    <Flexbox align={'center'} className={styles.container} gap={8} horizontal>
+    <Flexbox horizontal align={'center'} className={styles.container} gap={8}>
       <Segmented
-        onChange={(val) => onChange(val as BillingCycle)}
+        size="large"
+        value={value}
         options={[
           {
             label: (
-              <Flexbox align={'center'} gap={6} horizontal paddingInline={8}>
+              <Flexbox horizontal align={'center'} gap={6} paddingInline={8}>
                 <span>年订阅</span>
                 <Tag className={styles.discountTag} size={'small'}>
                   优惠
@@ -54,8 +54,7 @@ const BillingToggle = memo<BillingToggleProps>(({ value, onChange }) => {
             value: 'onetime',
           },
         ]}
-        size="large"
-        value={value}
+        onChange={(val) => onChange(val as BillingCycle)}
       />
     </Flexbox>
   );

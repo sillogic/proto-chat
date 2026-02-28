@@ -241,7 +241,7 @@ export class AlipayCycleChannel {
       });
 
       const responseText = await response.text();
-      console.log('[AlipayCycle] Deduct response:', responseText);
+      console.info('[AlipayCycle] Deduct response:', responseText);
       const result = JSON.parse(responseText);
 
       const responseKey = 'alipay_trade_pay_response';
@@ -416,7 +416,7 @@ export class AlipayCycleChannel {
       }
 
       // 移除 sign 和 sign_type 进行验签
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       const { sign: _sign, sign_type: _signType, ...paramsToVerify } = data;
       const signContent = this.buildSignContent(paramsToVerify);
 
@@ -428,7 +428,7 @@ export class AlipayCycleChannel {
       // 检查通知类型
       const notifyType = data.notify_type;
       if (notifyType !== 'dut_user_sign' && notifyType !== 'dut_user_unsign') {
-        console.log('[AlipayCycle] Unknown notify type:', notifyType);
+        console.info('[AlipayCycle] Unknown notify type:', notifyType);
         return null;
       }
 

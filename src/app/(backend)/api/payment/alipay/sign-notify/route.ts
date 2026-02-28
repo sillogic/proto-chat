@@ -19,7 +19,8 @@ import {
   userTransactions,
 } from '@lobechat/database';
 import { eq } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { AlipayCycleChannel } from '@/server/modules/payment/channels/alipay-cycle';
 
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
   try {
     // 1. Read raw body
     const rawBody = await request.text();
-    console.log('[Alipay Sign Notify] Received notification');
+    console.info('[Alipay Sign Notify] Received notification');
 
     // 2. Initialize Alipay cycle channel for parsing
     const alipayConfig = {
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
       alipayLogonId,
     } = signResult;
 
-    console.log('[Alipay Sign Notify] Parsed:', {
+    console.info('[Alipay Sign Notify] Parsed:', {
       agreementNo,
       externalAgreementNo,
       status,
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
     // 5. Handle based on status
     if (status === 'NORMAL') {
       // User signed successfully
-      console.log('[Alipay Sign Notify] Processing sign success');
+      console.info('[Alipay Sign Notify] Processing sign success');
 
       // Calculate next deduct date
       const nextDeductDate = new Date(signTime);
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
 
             // Skip if already paid
             if (order.status === 'paid') {
-              console.log('[Alipay Sign Notify] Order already paid, skipping');
+              console.info('[Alipay Sign Notify] Order already paid, skipping');
               return;
             }
 
@@ -313,10 +314,10 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      console.log('[Alipay Sign Notify] Sign processed successfully:', agreementNo);
+      console.info('[Alipay Sign Notify] Sign processed successfully:', agreementNo);
     } else if (status === 'UNSIGN') {
       // User unsigned (from Alipay app)
-      console.log('[Alipay Sign Notify] Processing unsign');
+      console.info('[Alipay Sign Notify] Processing unsign');
 
       await serverDB.transaction(async (tx) => {
         // Update agreement status
@@ -341,7 +342,7 @@ export async function POST(request: NextRequest) {
           .where(eq(userExtensions.userId, agreement.userId));
       });
 
-      console.log('[Alipay Sign Notify] Unsign processed successfully:', agreementNo);
+      console.info('[Alipay Sign Notify] Unsign processed successfully:', agreementNo);
     }
 
     // Return success

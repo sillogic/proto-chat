@@ -2,19 +2,19 @@
 
 import { useTheme } from 'antd-style';
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
 import isToday from 'dayjs/plugin/isToday';
 import isYesterday from 'dayjs/plugin/isYesterday';
+import utc from 'dayjs/plugin/utc';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import Statistic from '@/components/Statistic';
 import StatisticCard from '@/components/StatisticCard';
 import TitleWithPercentage from '@/components/StatisticCard/TitleWithPercentage';
-import { UsageLog } from '@/types/usage/usageRecord';
+import type { UsageLog } from '@/types/usage/usageRecord';
 import { formatNumber } from '@/utils/format';
 
-import { UsageChartProps } from '../../Client';
+import type { UsageChartProps } from '../../Client';
 
 dayjs.extend(utc);
 dayjs.extend(isToday);

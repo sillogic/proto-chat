@@ -1,11 +1,11 @@
-import { Heatmaps, HeatmapsProps } from '@lobehub/charts';
-import { FormGroup, Icon, Tag } from '@lobehub/ui';
+import type { HeatmapsProps } from '@lobehub/charts';
+import { Heatmaps } from '@lobehub/charts';
+import { Flexbox,FormGroup, Icon, Tag  } from '@lobehub/ui';
 import { useTheme } from 'antd-style';
 import { FlameIcon } from 'lucide-react';
 import { readableColor } from 'polished';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from '@lobehub/ui';
 
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { useClientDataSWR } from '@/libs/swr';
@@ -28,6 +28,8 @@ const AiHeatmaps = memo<Omit<HeatmapsProps, 'data'> & { inShare?: boolean; mobil
         blockRadius={mobile ? 2 : undefined}
         blockSize={mobile ? 6 : 14}
         data={data || []}
+        loading={isLoading || !data}
+        maxLevel={4}
         labels={{
           legend: {
             less: t('heatmaps.legend.less'),
@@ -50,17 +52,15 @@ const AiHeatmaps = memo<Omit<HeatmapsProps, 'data'> & { inShare?: boolean; mobil
           tooltip: t('heatmaps.tooltip'),
           totalCount: t('heatmaps.totalCount'),
         }}
-        loading={isLoading || !data}
-        maxLevel={4}
-        {...rest}
+        {...(rest as any)}
       />
     );
 
     const fillColor = readableColor(theme.gold);
     const tags = (
       <Flexbox
-        gap={4}
         horizontal
+        gap={4}
         style={{
           alignSelf: 'center',
           flex: 'none',
@@ -97,7 +97,7 @@ const AiHeatmaps = memo<Omit<HeatmapsProps, 'data'> & { inShare?: boolean; mobil
     if (inShare) {
       return (
         <Flexbox gap={4}>
-          <Flexbox align={'baseline'} gap={4} horizontal justify={'space-between'}>
+          <Flexbox horizontal align={'baseline'} gap={4} justify={'space-between'}>
             <div
               style={{
                 color: theme.colorTextDescription,

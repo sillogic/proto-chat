@@ -1,17 +1,17 @@
 import { CategoryBar, useThemeColorRange } from '@lobehub/charts';
 import { ModelIcon, ProviderIcon } from '@lobehub/icons';
-import { Collapse, Tag } from '@lobehub/ui';
+import { Collapse, Flexbox,Tag  } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { useTheme } from 'antd-style';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from '@lobehub/ui';
 
 import InlineTable from '@/components/InlineTable';
-import { UsageLog } from '@/types/usage/usageRecord';
+import type { UsageLog } from '@/types/usage/usageRecord';
 import { formatPrice } from '@/utils/format';
 
-import { GroupBy, UsageChartProps } from '../../../Client';
+import type { UsageChartProps } from '../../../Client';
+import { GroupBy } from '../../../Client';
 
 interface WeightGroup {
   id: string;
@@ -64,7 +64,7 @@ const formatData = (
       return {
         childrens: spendWithWeight.sort((a, b) => b.weight - a.weight),
         id: key,
-        totalSpend: totalSpend,
+        totalSpend,
       };
     })
     .sort((a, b) => b.totalSpend - a.totalSpend);
@@ -80,7 +80,7 @@ const ModelTable = memo<UsageChartProps>(({ data, isLoading, groupBy }) => {
     [data, groupBy],
   );
 
-  console.log('ModelTable', groupBy, formattedData);
+  console.info('ModelTable', groupBy, formattedData);
 
   return isLoading ? (
     <Skeleton active paragraph={{ rows: 8 }} title={false} />
@@ -101,13 +101,17 @@ const ModelTable = memo<UsageChartProps>(({ data, isLoading, groupBy }) => {
                 values={item.childrens.map((item) => item.weight)}
               />
               <InlineTable
+                dataSource={item.childrens}
+                hoverToActive={false}
+                loading={isLoading}
+                rowKey={(record) => record.id}
                 columns={[
                   {
                     dataIndex: 'id',
                     key: 'id',
                     render: (value, record, index) => {
                       return (
-                        <Flexbox align={'center'} gap={12} horizontal key={value}>
+                        <Flexbox horizontal align={'center'} gap={12} key={value}>
                           {groupBy === GroupBy.Provider ? (
                             <ProviderIcon
                               provider={record.id}
@@ -144,17 +148,13 @@ const ModelTable = memo<UsageChartProps>(({ data, isLoading, groupBy }) => {
                     title: t('usage.activeModels.table.spend'),
                   },
                 ]}
-                dataSource={item.childrens}
-                hoverToActive={false}
-                loading={isLoading}
-                rowKey={(record) => record.id}
               />
             </Flexbox>
           ),
           extra: <Tag>{item?.childrens?.length ?? 0}</Tag>,
           key,
           label: (
-            <Flexbox align={'center'} gap={8} horizontal>
+            <Flexbox horizontal align={'center'} gap={8}>
               {groupBy === GroupBy.Model ? (
                 <ModelIcon model={key} size={24} />
               ) : (

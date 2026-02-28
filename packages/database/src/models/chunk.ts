@@ -190,7 +190,7 @@ export class ChunkModel {
         .where(inArray(fileChunks.fileId, fileIds))
         .groupBy(fileChunks.fileId);
 
-      results.push(...fileResults);
+      results.push(...(fileResults as Array<{ count: number; id: string }>));
     }
 
     // Query document chunks

@@ -64,7 +64,7 @@ const UsageFooter = memo(() => {
     <Flexbox className={styles.container} gap={12}>
       {/* File Storage Usage */}
       <Flexbox gap={6}>
-        <Flexbox align={'center'} horizontal justify={'space-between'}>
+        <Flexbox horizontal align={'center'} justify={'space-between'}>
           <div className={styles.label}>文件用量</div>
           <div className={styles.value}>
             {formatBytes(storageTotalBytes)} / {formatBytes(storageLimitBytes)}
@@ -80,7 +80,7 @@ const UsageFooter = memo(() => {
 
       {/* Vector Storage Usage */}
       <Flexbox gap={6}>
-        <Flexbox align={'center'} horizontal justify={'space-between'}>
+        <Flexbox horizontal align={'center'} justify={'space-between'}>
           <div className={styles.label}>向量存储</div>
           <div className={styles.value}>
             {vectors.count} / {vectors.limit}

@@ -1,7 +1,7 @@
 'use client';
 
-import { Icon } from '@lobehub/ui';
 import { WechatOutlined } from '@ant-design/icons';
+import { Center, Flexbox,Icon  } from '@lobehub/ui';
 import { Alert, Button, Collapse, message, Modal, Radio, Spin, Tag, Tooltip, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import {
@@ -13,9 +13,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Center, Flexbox } from '@lobehub/ui';
 import { QRCodeSVG } from 'qrcode.react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
@@ -527,11 +526,11 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
 
     // Render plan comparison section
     const renderPlanComparison = () => (
-      <Flexbox gap={16} horizontal>
+      <Flexbox horizontal gap={16}>
         {/* Current Plan */}
         <div className={styles.currentPlanCard}>
           <Flexbox gap={8}>
-            <Flexbox align="center" gap={8} horizontal>
+            <Flexbox horizontal align="center" gap={8}>
               <span className={styles.planName}>{currentPlan.planName}</span>
               <Tag>现有套餐</Tag>
             </Flexbox>
@@ -554,7 +553,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         {/* New Plan */}
         <div className={styles.newPlanCard}>
           <Flexbox gap={8}>
-            <Flexbox align="center" gap={8} horizontal>
+            <Flexbox horizontal align="center" gap={8}>
               <span className={styles.planName}>{newPlan.planName}</span>
               <Tag color="blue">购买中</Tag>
             </Flexbox>
@@ -583,7 +582,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
 
         {discountAmount > 0 && (
           <div className={styles.priceRow}>
-            <Flexbox align="center" gap={8} horizontal>
+            <Flexbox horizontal align="center" gap={8}>
               <span className={styles.priceLabel}>优惠活动</span>
               <Tag color="red">{discount?.label}</Tag>
             </Flexbox>
@@ -593,7 +592,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
 
         {residualValue > 0 && (
           <div className={styles.priceRow}>
-            <Flexbox align="center" gap={4} horizontal>
+            <Flexbox horizontal align="center" gap={4}>
               <span className={styles.priceLabel}>现有套餐剩余价值</span>
               <Tooltip title="现有套餐剩余价值是指您套餐中还没用完、按剩余天数折算出来的金额。">
                 <Icon icon={CircleHelp} size={14} style={{ color: theme.colorTextTertiary }} />
@@ -605,6 +604,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
 
         <Collapse
           ghost
+          size="small"
           items={[
             {
               children: (
@@ -625,7 +625,6 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
               ),
             },
           ]}
-          size="small"
         />
 
         <div className={styles.totalRow}>
@@ -657,8 +656,8 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
               }
               onClick={() => setPaymentMethod('alipay_precreate')}
             >
-              <Flexbox align="center" horizontal justify="space-between">
-                <Flexbox align="center" gap={12} horizontal>
+              <Flexbox horizontal align="center" justify="space-between">
+                <Flexbox horizontal align="center" gap={12}>
                   <Radio checked={paymentMethod === 'alipay_precreate'} />
                   <Image
                     alt="Alipay"
@@ -675,12 +674,12 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
             {/* WeChat Pay - Coming Soon */}
             <div
               className={styles.paymentMethodCard}
-              onClick={() => message.info('微信支付敬请期待')}
               style={{ opacity: 0.6 }}
+              onClick={() => message.info('微信支付敬请期待')}
             >
-              <Flexbox align="center" horizontal justify="space-between">
-                <Flexbox align="center" gap={12} horizontal>
-                  <Radio checked={false} disabled />
+              <Flexbox horizontal align="center" justify="space-between">
+                <Flexbox horizontal align="center" gap={12}>
+                  <Radio disabled checked={false} />
                   <WechatOutlined className={styles.wechatIcon} style={{ fontSize: 24 }} />
                   <span style={{ fontWeight: 500 }}>微信支付</span>
                   <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>即将上线</span>
@@ -691,7 +690,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         </Flexbox>
 
         {/* Security Note */}
-        <Flexbox align="center" gap={6} horizontal style={{ justifyContent: 'center' }}>
+        <Flexbox horizontal align="center" gap={6} style={{ justifyContent: 'center' }}>
           <Icon color={theme.colorSuccess} icon={ShieldCheck} size={16} />
           <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
             支付由支付宝安全加密处理
@@ -701,8 +700,8 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         {/* Auto-renewal notice for recurring */}
         {isRecurring && (
           <Alert
-            description={`签约后将按${newPlan.billingInterval === 'year' ? '年' : '月'}自动续费，您可随时在账户设置中取消`}
             showIcon
+            description={`签约后将按${newPlan.billingInterval === 'year' ? '年' : '月'}自动续费，您可随时在账户设置中取消`}
             type="warning"
           />
         )}
@@ -711,8 +710,8 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         <Button
           block
           className={styles.confirmButton}
-          onClick={handleConfirmPayment}
           type="primary"
+          onClick={handleConfirmPayment}
         >
           {isRecurring ? `签约并支付 ¥${(finalAmount / 100).toFixed(2)}` : `去支付 ¥${(finalAmount / 100).toFixed(2)}`}
         </Button>
@@ -740,7 +739,7 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
 
         {/* Instructions */}
         <Flexbox align="center" gap={8}>
-          <Flexbox align="center" gap={8} horizontal>
+          <Flexbox horizontal align="center" gap={8}>
             <Image alt="Alipay" height={20} src="/images/payment/alipay-logo.png" width={20} />
             <span style={{ fontSize: 14 }}>
               {isRecurring ? (
@@ -772,6 +771,9 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
 
         {/* Tips */}
         <Alert
+          showIcon
+          message={isRecurring ? '签约提示' : '支付提示'}
+          type="info"
           description={
             <Flexbox gap={4}>
               {(isRecurring ? recurringTips : onetimeTips).map((tip, index) => (
@@ -781,14 +783,11 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
               ))}
             </Flexbox>
           }
-          message={isRecurring ? '签约提示' : '支付提示'}
-          showIcon
-          type="info"
         />
 
         {/* Auto-renewal notice for recurring */}
         {isRecurring && (
-          <Flexbox align="center" gap={6} horizontal style={{ justifyContent: 'center' }}>
+          <Flexbox horizontal align="center" gap={6} style={{ justifyContent: 'center' }}>
             <Icon color={theme.colorTextTertiary} icon={RefreshCw} size={14} />
             <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
               签约后可随时在「账户设置」中取消自动续费
@@ -835,9 +834,9 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
               <Flexbox align="center" gap={16}>
                 <Icon className={styles.errorIcon} icon={XCircle} size={64} />
                 <span style={{ fontSize: 16, fontWeight: 500 }}>{errorMessage || '支付失败'}</span>
-                <Flexbox gap={8} horizontal>
+                <Flexbox horizontal gap={8}>
                   <Button onClick={handleBack}>返回重试</Button>
-                  <Button onClick={handleClose} type="primary">
+                  <Button type="primary" onClick={handleClose}>
                     关闭
                   </Button>
                 </Flexbox>
@@ -857,10 +856,10 @@ const UpgradePaymentModal = memo<UpgradePaymentModalProps>(
         centered
         className={styles.modal}
         footer={null}
-        onCancel={handleClose}
         open={open}
         title={null}
         width={600}
+        onCancel={handleClose}
       >
         {/* Header */}
         <div className={styles.header}>

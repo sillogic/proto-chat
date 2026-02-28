@@ -2,9 +2,10 @@
 
 import DocViewer from '@cyntler/react-doc-viewer';
 import { css, cx } from 'antd-style';
-import { CSSProperties, memo } from 'react';
+import type { CSSProperties} from 'react';
+import { memo } from 'react';
 
-import { FileListItem } from '@/types/files';
+import type { FileListItem } from '@/types/files';
 
 import NotSupport from './NotSupport';
 import { FileViewRenderers } from './Renderer';
@@ -250,13 +251,13 @@ const FileViewer = memo<FileViewerProps>(({ id, style, fileType, url, name }) =>
   return (
     <DocViewer
       className={cx(container)}
-      config={{
-        header: { disableHeader: true },
-        noRenderer: { overrideComponent: NotSupport },
-      }}
       documents={[{ fileName: name, fileType, uri: url }]}
       pluginRenderers={FileViewRenderers}
       style={style}
+      config={{
+        header: { disableHeader: true },
+        noRenderer: { overrideComponent: NotSupport as any },
+      }}
     />
   );
 });

@@ -1,4 +1,4 @@
-import { DocRenderer } from '@cyntler/react-doc-viewer';
+import type { DocRenderer } from '@cyntler/react-doc-viewer';
 import { Center } from '@lobehub/ui';
 
 const ImageRenderer: DocRenderer = ({ mainState: { currentDocument } }) => {
@@ -6,7 +6,7 @@ const ImageRenderer: DocRenderer = ({ mainState: { currentDocument } }) => {
 
   return (
     <Center height={'100%'} width={'100%'}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      { }
       <img
         alt={fileName}
         height={'100%'}

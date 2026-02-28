@@ -4,10 +4,11 @@ import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import StatisticCard from '@/components/StatisticCard';
-import { UsageLog } from '@/types/usage/usageRecord';
+import type { UsageLog } from '@/types/usage/usageRecord';
 import { formatNumber } from '@/utils/format';
 
-import { GroupBy, UsageChartProps } from '../Client';
+import type { UsageChartProps } from '../Client';
+import { GroupBy } from '../Client';
 import { UsageBarChart } from './components/UsageBarChart';
 
 const groupByType = (
@@ -17,7 +18,7 @@ const groupByType = (
 ): { categories: string[]; data: BarChartProps['data'] } => {
   if (!data || data?.length === 0) return { categories: [], data: [] };
   let formattedData: BarChartProps['data'] = [];
-  let cate: Map<string, number> = data.reduce((acc, log) => {
+  const cate: Map<string, number> = data.reduce((acc, log) => {
     if (log.records) {
       for (const item of log.records) {
         if (groupBy === GroupBy.Model && item.model) {
@@ -35,7 +36,7 @@ const groupByType = (
       day: log.day,
       total: type === 'spend' ? log.totalSpend : log.totalTokens,
     };
-    let todayCate = new Map<string, number>(cate);
+    const todayCate = new Map<string, number>(cate);
     for (const item of log.records) {
       const value = type === 'spend' ? item.spend || 0 : item.totalTokens || 0;
       const key = groupBy === GroupBy.Model ? item.model : item.provider;
@@ -81,6 +82,7 @@ const UsageTrends = memo<UsageChartProps>(({ isLoading, data, groupBy }) => {
   );
   return (
     <StatisticCard
+      loading={isLoading}
       chart={
         data &&
         (type === ShowType.Spend ? (
@@ -91,15 +93,14 @@ const UsageTrends = memo<UsageChartProps>(({ isLoading, data, groupBy }) => {
       }
       extra={
         <Segmented
-          onChange={(value) => setType(value as ShowType)}
+          value={type}
           options={[
             { label: t('usage.trends.spend'), value: ShowType.Spend },
             { label: t('usage.trends.tokens'), value: ShowType.Token },
           ]}
-          value={type}
+          onChange={(value) => setType(value as ShowType)}
         />
       }
-      loading={isLoading}
     />
   );
 });

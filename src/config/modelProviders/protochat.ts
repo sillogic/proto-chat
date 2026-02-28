@@ -1,4 +1,4 @@
-import { ModelProviderCard } from '@/types/llm';
+import type { ModelProviderCard } from '@/types/llm';
 
 /**
  * ProtoChat 自有供应商配置

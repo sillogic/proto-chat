@@ -106,7 +106,7 @@ const Client = memo<ClientProps>(() => {
           </span>
         </Flexbox>
         {ENABLE_RECURRING_SUBSCRIPTION && (
-          <BillingToggle onChange={setBillingCycle} value={billingCycle} />
+          <BillingToggle value={billingCycle} onChange={setBillingCycle} />
         )}
       </Flexbox>
 

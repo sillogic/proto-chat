@@ -1,9 +1,9 @@
+import { Flexbox } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { createStyles, keyframes, useTheme } from 'antd-style';
 import { Clock3Icon, ClockArrowUp, Heart } from 'lucide-react';
 import { memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { Flexbox } from '@lobehub/ui';
 
 import { BRANDING_NAME } from '@/const/branding';
 import { useClientDataSWR } from '@/libs/swr';
@@ -59,9 +59,9 @@ const Welcome = memo<{ mobile?: boolean }>(({ mobile }) => {
   return (
     <Flexbox gap={8} padding={mobile ? 16 : 0}>
       <Flexbox
+        horizontal
         align={'center'}
         gap={8}
-        horizontal
         style={{
           fontSize: mobile ? 16 : 20,
           fontWeight: 500,
@@ -69,6 +69,8 @@ const Welcome = memo<{ mobile?: boolean }>(({ mobile }) => {
       >
         <div>
           <Trans
+            i18nKey="stats.welcome"
+            ns={'auth'}
             components={{
               span:
                 isLoading || !data ? (
@@ -77,8 +79,6 @@ const Welcome = memo<{ mobile?: boolean }>(({ mobile }) => {
                   <span style={{ fontWeight: 'bold' }} />
                 ),
             }}
-            i18nKey="stats.welcome"
-            ns={'auth'}
             values={{
               appName: BRANDING_NAME,
               days:
@@ -92,12 +92,12 @@ const Welcome = memo<{ mobile?: boolean }>(({ mobile }) => {
         {!mobile && <Heart className={styles.heartIcon} fill="currentColor" size={28} />}
       </Flexbox>
       <Flexbox
-        gap={16}
         horizontal
+        gap={16}
+        wrap={'wrap'}
         style={{
           color: theme.colorTextDescription,
         }}
-        wrap={'wrap'}
       >
         <TimeLabel date={data?.createdAt} icon={Clock3Icon} title={t('stats.createdAt')} />
         <TimeLabel date={data?.updatedAt} icon={ClockArrowUp} title={t('stats.updatedAt')} />

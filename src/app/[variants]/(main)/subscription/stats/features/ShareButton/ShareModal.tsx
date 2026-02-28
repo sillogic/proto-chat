@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormItemProps, FormModal, FormModalProps, Segmented } from '@lobehub/ui';
+import { type FormItemProps, FormModal, type FormModalProps, Segmented } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { createStyles } from 'antd-style';
 import dynamic from 'next/dynamic';
@@ -72,14 +72,14 @@ const ShareModal = memo<FormModalProps & { mobile?: boolean }>(({ open, onCancel
       initialValues={DEFAULT_FIELD_VALUE}
       items={items}
       itemsType={'flat'}
-      onCancel={onCancel}
-      onFinish={onDownload}
-      onValuesChange={(_, v) => setFieldValue(v)}
       open={open}
       submitLoading={loading}
       submitText={t('shareModal.download')}
       title={t('share', { ns: 'common' })}
       width={480}
+      onCancel={onCancel}
+      onFinish={onDownload}
+      onValuesChange={(_, v) => setFieldValue(v)}
     />
   );
 });

@@ -890,7 +890,7 @@ export const aiAgentRouter = router({
 
       // DEBUG: Log metadata for failed tasks
       if (updatedTaskStatus === 'failed') {
-        console.log('[DEBUG] getSubAgentTaskStatus - failed task metadata:', {
+        console.info('[DEBUG] getSubAgentTaskStatus - failed task metadata:', {
           threadId,
           updatedMetadata,
           'updatedMetadata?.error': updatedMetadata?.error,

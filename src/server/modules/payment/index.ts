@@ -3,14 +3,14 @@
  * Orchestrates payment operations across different channels
  */
 
-import { paymentOrders, subscriptionPlans, userAgreements } from '@lobechat/database';
 import type { LobeChatDatabase } from '@lobechat/database';
-import { eq, and } from 'drizzle-orm';
+import { paymentOrders, subscriptionPlans, userAgreements } from '@lobechat/database';
+import { and,eq } from 'drizzle-orm';
 
-import type { PaymentChannel, PaymentConfig, CreateOrderInput, PaymentOrder } from './types';
-import { WeChatNativeChannel } from './channels/wechat-native';
-import { AlipayPrecreateChannel } from './channels/alipay-precreate';
 import { AlipayCycleChannel } from './channels/alipay-cycle';
+import { AlipayPrecreateChannel } from './channels/alipay-precreate';
+import { WeChatNativeChannel } from './channels/wechat-native';
+import type { CreateOrderInput, PaymentChannel, PaymentConfig, PaymentOrder } from './types';
 import { generateOrderNo } from './utils/order-no';
 
 export class PaymentService {
@@ -507,7 +507,7 @@ export class PaymentService {
         })
         .where(eq(userAgreements.id, agreementData.id));
 
-      console.log('[PaymentService] Agreement signed successfully:', agreementNo);
+      console.info('[PaymentService] Agreement signed successfully:', agreementNo);
     } else if (status === 'UNSIGN') {
       // Update agreement to unsigned status
       await this.db
@@ -520,7 +520,7 @@ export class PaymentService {
         })
         .where(eq(userAgreements.id, agreementData.id));
 
-      console.log('[PaymentService] Agreement unsigned:', agreementNo);
+      console.info('[PaymentService] Agreement unsigned:', agreementNo);
     }
 
     return { success: true };

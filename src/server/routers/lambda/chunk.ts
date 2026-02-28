@@ -111,9 +111,9 @@ export const chunkRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      console.log('[createParseFileTask] Received request - fileId:', input.id, 'skipExist:', input.skipExist);
+      console.info('[createParseFileTask] Received request - fileId:', input.id, 'skipExist:', input.skipExist);
       const asyncTaskId = await ctx.chunkService.asyncParseFileToChunks(input.id, input.skipExist);
-      console.log('[createParseFileTask] asyncParseFileToChunks returned taskId:', asyncTaskId);
+      console.info('[createParseFileTask] asyncParseFileToChunks returned taskId:', asyncTaskId);
 
       return { id: asyncTaskId, success: true };
     }),
@@ -299,8 +299,8 @@ export const chunkRouter = router({
           providerId: provider,
           inputTokens: queryTokens,
           totalTokens: queryTokens,
-          costPrice: costPrice,
-          userPrice: null, // Not charging users for semantic search
+          costPrice,
+          userPrice: undefined, // Not charging users for semantic search
           operationType: 'semantic_search',
           chunkCount: 1, // Single query
         });
@@ -398,8 +398,8 @@ export const chunkRouter = router({
             providerId: provider,
             inputTokens: queryTokens,
             totalTokens: queryTokens,
-            costPrice: costPrice,
-            userPrice: null, // Not charging users for semantic search
+            costPrice,
+            userPrice: undefined, // Not charging users for semantic search
             operationType: 'semantic_search',
             chunkCount: 1, // Single query
           });

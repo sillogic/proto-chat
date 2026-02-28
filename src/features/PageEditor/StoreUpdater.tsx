@@ -57,7 +57,7 @@ const StoreUpdater = memo<StoreUpdaterProps>(
     // Connect editor to page agent runtime
     useEffect(() => {
       if (editor) {
-        pageAgentRuntime.setEditor(editor);
+        pageAgentRuntime.setEditor(editor as any);
       }
       return () => {
         pageAgentRuntime.setEditor(null);

@@ -134,8 +134,8 @@ export const getEnabledTools = (
 
   return (
     toolsEngine.generateTools({
-      model: model, // Use provided model or fallback
-      provider: provider, // Use provided provider or fallback
+      model, // Use provided model or fallback
+      provider, // Use provided provider or fallback
       toolIds,
     }) || []
   );

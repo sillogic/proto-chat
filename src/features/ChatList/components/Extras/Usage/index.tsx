@@ -1,9 +1,9 @@
-import { ModelPerformance, ModelUsage } from '@lobechat/types';
+import type { ModelPerformance, ModelUsage } from '@lobechat/types';
 import { ModelIcon } from '@lobehub/icons';
+import { Center, Flexbox } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { memo } from 'react';
-import { Center, Flexbox } from '@lobehub/ui';
 
 import TokenDetail from './UsageDetail';
 
@@ -26,13 +26,13 @@ const Usage = memo<UsageProps>(({ model, usage, performance, provider }) => {
 
   return (
     <Flexbox
+      horizontal
       align={'center'}
       className={styles.container}
       gap={12}
-      horizontal
       justify={'space-between'}
     >
-      <Center gap={4} horizontal style={{ fontSize: 12 }}>
+      <Center horizontal gap={4} style={{ fontSize: 12 }}>
         <ModelIcon model={model as string} type={'mono'} />
         {model}
       </Center>

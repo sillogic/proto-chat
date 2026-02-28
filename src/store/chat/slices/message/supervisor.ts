@@ -72,7 +72,7 @@ export class GroupChatSupervisor {
       const response = await this.callLLMForDecision(context);
       const result = this.parseSupervisorResponse(response, availableAgents, context);
 
-      console.log('Supervisor TODO list:', result.todos);
+      console.info('Supervisor TODO list:', result.todos);
 
       return result;
     } catch (error) {
@@ -110,7 +110,7 @@ export class GroupChatSupervisor {
         context.abortController || new AbortController(),
       );
 
-      console.log('SUPERVISOR RESPONSE', JSON.stringify(response, null, 2));
+      console.info('SUPERVISOR RESPONSE', JSON.stringify(response, null, 2));
 
       // Parse the response to SupervisorToolCall[]
       if (Array.isArray(response)) {
@@ -263,13 +263,13 @@ export class GroupChatSupervisor {
         }
         case 'wait_for_user_input': {
           // Pause conversation - no action needed, just don't add any decisions
-          console.log('DEBUG: Supervisor paused conversation:', call.parameter);
+          console.info('DEBUG: Supervisor paused conversation:', call.parameter);
           break;
         }
         case 'trigger_agent':
         case 'trigger_agent_dm': {
           const decision = this.buildDecisionFromTool(call.parameter, availableAgents, context);
-          console.log('DEBUG: Built decision from tool:', {
+          console.info('DEBUG: Built decision from tool:', {
             decision,
             parameter: call.parameter,
             toolName: call.tool_name,
@@ -282,7 +282,7 @@ export class GroupChatSupervisor {
       }
     });
 
-    console.log('DEBUG: Final decisions:', decisions);
+    console.info('DEBUG: Final decisions:', decisions);
 
     return { decisions, todoUpdated, todos };
   }

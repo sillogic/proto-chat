@@ -4,10 +4,10 @@ import { ChatErrorType } from '@lobechat/types';
 
 import { checkAuth } from '@/app/(backend)/middleware/auth';
 import { createTraceOptions, initModelRuntimeFromDB, initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
+import { ProtoChatService } from '@/server/services/protochat';
 import { type ChatStreamPayload } from '@/types/openai/chat';
 import { createErrorResponse } from '@/utils/errorResponse';
 import { getTracePayload } from '@/utils/trace';
-import { ProtoChatService } from '@/server/services/protochat';
 
 // If user don't use fluid compute, will build  failed
 // this enforce user to enable fluid compute

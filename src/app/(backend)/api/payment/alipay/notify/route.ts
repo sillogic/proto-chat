@@ -14,7 +14,8 @@ import {
   userTransactions,
 } from '@lobechat/database';
 import { and, eq } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { AlipayPrecreateChannel } from '@/server/modules/payment/channels/alipay-precreate';
 
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     // 5. Idempotency check: if already paid, return success immediately
     if (order.status === 'paid') {
-      console.log('Order already paid, returning success:', orderNo);
+      console.info('Order already paid, returning success:', orderNo);
       return new NextResponse('success', {
         headers: { 'Content-Type': 'text/plain' },
         status: 200,
@@ -293,7 +294,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 8. Return success response (Alipay requires "success" string)
-    console.log('Payment processed successfully:', orderNo);
+    console.info('Payment processed successfully:', orderNo);
     return new NextResponse('success', {
       headers: { 'Content-Type': 'text/plain' },
       status: 200,

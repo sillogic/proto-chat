@@ -5,7 +5,6 @@ import { Progress } from 'antd';
 import { createStyles } from 'antd-style';
 import { memo } from 'react';
 
-
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';
 import { formatShortenNumber } from '@/utils/format';
@@ -41,7 +40,7 @@ const CreditUsage = memo(() => {
 
   return (
     <Flexbox className={styles.container} gap={8}>
-      <Flexbox align={'center'} horizontal justify={'space-between'}>
+      <Flexbox horizontal align={'center'} justify={'space-between'}>
         <div className={styles.label}>积分额度</div>
         <div className={styles.value}>
           {formatShortenNumber(totalConsumed)} / {formatShortenNumber(limit)}

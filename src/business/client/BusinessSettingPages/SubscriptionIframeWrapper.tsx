@@ -74,7 +74,7 @@ export const SubscriptionIframeWrapper = memo<SubscriptionIframeWrapperProps>(({
               e.preventDefault();
               e.stopPropagation();
               // Use console.log with prefix to communicate with parent
-              console.log(PREFIX + link.href);
+              console.info(PREFIX + link.href);
             }
           }, true);
 
@@ -84,7 +84,7 @@ export const SubscriptionIframeWrapper = memo<SubscriptionIframeWrapperProps>(({
             if (url) {
               // Resolve relative URLs to absolute
               const absoluteUrl = new URL(url, window.location.href).href;
-              console.log(PREFIX + absoluteUrl);
+              console.info(PREFIX + absoluteUrl);
             }
             // Return null to indicate popup was blocked (expected behavior)
             return null;

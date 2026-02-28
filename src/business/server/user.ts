@@ -1,7 +1,4 @@
-/* eslint-disable unused-imports/no-unused-vars, @typescript-eslint/no-unused-vars */
-import { Plans, type ReferralStatusString } from '@lobechat/types';
-import { eq } from 'drizzle-orm';
-
+/* eslint-disable unused-imports/no-unused-vars */
 import { serverDB } from '@lobechat/database';
 import {
   subscriptionPlans,
@@ -9,6 +6,8 @@ import {
   userExtensions,
   userTransactions,
 } from '@lobechat/database/schemas';
+import { Plans, type ReferralStatusString } from '@lobechat/types';
+import { eq } from 'drizzle-orm';
 
 import { AgentService } from '@/server/services/agent';
 

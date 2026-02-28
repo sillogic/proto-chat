@@ -22,7 +22,8 @@ import {
   userTransactions,
 } from '@lobechat/database';
 import { and, eq, lte, sql } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { AlipayCycleChannel } from '@/server/modules/payment/channels/alipay-cycle';
 import { generateOrderNo } from '@/server/modules/payment/utils/order-no';
@@ -89,7 +90,7 @@ async function processDeduction(
   const orderNo = generateOrderNo();
   const amount = agreement.singleAmount;
 
-  console.log(`[AutoDeduct] Processing: user=${agreement.userId}, plan=${plan.slug}, amount=${amount}, retry=${isRetry}`);
+  console.info(`[AutoDeduct] Processing: user=${agreement.userId}, plan=${plan.slug}, amount=${amount}, retry=${isRetry}`);
 
   try {
     // Call Alipay to deduct
@@ -211,7 +212,7 @@ async function processDeduction(
         });
       });
 
-      console.log(`[AutoDeduct] Success: user=${agreement.userId}, orderNo=${orderNo}`);
+      console.info(`[AutoDeduct] Success: user=${agreement.userId}, orderNo=${orderNo}`);
       return { success: true };
     } else {
       // Deduction failed
@@ -229,7 +230,7 @@ async function processDeduction(
         })
         .where(eq(userAgreements.id, agreement.id));
 
-      console.log(`[AutoDeduct] Failed: user=${agreement.userId}, reason=${result.errorMessage}, failCount=${failCount}`);
+      console.info(`[AutoDeduct] Failed: user=${agreement.userId}, reason=${result.errorMessage}, failCount=${failCount}`);
       return { reason: result.errorMessage, success: false };
     }
   } catch (error) {
@@ -255,7 +256,7 @@ async function processDeduction(
  * Downgrade user to free plan after deduction failures
  */
 async function downgradeToFree(agreement: any, plan: any): Promise<void> {
-  console.log(`[AutoDeduct] Downgrading user to free: userId=${agreement.userId}`);
+  console.info(`[AutoDeduct] Downgrading user to free: userId=${agreement.userId}`);
 
   const now = new Date();
 
@@ -370,7 +371,7 @@ async function downgradeToFree(agreement: any, plan: any): Promise<void> {
     });
   });
 
-  console.log(`[AutoDeduct] User downgraded to free: userId=${agreement.userId}`);
+  console.info(`[AutoDeduct] User downgraded to free: userId=${agreement.userId}`);
 }
 
 export async function POST(request: NextRequest) {
@@ -383,7 +384,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[AutoDeduct] Starting auto deduction job...');
+    console.info('[AutoDeduct] Starting auto deduction job...');
 
     // Initialize Alipay cycle channel
     const alipayConfig = {
@@ -405,7 +406,7 @@ export async function POST(request: NextRequest) {
     const currentHour = getChinaHour();
     const isSecondAttempt = currentHour >= 12;
 
-    console.log(`[AutoDeduct] Current hour (China): ${currentHour}, isSecondAttempt: ${isSecondAttempt}`);
+    console.info(`[AutoDeduct] Current hour (China): ${currentHour}, isSecondAttempt: ${isSecondAttempt}`);
 
     // Get today's date string
     const today = new Date().toISOString().split('T')[0];
@@ -433,7 +434,7 @@ export async function POST(request: NextRequest) {
         ),
       );
 
-    console.log(`[AutoDeduct] Found ${agreementsToDeduct.length} agreements to process`);
+    console.info(`[AutoDeduct] Found ${agreementsToDeduct.length} agreements to process`);
 
     let successCount = 0;
     let failCount = 0;
@@ -455,7 +456,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[AutoDeduct] Completed: success=${successCount}, fail=${failCount}, downgrade=${downgradeCount}`);
+    console.info(`[AutoDeduct] Completed: success=${successCount}, fail=${failCount}, downgrade=${downgradeCount}`);
 
     return NextResponse.json({
       downgraded: downgradeCount,

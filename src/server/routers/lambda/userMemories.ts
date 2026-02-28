@@ -22,6 +22,8 @@ import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import pMap from 'p-map';
 import { z } from 'zod';
 
+import { EmbeddingUsageLogModel } from '@/database/models/embeddingUsageLog';
+import { SystemEmbeddingModel } from '@/database/models/systemEmbedding';
 import {
   type IdentityEntryBasePayload,
   type IdentityEntryPayload,
@@ -32,8 +34,6 @@ import {
   UserMemoryIdentityModel,
   UserMemoryModel,
 } from '@/database/models/userMemory';
-import { SystemEmbeddingModel } from '@/database/models/systemEmbedding';
-import { EmbeddingUsageLogModel } from '@/database/models/embeddingUsageLog';
 import { UserMemoryTopicRepository } from '@/database/repositories/userMemory';
 import {
   userMemories,
@@ -253,8 +253,8 @@ const searchUserMemories = async (
       providerId: provider,
       inputTokens: queryTokens,
       totalTokens: queryTokens,
-      costPrice: costPrice,
-      userPrice: null, // Not charging users for memory search
+      costPrice,
+      userPrice: undefined, // Not charging users for memory search
       operationType: 'memory_search',
       chunkCount: 1, // Single query
     });

@@ -54,7 +54,7 @@ export const ragEvalRouter = router({
       try {
         const { question, languageModel, embeddingModel } = evalRecord;
 
-        const payload = getXorPayload(ctx.jwtPayload);
+        const payload = getXorPayload(ctx.authorizationToken!);
         const { runtime: modelRuntime } = await initModelRuntimeWithUserPayload(
           ModelProvider.OpenAI,
           payload,

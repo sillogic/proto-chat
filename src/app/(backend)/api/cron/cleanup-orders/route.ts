@@ -11,8 +11,9 @@
  */
 
 import { paymentOrders, serverDB } from '@lobechat/database';
-import { and, lt, or, eq } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import { and, eq,lt, or } from 'drizzle-orm';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 
 // Configuration
 const RETENTION_DAYS = 7; // Keep pending/closed orders for 7 days
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
 
-    console.log(`[Cleanup] Starting cleanup for orders before ${cutoffDate.toISOString()}`);
+    console.info(`[Cleanup] Starting cleanup for orders before ${cutoffDate.toISOString()}`);
 
     // 3. Count orders to be deleted (for logging)
     const ordersToDelete = await serverDB
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     const count = ordersToDelete.length;
 
     if (count === 0) {
-      console.log('[Cleanup] No orders to clean up');
+      console.info('[Cleanup] No orders to clean up');
       return NextResponse.json({
         deleted: 0,
         message: 'No orders to clean up',
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
         ),
       );
 
-    console.log(`[Cleanup] Successfully deleted ${count} old orders`);
+    console.info(`[Cleanup] Successfully deleted ${count} old orders`);
 
     return NextResponse.json({
       cutoffDate: cutoffDate.toISOString(),

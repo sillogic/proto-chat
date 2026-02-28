@@ -1,4 +1,5 @@
-import { DocRenderer, textFileLoader } from '@cyntler/react-doc-viewer';
+import type { DocRenderer} from '@cyntler/react-doc-viewer';
+import { textFileLoader } from '@cyntler/react-doc-viewer';
 import { Center, Flexbox, Highlighter } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import React from 'react';

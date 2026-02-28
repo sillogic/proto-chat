@@ -1,12 +1,11 @@
 'use client';
 
-import { Icon, Tag } from '@lobehub/ui';
+import { Center, Flexbox,Icon, Tag  } from '@lobehub/ui';
 import { Button, Select, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Center, Flexbox } from '@lobehub/ui';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
 import UpgradePaymentModal from '@/features/Payment/UpgradePaymentModal';
@@ -327,7 +326,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
     {
       disabled: durationEligibility[1]?.isSameLevelOrLower && !durationEligibility[1]?.isCurrentPlan,
       label: (
-        <Flexbox align={'center'} gap={6} horizontal justify={'space-between'} style={{ width: '100%' }}>
+        <Flexbox horizontal align={'center'} gap={6} justify={'space-between'} style={{ width: '100%' }}>
           <span>1个月 - ¥{monthlyPrice}</span>
           {getStatusTag(1)}
         </Flexbox>
@@ -337,7 +336,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
     {
       disabled: durationEligibility[3]?.isSameLevelOrLower && !durationEligibility[3]?.isCurrentPlan,
       label: (
-        <Flexbox align={'center'} gap={6} horizontal justify={'space-between'} style={{ width: '100%' }}>
+        <Flexbox horizontal align={'center'} gap={6} justify={'space-between'} style={{ width: '100%' }}>
           <span>3个月 - ¥{monthlyPrice * 3}</span>
           {getStatusTag(3)}
         </Flexbox>
@@ -347,7 +346,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
     {
       disabled: durationEligibility[6]?.isSameLevelOrLower && !durationEligibility[6]?.isCurrentPlan,
       label: (
-        <Flexbox align={'center'} gap={6} horizontal justify={'space-between'} style={{ width: '100%' }}>
+        <Flexbox horizontal align={'center'} gap={6} justify={'space-between'} style={{ width: '100%' }}>
           <span>6个月 - ¥{monthlyPrice * 6}</span>
           {getStatusTag(6)}
         </Flexbox>
@@ -357,8 +356,8 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
     {
       disabled: durationEligibility[12]?.isSameLevelOrLower && !durationEligibility[12]?.isCurrentPlan,
       label: (
-        <Flexbox align={'center'} gap={6} horizontal justify={'space-between'} style={{ width: '100%' }}>
-          <Flexbox align={'center'} gap={6} horizontal>
+        <Flexbox horizontal align={'center'} gap={6} justify={'space-between'} style={{ width: '100%' }}>
+          <Flexbox horizontal align={'center'} gap={6}>
             <span>12个月 - ¥{yearlyPrice}</span>
             {yearlyDiscount > 0 && (
               <Tag className={styles.discountTag} size={'small'}>
@@ -379,7 +378,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
 
       {/* Header */}
       <Flexbox className={styles.cardHeader} gap={16}>
-        <Flexbox align={'center'} gap={12} horizontal>
+        <Flexbox horizontal align={'center'} gap={12}>
           <Center className={styles.iconContainer}>
             <Icon color={theme.colorText} icon={iconConfig.icon} size={22} />
           </Center>
@@ -395,17 +394,17 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
             选择购买时长
           </span>
           <Select
-            onChange={setSelectedDuration}
             options={durationOptions}
             size="large"
             style={{ width: '100%' }}
             value={selectedDuration}
+            onChange={setSelectedDuration}
           />
         </Flexbox>
 
         {/* Total Price */}
         <Flexbox gap={4}>
-          <Flexbox align={'baseline'} gap={4} horizontal>
+          <Flexbox horizontal align={'baseline'} gap={4}>
             <span className={styles.price}>¥{currentAmount}</span>
             <span className={styles.priceLabel}>总计</span>
           </Flexbox>
@@ -422,7 +421,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
             <Button
               block
               disabled={isButtonDisabled && !isCurrentPlan}
-              onClick={() => !isCurrentPlan && setPaymentModalOpen(true)}
+              type={isCurrentPlan ? 'default' : getButtonType()}
               style={
                 isCurrentPlan
                   ? {
@@ -435,7 +434,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
                     ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
                     : undefined
               }
-              type={isCurrentPlan ? 'default' : getButtonType()}
+              onClick={() => !isCurrentPlan && setPaymentModalOpen(true)}
             >
               {getButtonText()}
             </Button>
@@ -447,7 +446,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
       <Flexbox className={styles.cardBody} gap={20}>
         {/* Credits Section */}
         <Flexbox gap={8}>
-          <Flexbox align={'center'} gap={4} horizontal>
+          <Flexbox horizontal align={'center'} gap={4}>
             <span className={styles.sectionTitle}>计算积分</span>
             <Tooltip title="计算积分用于调用 AI 模型">
               <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
@@ -458,7 +457,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
           </span>
           <Flexbox gap={6}>
             {(plan.features?.display?.model_estimates || []).map((estimate, index) => (
-              <Flexbox align={'center'} gap={8} horizontal key={index}>
+              <Flexbox horizontal align={'center'} gap={8} key={index}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>{estimate.model}</span>
                 <span className={styles.featureValue}>{estimate.count}</span>
@@ -471,12 +470,12 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
         <Flexbox gap={8}>
           <span className={styles.sectionTitle}>文件存储</span>
           <Flexbox gap={6}>
-            <Flexbox align={'center'} gap={8} horizontal>
+            <Flexbox horizontal align={'center'} gap={8}>
               <Icon className={styles.checkIcon} icon={Check} size={14} />
               <span className={styles.featureItem}>文件存储</span>
               <span className={styles.featureValue}>{formatStorage(plan.storageLimit)}</span>
             </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
+            <Flexbox horizontal align={'center'} gap={8}>
               <Icon className={styles.checkIcon} icon={Check} size={14} />
               <span className={styles.featureItem}>向量存储</span>
               <span className={styles.featureValue}>
@@ -494,25 +493,25 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
           <span className={styles.sectionTitle}>云服务</span>
           <Flexbox gap={6}>
             {plan.features?.cloud_services?.unlimited_history && (
-              <Flexbox align={'center'} gap={8} horizontal>
+              <Flexbox horizontal align={'center'} gap={8}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>无限历史记录</span>
               </Flexbox>
             )}
             {plan.features?.cloud_services?.global_sync && (
-              <Flexbox align={'center'} gap={8} horizontal>
+              <Flexbox horizontal align={'center'} gap={8}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>全球同步</span>
               </Flexbox>
             )}
             {plan.features?.cloud_services?.web_search && (
-              <Flexbox align={'center'} gap={8} horizontal>
+              <Flexbox horizontal align={'center'} gap={8}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>联网搜索</span>
               </Flexbox>
             )}
             {plan.features?.capabilities?.custom_api && (
-              <Flexbox align={'center'} gap={8} horizontal>
+              <Flexbox horizontal align={'center'} gap={8}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>自定义 API</span>
               </Flexbox>
@@ -523,7 +522,7 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
         {/* Support */}
         <Flexbox gap={8}>
           <span className={styles.sectionTitle}>技术支持</span>
-          <Flexbox align={'center'} gap={8} horizontal>
+          <Flexbox horizontal align={'center'} gap={8}>
             <Icon className={styles.checkIcon} icon={Check} size={14} />
             <span className={styles.featureItem}>
               {plan.features?.support?.level || '-'}
@@ -535,6 +534,8 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
       {/* Payment Modal - Use UpgradePaymentModal for upgrades, PaymentModal for new subscriptions */}
       {canUpgrade && currentPlanSlug && currentPlanSlug !== 'free' ? (
         <UpgradePaymentModal
+          discount={discount}
+          open={paymentModalOpen}
           currentPlan={{
             billingInterval: currentBillingInterval,
             durationMonths: currentDurationMonths,
@@ -545,7 +546,6 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
             planValue: currentPlanValue,
             subscriptionType: currentSubscriptionType || 'recurring',
           }}
-          discount={discount}
           newPlan={{
             billingInterval: 'month',
             durationMonths: selectedDuration,
@@ -561,22 +561,21 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
             setPaymentModalOpen(false);
             navigate('/profile');
           }}
-          open={paymentModalOpen}
         />
       ) : (
         <PaymentModal
           amount={calculateAmount(selectedDuration) * 100}
           billingCycle="month"
           durationMonths={selectedDuration}
+          open={paymentModalOpen}
+          planId={plan.id}
+          planName={plan.name}
+          subscriptionType="onetime"
           onClose={() => setPaymentModalOpen(false)}
           onSuccess={() => {
             setPaymentModalOpen(false);
             navigate('/profile');
           }}
-          open={paymentModalOpen}
-          planId={plan.id}
-          planName={plan.name}
-          subscriptionType="onetime"
         />
       )}
     </Flexbox>

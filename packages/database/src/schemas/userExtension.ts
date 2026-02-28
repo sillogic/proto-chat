@@ -357,6 +357,7 @@ export const userSubscriptionHistory = pgTable('user_subscription_history', {
     // Payment method
     transactionId: text('transaction_id'),
 
+    updatedAt: timestamp('updated_at').defaultNow(),
 
     userId: text('user_id').notNull(),
 });

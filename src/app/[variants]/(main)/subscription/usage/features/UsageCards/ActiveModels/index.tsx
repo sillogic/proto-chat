@@ -1,17 +1,17 @@
 import { ModelIcon, ProviderIcon } from '@lobehub/icons';
-import { ActionIcon, Modal } from '@lobehub/ui';
+import { ActionIcon, Flexbox,Modal  } from '@lobehub/ui';
 import { useTheme } from 'antd-style';
 import { MaximizeIcon } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from '@lobehub/ui';
 
 import StatisticCard from '@/components/StatisticCard';
 import TitleWithPercentage from '@/components/StatisticCard/TitleWithPercentage';
-import { UsageLog } from '@/types/usage/usageRecord';
+import type { UsageLog } from '@/types/usage/usageRecord';
 import { formatNumber } from '@/utils/format';
 
-import { GroupBy, UsageChartProps } from '../../../Client';
+import type { UsageChartProps } from '../../../Client';
+import { GroupBy } from '../../../Client';
 import ModelTable from './ModelTable';
 
 const computeList = (data: UsageLog[], groupBy: GroupBy): string[] => {
@@ -48,19 +48,19 @@ const ActiveModels = memo<UsageChartProps>(({ data, isLoading, groupBy }) => {
   return (
     <>
       <StatisticCard
+        key={groupBy}
+        loading={isLoading}
         extra={
           <ActionIcon
             icon={MaximizeIcon}
-            onClick={() => setOpen(true)}
             title={
               groupBy === GroupBy.Model
                 ? t('usage.activeModels.modelTable')
                 : t('usage.activeModels.providerTable')
             }
+            onClick={() => setOpen(true)}
           />
         }
-        key={groupBy}
-        loading={isLoading}
         statistic={{
           description: (
             <Flexbox horizontal wrap={'wrap'}>
@@ -109,13 +109,13 @@ const ActiveModels = memo<UsageChartProps>(({ data, isLoading, groupBy }) => {
       />
       <Modal
         footer={null}
-        onCancel={() => setOpen(false)}
         open={open}
         title={
           groupBy === GroupBy.Model
             ? t('usage.activeModels.modelTable')
             : t('usage.activeModels.providerTable')
         }
+        onCancel={() => setOpen(false)}
       >
         <ModelTable data={data} groupBy={groupBy} isLoading={isLoading} />
       </Modal>

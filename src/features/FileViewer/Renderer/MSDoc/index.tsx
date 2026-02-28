@@ -1,4 +1,4 @@
-import { DocRenderer } from '@cyntler/react-doc-viewer';
+import type { DocRenderer } from '@cyntler/react-doc-viewer';
 import { Flexbox } from '@lobehub/ui';
 import { css, cx } from 'antd-style';
 

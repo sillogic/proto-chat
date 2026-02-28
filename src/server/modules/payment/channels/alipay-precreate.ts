@@ -7,7 +7,7 @@
  */
 
 import crypto from 'node:crypto';
-import { BasePaymentChannel } from './base';
+
 import type {
   ChannelPaymentResult,
   NotificationResult,
@@ -16,6 +16,7 @@ import type {
   PaymentOrder,
   PaymentStatus,
 } from '../types';
+import { BasePaymentChannel } from './base';
 
 interface AlipayConfig {
   // RSA2 private key
@@ -128,7 +129,7 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
       });
 
       const responseText = await response.text();
-      console.log('[Alipay] Raw response:', responseText);
+      console.info('[Alipay] Raw response:', responseText);
       const result = JSON.parse(responseText);
 
       const responseKey = 'alipay_trade_precreate_response';
@@ -141,7 +142,7 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
       }
 
       const tradeResponse = result[responseKey];
-      console.log('[Alipay] Trade response:', JSON.stringify(tradeResponse, null, 2));
+      console.info('[Alipay] Trade response:', JSON.stringify(tradeResponse, null, 2));
 
       if (tradeResponse.code !== '10000') {
         console.error('[Alipay] Error code:', tradeResponse.code, 'msg:', tradeResponse.msg, 'sub_msg:', tradeResponse.sub_msg);
@@ -238,7 +239,7 @@ export class AlipayPrecreateChannel extends BasePaymentChannel {
       }
 
       // Remove sign and sign_type for verification
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       const { sign: _sign, sign_type: _signType, ...paramsToVerify } = data;
       const signContent = this.buildSignContent(paramsToVerify);
 

@@ -1,13 +1,13 @@
-import { and, eq, like } from 'drizzle-orm';
-
+import type {
+  LobeChatDatabase} from '@lobechat/database';
 import {
-  LobeChatDatabase,
   modelPricings,
   protochatModels,
   protochatProviders,
   protochatSettings,
   protochatUsageLogs,
 } from '@lobechat/database';
+import { and, eq, like } from 'drizzle-orm';
 
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 

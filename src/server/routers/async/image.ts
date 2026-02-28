@@ -18,6 +18,7 @@ import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { CreditService } from '@/server/services/credit';
 import { GenerationService } from '@/server/services/generation';
 import { sanitizeFileName } from '@/utils/sanitizeFileName';
+import { getXorPayload } from '@/utils/server';
 
 const log = debug('lobe-image:async');
 
@@ -242,7 +243,7 @@ export const imageRouter = router({
         const imageGenerationPromise = async (signal: AbortSignal) => {
           log('Initializing agent runtime for provider: %s, model: %s', provider, model);
 
-          const { runtime: modelRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload, { model });
+          const { runtime: modelRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, getXorPayload(ctx.authorizationToken!), { model });
           const modelId = actualModel || model;
 
           // Check if operation has been cancelled

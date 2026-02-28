@@ -22,7 +22,8 @@ import {
   userTransactions,
 } from '@lobechat/database';
 import { and, eq, lte, ne } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 
 const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
 
@@ -33,7 +34,7 @@ const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
 async function grantMonthlyCredits() {
   const now = new Date();
 
-  console.log('[Cron] Starting monthly credit grant...');
+  console.info('[Cron] Starting monthly credit grant...');
 
   // Find users due for credit grant (includes free plan users)
   const usersToGrant = await serverDB
@@ -53,11 +54,11 @@ async function grantMonthlyCredits() {
     );
 
   if (usersToGrant.length === 0) {
-    console.log('[Cron] No users to grant credits');
+    console.info('[Cron] No users to grant credits');
     return { granted: 0 };
   }
 
-  console.log(`[Cron] Found ${usersToGrant.length} users to grant credits`);
+  console.info(`[Cron] Found ${usersToGrant.length} users to grant credits`);
 
   let grantedCount = 0;
 
@@ -137,14 +138,14 @@ async function grantMonthlyCredits() {
       });
 
       grantedCount++;
-      console.log(`[Cron] Granted ${credits} credits to user ${user.userId}`);
+      console.info(`[Cron] Granted ${credits} credits to user ${user.userId}`);
     } catch (error) {
       console.error(`[Cron] Error granting credits to user ${user.userId}:`, error);
       // Continue with next user
     }
   }
 
-  console.log(`[Cron] Monthly credit grant completed: ${grantedCount}/${usersToGrant.length}`);
+  console.info(`[Cron] Monthly credit grant completed: ${grantedCount}/${usersToGrant.length}`);
   return { granted: grantedCount };
 }
 
@@ -154,7 +155,7 @@ async function grantMonthlyCredits() {
 async function processExpirations() {
   const now = new Date();
 
-  console.log('[Cron] Starting expiration processing...');
+  console.info('[Cron] Starting expiration processing...');
 
   // Find expired users
   const expiredUsers = await serverDB
@@ -168,11 +169,11 @@ async function processExpirations() {
     .where(and(lte(userExtensions.planExpiresAt, now), ne(userExtensions.currentPlan, 'free')));
 
   if (expiredUsers.length === 0) {
-    console.log('[Cron] No expired subscriptions');
+    console.info('[Cron] No expired subscriptions');
     return { expired: 0 };
   }
 
-  console.log(`[Cron] Found ${expiredUsers.length} expired subscriptions`);
+  console.info(`[Cron] Found ${expiredUsers.length} expired subscriptions`);
 
   // Get free plan ID
   const freePlanResult = await serverDB
@@ -271,14 +272,14 @@ async function processExpirations() {
       });
 
       expiredCount++;
-      console.log(`[Cron] Downgraded user ${user.userId} to free plan`);
+      console.info(`[Cron] Downgraded user ${user.userId} to free plan`);
     } catch (error) {
       console.error(`[Cron] Error processing expiration for user ${user.userId}:`, error);
       // Continue with next user
     }
   }
 
-  console.log(`[Cron] Expiration processing completed: ${expiredCount}/${expiredUsers.length}`);
+  console.info(`[Cron] Expiration processing completed: ${expiredCount}/${expiredUsers.length}`);
   return { expired: expiredCount };
 }
 
@@ -292,7 +293,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[Cron] Starting subscription maintenance...');
+    console.info('[Cron] Starting subscription maintenance...');
 
     // Run both tasks
     const [creditsResult, expirationsResult] = await Promise.all([
@@ -300,7 +301,7 @@ export async function POST(request: NextRequest) {
       processExpirations(),
     ]);
 
-    console.log('[Cron] Subscription maintenance completed');
+    console.info('[Cron] Subscription maintenance completed');
 
     return NextResponse.json({
       creditsGranted: creditsResult.granted,

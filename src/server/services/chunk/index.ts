@@ -88,7 +88,7 @@ export class ChunkService {
    * parse file to chunks with async task
    */
   async asyncParseFileToChunks(fileId: string, skipExist?: boolean) {
-    console.log('[asyncParseFileToChunks] Called with fileId:', fileId, 'skipExist:', skipExist);
+    console.info('[asyncParseFileToChunks] Called with fileId:', fileId, 'skipExist:', skipExist);
 
     // Support both files (file_xxx or no prefix) and documents (docs_xxx)
     let result;
@@ -96,7 +96,7 @@ export class ChunkService {
 
     if (fileId.startsWith('docs_')) {
       // This is a document, query documents table with full ID (including prefix)
-      console.log('[asyncParseFileToChunks] Detected document ID, querying documents table');
+      console.info('[asyncParseFileToChunks] Detected document ID, querying documents table');
       result = await this.documentModel.findById(fileId);
       isDocument = true;
     } else {
@@ -105,19 +105,19 @@ export class ChunkService {
     }
 
     if (!result) {
-      console.log('[asyncParseFileToChunks] File/Document not found:', fileId);
+      console.info('[asyncParseFileToChunks] File/Document not found:', fileId);
       return;
     }
 
-    console.log('[asyncParseFileToChunks] Found', isDocument ? 'document' : 'file', 'chunkTaskId:', result.chunkTaskId);
+    console.info('[asyncParseFileToChunks] Found', isDocument ? 'document' : 'file', 'chunkTaskId:', result.chunkTaskId);
 
     // skip if already exist chunk tasks
     if (skipExist && result.chunkTaskId) {
-      console.log('[asyncParseFileToChunks] Skipping file', fileId, '- already has chunkTaskId:', result.chunkTaskId);
+      console.info('[asyncParseFileToChunks] Skipping file', fileId, '- already has chunkTaskId:', result.chunkTaskId);
       return;
     }
 
-    console.log('[asyncParseFileToChunks] Starting chunking for file:', fileId);
+    console.info('[asyncParseFileToChunks] Starting chunking for file:', fileId);
 
     // 1. create a asyncTaskId
     const asyncTaskId = await this.asyncTaskModel.create({
@@ -125,7 +125,7 @@ export class ChunkService {
       type: AsyncTaskType.Chunking,
     });
 
-    console.log('[asyncParseFileToChunks] Created async task:', asyncTaskId);
+    console.info('[asyncParseFileToChunks] Created async task:', asyncTaskId);
 
     // Update the appropriate table
     if (isDocument) {
@@ -137,10 +137,10 @@ export class ChunkService {
     // Async router will read keyVaults from DB, no need to pass jwtPayload
     const asyncCaller = await createAsyncCaller({ userId: this.userId });
 
-    console.log('[asyncParseFileToChunks] Triggering async call to parseFileToChunks');
+    console.info('[asyncParseFileToChunks] Triggering async call to parseFileToChunks');
 
     // trigger parse file task asynchronously
-    asyncCaller.file.parseFileToChunks({ fileId: fileId, taskId: asyncTaskId }).catch(async (e) => {
+    asyncCaller.file.parseFileToChunks({ fileId, taskId: asyncTaskId }).catch(async (e) => {
       console.error('[ParseFileToChunks] error:', e);
 
       await this.asyncTaskModel.update(asyncTaskId, {
@@ -152,7 +152,7 @@ export class ChunkService {
       });
     });
 
-    console.log('[asyncParseFileToChunks] Async task triggered, returning taskId:', asyncTaskId);
+    console.info('[asyncParseFileToChunks] Async task triggered, returning taskId:', asyncTaskId);
 
     return asyncTaskId;
   }

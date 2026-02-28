@@ -66,8 +66,8 @@ const PanelContent = memo<{ closePopover: () => void }>(({ closePopover }) => {
 
       <Menu items={mainItems} onClick={closePopover} />
       <Flexbox
-        align={'center'}
         horizontal
+        align={'center'}
         justify={'space-between'}
         style={isLoginWithAuth ? { paddingRight: 6 } : { padding: '6px 6px 6px 16px' }}
       >
@@ -76,7 +76,7 @@ const PanelContent = memo<{ closePopover: () => void }>(({ closePopover }) => {
         ) : (
           <BrandWatermark />
         )}
-        <Flexbox align={'center'} flex={'none'} gap={2} horizontal>
+        <Flexbox horizontal align={'center'} flex={'none'} gap={2}>
           <LangButton />
           <ThemeButton />
         </Flexbox>

@@ -1,11 +1,10 @@
-import { ModelPerformance, ModelUsage } from '@lobechat/types';
-import { Icon } from '@lobehub/ui';
+import type { ModelPerformance, ModelUsage } from '@lobechat/types';
+import { Center, Flexbox,Icon  } from '@lobehub/ui';
 import { Divider, Popover } from 'antd';
 import { useTheme } from 'antd-style';
 import { BadgeCent, CoinsIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Center, Flexbox } from '@lobehub/ui';
 
 import InfoTooltip from '@/components/InfoTooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -16,7 +15,8 @@ import { formatNumber, formatShortenNumber } from '@/utils/format';
 
 import AnimatedNumber from './AnimatedNumber';
 import ModelCard from './ModelCard';
-import TokenProgress, { TokenProgressItem } from './TokenProgress';
+import type { TokenProgressItem } from './TokenProgress';
+import TokenProgress from './TokenProgress';
 import { getDetailsToken } from './tokens';
 
 interface TokenDetailProps {
@@ -137,6 +137,8 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
   return (
     <Popover
       arrow={false}
+      placement={'top'}
+      trigger={isMobile ? ['click'] : ['hover']}
       content={
         <Flexbox gap={8} style={{ minWidth: 200 }}>
           {modelCard && <ModelCard {...modelCard} provider={provider} />}
@@ -145,9 +147,9 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
             {inputDetails.length > 1 && (
               <Flexbox gap={4}>
                 <Flexbox
+                  horizontal
                   align={'center'}
                   gap={4}
-                  horizontal
                   justify={'space-between'}
                   width={'100%'}
                 >
@@ -155,15 +157,15 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
                     {t('messages.tokenDetails.inputTitle')}
                   </div>
                 </Flexbox>
-                <TokenProgress data={inputDetails} showIcon />
+                <TokenProgress showIcon data={inputDetails} />
               </Flexbox>
             )}
             {outputDetails.length > 1 && (
               <Flexbox gap={4}>
                 <Flexbox
+                  horizontal
                   align={'center'}
                   gap={4}
-                  horizontal
                   justify={'space-between'}
                   width={'100%'}
                 >
@@ -171,20 +173,20 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
                     {t('messages.tokenDetails.outputTitle')}
                   </div>
                 </Flexbox>
-                <TokenProgress data={outputDetails} showIcon />
+                <TokenProgress showIcon data={outputDetails} />
               </Flexbox>
             )}
             <Flexbox>
-              <TokenProgress data={totalDetail} showIcon />
+              <TokenProgress showIcon data={totalDetail} />
               <Divider style={{ marginBlock: 8 }} />
-              <Flexbox align={'center'} gap={4} horizontal justify={'space-between'}>
+              <Flexbox horizontal align={'center'} gap={4} justify={'space-between'}>
                 <div style={{ color: theme.colorTextSecondary }}>
                   {t('messages.tokenDetails.total')}
                 </div>
                 <div style={{ fontWeight: 500 }}>{detailTotal}</div>
               </Flexbox>
               {isShowCredit && (
-                <Flexbox align={'center'} gap={4} horizontal justify={'space-between'}>
+                <Flexbox horizontal align={'center'} gap={4} justify={'space-between'}>
                   <div style={{ color: theme.colorTextSecondary }}>
                     {t('messages.tokenDetails.average')}
                   </div>
@@ -192,8 +194,8 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
                 </Flexbox>
               )}
               {tps && (
-                <Flexbox align={'center'} gap={4} horizontal justify={'space-between'}>
-                  <Flexbox gap={8} horizontal>
+                <Flexbox horizontal align={'center'} gap={4} justify={'space-between'}>
+                  <Flexbox horizontal gap={8}>
                     <div style={{ color: theme.colorTextSecondary }}>
                       {t('messages.tokenDetails.speed.tps.title')}
                     </div>
@@ -203,8 +205,8 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
                 </Flexbox>
               )}
               {ttft && (
-                <Flexbox align={'center'} gap={4} horizontal justify={'space-between'}>
-                  <Flexbox gap={8} horizontal>
+                <Flexbox horizontal align={'center'} gap={4} justify={'space-between'}>
+                  <Flexbox horizontal gap={8}>
                     <div style={{ color: theme.colorTextSecondary }}>
                       {t('messages.tokenDetails.speed.ttft.title')}
                     </div>
@@ -217,12 +219,11 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
           </Flexbox>
         </Flexbox>
       }
-      placement={'top'}
-      trigger={isMobile ? ['click'] : ['hover']}
     >
       <Center
-        gap={2}
         horizontal
+        gap={2}
+        style={{ cursor: isMobile ? 'default' : 'pointer' }}
         onClick={(e) => {
           // 移动端：让 Popover 处理点击事件
           if (isMobile) return;
@@ -232,7 +233,6 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
           e.stopPropagation();
           updateSystemStatus({ tokenDisplayFormatShort: !isShortFormat });
         }}
-        style={{ cursor: isMobile ? 'default' : 'pointer' }}
       >
         <Icon icon={isShowCredit ? BadgeCent : CoinsIcon} />
         <AnimatedNumber

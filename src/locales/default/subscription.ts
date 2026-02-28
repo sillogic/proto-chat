@@ -278,6 +278,9 @@ export default {
   'plans.support.ultimate': 'Priority Chat and Email Support',
   'plans.target': 'Target Plan',
   'plans.unlimited': 'Unlimited',
+  'team.contact': 'Contact Us',
+  'team.desc': 'Tailored solutions for teams and enterprises',
+  'team.title': 'Team / Enterprise',
   'qa.desc':
     'If your question is not answered, check <1>Product Documentation</1> for more FAQs, or contact us.',
   'qa.detail': 'View Details',

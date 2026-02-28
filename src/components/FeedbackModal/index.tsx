@@ -101,7 +101,7 @@ const FeedbackModal = memo<FeedbackModalProps>(({ initialValues, onClose, open }
 
       // Optionally show the issue URL to the user
       if (response.issueUrl) {
-        console.log('Feedback submitted:', response.issueUrl);
+        console.info('Feedback submitted:', response.issueUrl);
       }
     } catch (error: any) {
       console.error('[FeedbackModal] Submission failed:', error);

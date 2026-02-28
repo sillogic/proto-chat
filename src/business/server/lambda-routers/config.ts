@@ -1,8 +1,8 @@
+import { systemDefaultModelConfig } from '@lobechat/database';
 import { eq } from 'drizzle-orm';
 
 import { getServerDB } from '@/database/core/db-adaptor';
 import { publicProcedure } from '@/libs/trpc/lambda';
-import { systemDefaultModelConfig } from '@lobechat/database';
 
 export const businessConfigEndpoints = {
   getVideoDefaultModel: publicProcedure.query(async () => {

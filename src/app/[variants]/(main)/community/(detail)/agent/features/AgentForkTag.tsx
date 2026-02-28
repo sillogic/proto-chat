@@ -21,7 +21,7 @@ const AgentForkTag = memo(() => {
   const navigate = useNavigate();
   const { identifier, forkedFromAgentId } = useDetailContext();
 
-  console.log('forkedFromAgentId', forkedFromAgentId);
+  console.info('forkedFromAgentId', forkedFromAgentId);
 
   // Fetch fork source info
   const { data: forkSource } = useSWR(

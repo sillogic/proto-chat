@@ -4,9 +4,9 @@
  */
 
 import crypto from 'node:crypto';
-import { parseStringPromise, Builder } from 'xml2js';
 
-import { BasePaymentChannel } from './base';
+import { Builder,parseStringPromise } from 'xml2js';
+
 import type {
   ChannelPaymentResult,
   NotificationResult,
@@ -15,6 +15,7 @@ import type {
   PaymentOrder,
   PaymentStatus,
 } from '../types';
+import { BasePaymentChannel } from './base';
 
 interface WeChatConfig {
   apiKey: string;
@@ -268,7 +269,7 @@ export class WeChatNativeChannel extends BasePaymentChannel {
     if (!receivedSign) return false;
 
     // Remove sign field and rebuild signature
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { sign: _sign, ...paramsWithoutSign } = data;
     const calculatedSign = this.generateSignature(paramsWithoutSign);
 

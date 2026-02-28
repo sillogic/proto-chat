@@ -26,6 +26,9 @@
       "@serwist/next/typings"
     ],
     "paths": {
+      "packages/model-bank/src/*": [
+        "./packages/model-bank/src/*"
+      ],
       "@/database/*": [
         "./packages/database/src/*",
         "./src/database/*"

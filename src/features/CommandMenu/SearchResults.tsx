@@ -72,7 +72,7 @@ const SearchResults = memo<SearchResultsProps>(
           const fileUrl = result.knowledgeBaseId
             ? `/resource/library/${result.knowledgeBaseId}?file=${result.id}`
             : `/resource?file=${result.id}`;
-          console.log('[SearchResults] File navigation:', {
+          console.info('[SearchResults] File navigation:', {
             fileDetails: result,
             url: fileUrl,
           });
@@ -268,8 +268,8 @@ const SearchResults = memo<SearchResultsProps>(
 
       return (
         <CommandItem
-          description={subtitle}
           forceMount
+          description={subtitle}
           icon={getIcon(result.type)}
           key={result.id}
           title={titleWithPrefix}

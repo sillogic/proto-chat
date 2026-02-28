@@ -1,11 +1,10 @@
-import { ModelRankItem } from '@lobechat/types';
+import type { ModelRankItem } from '@lobechat/types';
 import { BarList } from '@lobehub/charts';
 import { ModelIcon } from '@lobehub/icons';
-import { ActionIcon, FormGroup, Modal } from '@lobehub/ui';
+import { ActionIcon, Flexbox,FormGroup, Modal  } from '@lobehub/ui';
 import { MaximizeIcon } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Flexbox } from '@lobehub/ui';
 
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { useClientDataSWR } from '@/libs/swr';
@@ -33,18 +32,18 @@ export const TopicsRank = memo(() => {
   return (
     <>
       <FormGroup
+        style={FORM_STYLE.style}
+        title={t('stats.modelsRank.title')}
+        variant={'borderless'}
         extra={
           showExtra ? (
             <ActionIcon
               icon={MaximizeIcon}
-              onClick={() => setOpen(true)}
               size={{ blockSize: 28, size: 20 }}
+              onClick={() => setOpen(true)}
             />
           ) : undefined
         }
-        style={FORM_STYLE.style}
-        title={t('stats.modelsRank.title')}
-        variant={'borderless'}
       >
         <Flexbox horizontal paddingBlock={16}>
           <BarList
@@ -52,11 +51,11 @@ export const TopicsRank = memo(() => {
             height={220}
             leftLabel={t('stats.modelsRank.left')}
             loading={isLoading || !data}
+            rightLabel={t('stats.modelsRank.right')}
             noDataText={{
               desc: t('stats.empty.desc'),
               title: t('stats.empty.title'),
             }}
-            rightLabel={t('stats.modelsRank.right')}
           />
         </Flexbox>
       </FormGroup>
@@ -64,9 +63,9 @@ export const TopicsRank = memo(() => {
         <Modal
           footer={null}
           loading={isLoading || !data}
-          onCancel={() => setOpen(false)}
           open={open}
           title={t('stats.modelsRank.title')}
+          onCancel={() => setOpen(false)}
         >
           <BarList
             data={data?.map((item) => mapData(item)) || []}

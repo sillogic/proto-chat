@@ -1,13 +1,12 @@
 'use client';
 
-import { Icon, Tag } from '@lobehub/ui';
+import { Flexbox,Icon, Tag  } from '@lobehub/ui';
+import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Empty, Pagination, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { createStyles } from 'antd-style';
 import { AlertCircle, CheckCircle, Clock, Eye, XCircle } from 'lucide-react';
 import { memo, useState } from 'react';
-import { Flexbox } from '@lobehub/ui';
-import { useQuery } from '@tanstack/react-query';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
@@ -202,9 +201,9 @@ const OrdersContent = memo(() => {
       render: (_, record) => (
         <Button
           icon={<Icon icon={Eye} size={14} />}
-          onClick={() => handleViewDetail(record)}
           size="small"
           type="link"
+          onClick={() => handleViewDetail(record)}
         >
           详情
         </Button>
@@ -225,9 +224,9 @@ const OrdersContent = memo(() => {
       {/* Error State */}
       {error && (
         <Alert
+          showIcon
           description="加载订单记录失败，请稍后重试"
           message="加载失败"
-          showIcon
           type="error"
         />
       )}
@@ -238,46 +237,46 @@ const OrdersContent = memo(() => {
           columns={columns}
           dataSource={data?.orders || []}
           loading={isLoading}
+          pagination={false}
+          rowKey="id"
+          scroll={{ x: 1300 }}
           locale={{
             emptyText: (
               <Empty description="暂无订单记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             ),
           }}
-          pagination={false}
-          rowKey="id"
-          scroll={{ x: 1300 }}
         />
       </div>
 
       {/* Pagination */}
       {data && data.total > 0 && (
-        <Flexbox align="center" horizontal justify="flex-end">
+        <Flexbox horizontal align="center" justify="flex-end">
           <Pagination
+            showQuickJumper
+            showSizeChanger
             current={page}
+            pageSize={pageSize}
+            pageSizeOptions={['10', '20', '50']}
+            showTotal={(total) => `共 ${total} 条记录`}
+            total={data.total}
             onChange={(newPage, newPageSize) => {
               setPage(newPage);
               if (newPageSize !== pageSize) {
                 setPageSize(newPageSize);
               }
             }}
-            pageSize={pageSize}
-            pageSizeOptions={['10', '20', '50']}
-            showQuickJumper
-            showSizeChanger
-            showTotal={(total) => `共 ${total} 条记录`}
-            total={data.total}
           />
         </Flexbox>
       )}
 
       {/* Order Detail Modal */}
       <OrderDetailModal
+        open={detailModalOpen}
+        order={selectedOrder}
         onClose={() => {
           setDetailModalOpen(false);
           setSelectedOrder(null);
         }}
-        open={detailModalOpen}
-        order={selectedOrder}
       />
     </Flexbox>
   );

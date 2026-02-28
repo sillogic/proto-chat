@@ -3,7 +3,7 @@
 import { Flexbox, Tag } from '@lobehub/ui';
 import { Button, DatePicker, Empty, Input, Pagination, Select, Space, Table, Typography } from 'antd';
 import { createStyles } from 'antd-style';
-import dayjs from 'dayjs';
+import type dayjs from 'dayjs';
 import { memo, useState } from 'react';
 
 import { useClientDataSWR } from '@/libs/swr';
@@ -15,15 +15,16 @@ const { RangePicker } = DatePicker;
 
 const useStyles = createStyles(({ css, token }) => ({
   container: css`
-    padding: 24px;
     max-width: 1400px;
-    margin: 0 auto;
+    margin-block: 0;
+    margin-inline: auto;
+    padding: 24px;
   `,
   filters: css`
     padding: 16px;
-    background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadius}px;
     border: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${token.borderRadius}px;
+    background: ${token.colorBgContainer};
   `,
   header: css`
     margin-block-end: 24px;
@@ -194,32 +195,32 @@ const ConsumptionContent = memo(() => {
 
       {/* Filters */}
       <Flexbox className={styles.filters} gap={12}>
-        <Flexbox gap={12} horizontal wrap="wrap">
+        <Flexbox horizontal gap={12} wrap="wrap">
           <RangePicker
-            onChange={(dates) => setDateRange(dates ? [dates[0], dates[1]] : [null, null])}
             placeholder={['开始日期', '结束日期']}
             value={dateRange}
+            onChange={(dates) => setDateRange(dates ? [dates[0], dates[1]] : [null, null])}
           />
           <Select
             allowClear
-            onChange={(val) => setType(val || '')}
+            placeholder="类型筛选"
+            style={{ width: 130 }}
+            value={type || undefined}
             options={[
               { label: '文本生成', value: 'chat' },
               { label: '图片生成', value: 'image' },
             ]}
-            placeholder="类型筛选"
-            style={{ width: 130 }}
-            value={type || undefined}
+            onChange={(val) => setType(val || '')}
           />
           <Input
             allowClear
-            onChange={(e) => setModel(e.target.value)}
-            onPressEnter={handleSearch}
             placeholder="模型名称"
             style={{ width: 200 }}
             value={model}
+            onChange={(e) => setModel(e.target.value)}
+            onPressEnter={handleSearch}
           />
-          <Button onClick={handleSearch} type="primary">
+          <Button type="primary" onClick={handleSearch}>
             筛选
           </Button>
           <Button onClick={handleReset}>重置</Button>
@@ -231,20 +232,26 @@ const ConsumptionContent = memo(() => {
         columns={columns}
         dataSource={data?.list || []}
         loading={isLoading}
-        locale={{
-          emptyText: <Empty description="暂无使用记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
-        }}
         pagination={false}
         rowKey="id"
         scroll={{ x: 'max-content' }}
         size="small"
+        locale={{
+          emptyText: <Empty description="暂无使用记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+        }}
       />
 
       {/* Pagination */}
       {data && data.total > 0 && (
-        <Flexbox align="center" horizontal justify="flex-end">
+        <Flexbox horizontal align="center" justify="flex-end">
           <Pagination
+            showQuickJumper
+            showSizeChanger
             current={page}
+            pageSize={pageSize}
+            pageSizeOptions={['20', '50', '100']}
+            showTotal={(total) => `共 ${total} 条记录`}
+            total={data.total}
             onChange={(newPage, newPageSize) => {
               setPage(newPage);
               if (newPageSize !== pageSize) {
@@ -252,12 +259,6 @@ const ConsumptionContent = memo(() => {
                 setPage(1);
               }
             }}
-            pageSize={pageSize}
-            pageSizeOptions={['20', '50', '100']}
-            showQuickJumper
-            showSizeChanger
-            showTotal={(total) => `共 ${total} 条记录`}
-            total={data.total}
           />
         </Flexbox>
       )}

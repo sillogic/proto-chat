@@ -1,6 +1,6 @@
-import { Divider, Typography } from 'antd'
+import { BarChart, type BarChartProps,ChartTooltipFrame, ChartTooltipRow } from '@lobehub/charts';
 import { Flexbox } from '@lobehub/ui';
-import { BarChart, ChartTooltipFrame, ChartTooltipRow, type BarChartProps } from '@lobehub/charts';
+import { Divider, Typography } from 'antd'
 
 export const UsageBarChart = ({ ...props }: BarChartProps) => (
     <BarChart

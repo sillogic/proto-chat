@@ -2,8 +2,8 @@ import { LOBE_CHAT_CLOUD, UTM_SOURCE } from '@lobechat/business-const';
 import { DOWNLOAD_URL, isDesktop } from '@lobechat/const';
 import { Flexbox, Hotkey, Icon, Tag } from '@lobehub/ui';
 import { type ItemType } from 'antd/es/menu/interface';
-import { Cloudy, CreditCard, Download, HardDriveDownload, LogOut, Settings2 } from 'lucide-react';
-import { type PropsWithChildren, memo, useMemo } from 'react';
+import { Cloudy, CreditCard, Download, LogOut, Settings2 } from 'lucide-react';
+import { memo, type PropsWithChildren, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -11,7 +11,6 @@ import useBusinessMenuItems from '@/business/client/features/User/useBusinessMen
 import { type MenuProps } from '@/components/Menu';
 import { DEFAULT_DESKTOP_HOTKEY_CONFIG } from '@/const/desktop';
 import { OFFICIAL_URL } from '@/const/url';
-import DataImporter from '@/features/DataImporter';
 import { usePlatform } from '@/hooks/usePlatform';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';

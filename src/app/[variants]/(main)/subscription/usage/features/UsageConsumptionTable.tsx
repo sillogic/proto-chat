@@ -1,7 +1,8 @@
 'use client';
 
 import { Tag } from '@lobehub/ui';
-import { Table, TableColumnType, Typography, Space } from 'antd';
+import type { TableColumnType} from 'antd';
+import { Space,Table, Typography } from 'antd';
 import { memo } from 'react';
 
 import { useClientDataSWR } from '@/libs/swr';

@@ -44,7 +44,7 @@ export const POST = async (req: Request) => {
     const json = await req.json();
     const parsed = bodySchema.parse(json);
 
-    console.log('[locomo-dev-search] parsed body', parsed);
+    console.info('[locomo-dev-search] parsed body', parsed);
     const userId = parsed.userId || (parsed.sampleId ? `locomo-user-${parsed.sampleId}` : undefined);
     if (!userId) {
       return NextResponse.json({ error: 'userId or sampleId is required' }, { status: 400 });
@@ -77,7 +77,7 @@ export const POST = async (req: Request) => {
         { status: 500 },
       );
     }
-    console.log('[locomo-dev-search] generated embedding');
+    console.info('[locomo-dev-search] generated embedding');
 
     const searchResult = await model.searchWithEmbedding({
       embedding,
@@ -88,10 +88,10 @@ export const POST = async (req: Request) => {
         preferences: topK,
       },
     });
-    console.log('[locomo-dev-search] searched result');
+    console.info('[locomo-dev-search] searched result');
 
     const identities = await model.getAllIdentities();
-    console.log('[locomo-dev-search] fetched identities');
+    console.info('[locomo-dev-search] fetched identities');
 
     const memoryIds = [
       ...searchResult.contexts
@@ -120,7 +120,7 @@ export const POST = async (req: Request) => {
           .select(selectNonVectorColumns(userMemories))
           .from(userMemories)
           .where(and(eq(userMemories.userId, userId), inArray(userMemories.id, uniqueMemoryIds)));
-    console.log('[locomo-dev-search] fetched memories');
+    console.info('[locomo-dev-search] fetched memories');
 
     const memoryMap = new Map(memories.map((memory) => [memory.id, memory]));
 
@@ -204,7 +204,7 @@ export const POST = async (req: Request) => {
       ...activityItems.slice(0, topK),
       ...identityItems,
     ];
-    console.log('[locomo-dev-search] compiled items');
+    console.info('[locomo-dev-search] compiled items');
 
     return NextResponse.json({
       items,

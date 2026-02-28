@@ -5,9 +5,9 @@ import { useAiInfraStore } from '@/store/aiInfra';
 import { aiProviderSelectors } from '@/store/aiInfra/slices/aiProvider/selectors';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
-import { useVideoStore } from '@/store/video';
 import { useUserStore } from '@/store/user';
 import { authSelectors } from '@/store/user/selectors';
+import { useVideoStore } from '@/store/video';
 import { AiProviderSourceEnum } from '@/types/aiProvider';
 
 const checkModelEnabled = (

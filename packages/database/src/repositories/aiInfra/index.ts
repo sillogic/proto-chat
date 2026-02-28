@@ -509,7 +509,7 @@ export class AiInfraRepos {
         settings: (m.settings as Record<string, any>) || undefined,
         source: AiModelSourceEnum.Builtin,
         type: m.type as 'chat' | 'image' | 'embedding',
-      }));
+      })) as unknown as AiProviderModelListItem[];
     } catch (error) {
       console.error('[ProtoChat] Failed to fetch models from database:', error);
       return [];

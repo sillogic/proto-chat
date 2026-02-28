@@ -1,5 +1,6 @@
 import { Tag } from '@lobehub/ui';
-import { Table, TableColumnType, Typography } from 'antd';
+import type { TableColumnType} from 'antd';
+import { Table, Typography } from 'antd';
 import { memo } from 'react';
 
 import { useClientDataSWR } from '@/libs/swr';

@@ -18,14 +18,15 @@ import { type NewChunkItem, type NewEmbeddingsItem } from '@/database/schemas';
 import { fileEnv } from '@/envs/file';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { getServerDefaultFilesConfig } from '@/server/globalConfig';
-import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { ChunkService } from '@/server/services/chunk';
 import { FileService } from '@/server/services/file';
 import { type IAsyncTaskError } from '@/types/asyncTask';
 import { AsyncTaskError, AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
 import { safeParseJSON } from '@/utils/safeParseJSON';
 import { sanitizeUTF8 } from '@/utils/sanitizeUTF8';
+import { getXorPayload } from '@/utils/server';
 
 const fileProcedure = asyncAuthedProcedure.use(async (opts) => {
   const { ctx } = opts;
@@ -57,7 +58,7 @@ export const fileRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Support both files and documents
-      let file;
+      let file: any;
       const isDocument = input.fileId.startsWith('docs_');
 
       if (isDocument) {
@@ -80,7 +81,7 @@ export const fileRouter = router({
       let model: string;
       let provider: string;
       let modelInputPrice: number | null = null;
-      let embeddingPayload = ctx.jwtPayload; // Default to user's payload
+      let embeddingPayload = getXorPayload(ctx.authorizationToken!); // Default to user's payload
 
       if (systemConfig && systemConfig.providerId && systemConfig.modelId) {
         // Use system configuration from database
@@ -104,7 +105,7 @@ export const fileRouter = router({
 
         // Create custom payload with system config
         embeddingPayload = {
-          ...ctx.jwtPayload,
+          ...getXorPayload(ctx.authorizationToken!),
           apiKey: decryptedApiKey,
           baseURL: systemConfig.baseUrl || undefined,
         };
@@ -194,13 +195,13 @@ export const fileRouter = router({
 
               await ctx.embeddingUsageLogModel.create({
                 chunkCount: chunks.length,
-                costPrice: costPrice,
+                costPrice,
                 fileId: input.fileId,
                 inputTokens: totalInputTokens,
                 modelId: model,
                 operationType: 'file_embedding',
                 providerId: provider,
-                totalTokens: totalTokens,
+                totalTokens,
                 userId: ctx.userId,
               });
             } catch (logError) {
@@ -248,18 +249,18 @@ export const fileRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      console.log('[parseFileToChunks] Received request for fileId:', input.fileId, 'taskId:', input.taskId);
+      console.info('[parseFileToChunks] Received request for fileId:', input.fileId, 'taskId:', input.taskId);
 
       // Support both files and documents
-      let file;
+      let file: any;
       let isDocument = false;
 
       if (input.fileId.startsWith('docs_')) {
-        console.log('[parseFileToChunks] Querying document');
+        console.info('[parseFileToChunks] Querying document');
         file = await ctx.documentModel.findById(input.fileId);
         isDocument = true;
       } else {
-        console.log('[parseFileToChunks] Querying file');
+        console.info('[parseFileToChunks] Querying file');
         file = await ctx.fileModel.findById(input.fileId);
       }
 
@@ -267,13 +268,13 @@ export const fileRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: `${isDocument ? 'Document' : 'File'} not found` });
       }
 
-      console.log('[parseFileToChunks] Found', isDocument ? 'document' : 'file', '- name:', file.name || file.title || file.filename, '- fileType:', file.fileType);
+      console.info('[parseFileToChunks] Found', isDocument ? 'document' : 'file', '- name:', file.name || file.title || file.filename, '- fileType:', file.fileType);
 
       let content: Uint8Array | undefined;
 
       // For custom/document type, use content from database directly
       if (isDocument && file.fileType === 'custom/document') {
-        console.log('[parseFileToChunks] Custom document detected, using content from database');
+        console.info('[parseFileToChunks] Custom document detected, using content from database');
         if (!file.content) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: 'Document content is empty' });
         }
@@ -338,7 +339,7 @@ export const fileRouter = router({
               filename = `${filename}.txt`;
             }
             effectiveFileType = 'text/plain';
-            console.log('[parseFileToChunks] Custom document, treating as text/plain');
+            console.info('[parseFileToChunks] Custom document, treating as text/plain');
           } else if (!filename.includes('.') && file.fileType) {
             // If filename has no extension but fileType exists, append extension from fileType
             const extension = file.fileType.includes('/')
@@ -354,10 +355,10 @@ export const fileRouter = router({
 
             const ext = extMap[extension || ''] || extension;
             filename = `${filename}.${ext}`;
-            console.log('[parseFileToChunks] Appended extension to filename:', filename);
+            console.info('[parseFileToChunks] Appended extension to filename:', filename);
           }
 
-          console.log('[parseFileToChunks] Chunking with fileType:', effectiveFileType, 'filename:', filename);
+          console.info('[parseFileToChunks] Chunking with fileType:', effectiveFileType, 'filename:', filename);
 
           // partition file to chunks
           const chunkResult = await chunkService.chunkContent({

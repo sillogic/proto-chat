@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
-import { and, desc, eq, sql } from 'drizzle-orm';
 import dayjs from 'dayjs';
+import { and, desc, eq, type SQL, sql } from 'drizzle-orm';
 
 import {
     embeddings,
@@ -12,7 +12,7 @@ import {
     userExtensions,
     userTransactions,
 } from '@/database/schemas';
-import { LobeChatDatabase } from '@/database/type';
+import type { LobeChatDatabase } from '@/database/type';
 import { CreditService } from '@/server/services/credit';
 
 export class UserUsageService {
@@ -335,7 +335,7 @@ export class UserUsageService {
             eq(userTransactions.type, 'CONSUMPTION'),
         );
 
-        let embeddingWhereClause = eq(embeddingUsageLogs.userId, this.userId);
+        let embeddingWhereClause: SQL<unknown> | undefined = eq(embeddingUsageLogs.userId, this.userId);
 
         if (mo) {
             const startAt = dayjs(mo, 'YYYY-MM').startOf('month').toDate();

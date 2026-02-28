@@ -1,14 +1,13 @@
 'use client';
 
-import { Icon } from '@lobehub/ui';
 import { WechatOutlined } from '@ant-design/icons';
+import { Center, Flexbox,Icon  } from '@lobehub/ui';
 import { Alert, Button, message, Modal, Radio, Spin, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import { CheckCircle, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import Image from 'next/image';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Center, Flexbox } from '@lobehub/ui';
 import { QRCodeSVG } from 'qrcode.react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
@@ -428,9 +427,9 @@ const PaymentModal = memo<PaymentModalProps>(
             </span>
           </Flexbox>
           <div className={styles.divider} />
-          <Flexbox align="center" horizontal justify="space-between">
+          <Flexbox horizontal align="center" justify="space-between">
             <span className={styles.orderLabel}>支付金额</span>
-            <Flexbox align="baseline" gap={2} horizontal>
+            <Flexbox horizontal align="baseline" gap={2}>
               <span className={styles.priceCurrency}>¥</span>
               <span className={styles.price}>{(amount / 100).toFixed(2)}</span>
             </Flexbox>
@@ -450,8 +449,8 @@ const PaymentModal = memo<PaymentModalProps>(
               }
               onClick={() => setPaymentMethod('alipay_precreate')}
             >
-              <Flexbox align="center" horizontal justify="space-between">
-                <Flexbox align="center" gap={12} horizontal>
+              <Flexbox horizontal align="center" justify="space-between">
+                <Flexbox horizontal align="center" gap={12}>
                   <Radio checked={paymentMethod === 'alipay_precreate'} />
                   <Image
                     alt="Alipay"
@@ -468,12 +467,12 @@ const PaymentModal = memo<PaymentModalProps>(
             {/* WeChat Pay - Coming Soon */}
             <div
               className={styles.paymentMethodCard}
-              onClick={() => message.info('微信支付敬请期待')}
               style={{ opacity: 0.6 }}
+              onClick={() => message.info('微信支付敬请期待')}
             >
-              <Flexbox align="center" horizontal justify="space-between">
-                <Flexbox align="center" gap={12} horizontal>
-                  <Radio checked={false} disabled />
+              <Flexbox horizontal align="center" justify="space-between">
+                <Flexbox horizontal align="center" gap={12}>
+                  <Radio disabled checked={false} />
                   <WechatOutlined className={styles.wechatIcon} style={{ fontSize: 24 }} />
                   <span style={{ fontWeight: 500 }}>微信支付</span>
                   <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>即将上线</span>
@@ -484,7 +483,7 @@ const PaymentModal = memo<PaymentModalProps>(
         </Flexbox>
 
         {/* Security Note */}
-        <Flexbox align="center" gap={6} horizontal style={{ justifyContent: 'center' }}>
+        <Flexbox horizontal align="center" gap={6} style={{ justifyContent: 'center' }}>
           <Icon color={theme.colorSuccess} icon={ShieldCheck} size={16} />
           <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
             支付由支付宝安全加密处理
@@ -494,8 +493,8 @@ const PaymentModal = memo<PaymentModalProps>(
         {/* Auto-renewal notice for recurring */}
         {isRecurring && (
           <Alert
-            description={`签约后将按${billingCycle === 'year' ? '年' : '月'}自动续费，您可随时在账户设置中取消`}
             showIcon
+            description={`签约后将按${billingCycle === 'year' ? '年' : '月'}自动续费，您可随时在账户设置中取消`}
             type="warning"
           />
         )}
@@ -504,8 +503,8 @@ const PaymentModal = memo<PaymentModalProps>(
         <Button
           block
           className={styles.confirmButton}
-          onClick={handleConfirmPayment}
           type="primary"
+          onClick={handleConfirmPayment}
         >
           {isRecurring ? `签约并支付 ¥${(amount / 100).toFixed(2)}` : `去支付 ¥${(amount / 100).toFixed(2)}`}
         </Button>
@@ -530,7 +529,7 @@ const PaymentModal = memo<PaymentModalProps>(
 
         {/* Instructions */}
         <Flexbox align="center" gap={8}>
-          <Flexbox align="center" gap={8} horizontal>
+          <Flexbox horizontal align="center" gap={8}>
             <Image alt="Alipay" height={20} src="/images/payment/alipay-logo.png" width={20} />
             <span style={{ fontSize: 14 }}>
               {isRecurring ? (
@@ -562,19 +561,19 @@ const PaymentModal = memo<PaymentModalProps>(
 
         {/* Tips */}
         <Alert
+          showIcon
+          message={isRecurring ? '签约提示' : '支付提示'}
+          type="info"
           description={
             isRecurring
               ? '请在支付宝 App 中完成签约并支付首期费用，完成后页面会自动跳转。签约后将按周期自动扣款续费。'
               : '请在支付宝 App 中完成支付，支付完成后页面会自动跳转。'
           }
-          message={isRecurring ? '签约提示' : '支付提示'}
-          showIcon
-          type="info"
         />
 
         {/* Auto-renewal notice for recurring */}
         {isRecurring && (
-          <Flexbox align="center" gap={6} horizontal style={{ justifyContent: 'center' }}>
+          <Flexbox horizontal align="center" gap={6} style={{ justifyContent: 'center' }}>
             <Icon color={theme.colorTextTertiary} icon={RefreshCw} size={14} />
             <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
               签约后可随时在「账户设置」中取消自动续费
@@ -621,9 +620,9 @@ const PaymentModal = memo<PaymentModalProps>(
               <Flexbox align="center" gap={16}>
                 <Icon className={styles.errorIcon} icon={XCircle} size={64} />
                 <span style={{ fontSize: 16, fontWeight: 500 }}>{errorMessage || '支付失败'}</span>
-                <Flexbox gap={8} horizontal>
+                <Flexbox horizontal gap={8}>
                   <Button onClick={handleBack}>返回重试</Button>
-                  <Button onClick={handleClose} type="primary">
+                  <Button type="primary" onClick={handleClose}>
                     关闭
                   </Button>
                 </Flexbox>
@@ -643,10 +642,10 @@ const PaymentModal = memo<PaymentModalProps>(
         centered
         className={styles.modal}
         footer={null}
-        onCancel={handleClose}
         open={open}
         title={null}
         width={480}
+        onCancel={handleClose}
       >
         {/* Header */}
         <div className={styles.header}>

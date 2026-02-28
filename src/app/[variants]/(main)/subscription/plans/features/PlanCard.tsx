@@ -1,13 +1,12 @@
 'use client';
 
-import { Icon, Tag } from '@lobehub/ui';
+import { Center, Flexbox,Icon, Tag  } from '@lobehub/ui';
 import { Button, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { Atom, BrainCircuit, Check, CircleHelp, FlaskConical, Sparkles } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Center, Flexbox } from '@lobehub/ui';
 
 import PaymentModal from '@/features/Payment/PaymentModal';
 import UpgradePaymentModal from '@/features/Payment/UpgradePaymentModal';
@@ -270,7 +269,7 @@ const PlanCard = memo<PlanCardProps>(({
 
       {/* Header */}
       <Flexbox className={styles.cardHeader} gap={16}>
-        <Flexbox align={'center'} gap={12} horizontal>
+        <Flexbox horizontal align={'center'} gap={12}>
           <Center className={styles.iconContainer}>
             <Icon color={theme.colorText} icon={iconConfig.icon} size={22} />
           </Center>
@@ -282,12 +281,12 @@ const PlanCard = memo<PlanCardProps>(({
 
         {/* Price */}
         <Flexbox gap={4}>
-          <Flexbox align={'baseline'} gap={4} horizontal>
+          <Flexbox horizontal align={'baseline'} gap={4}>
             <span className={styles.price}>¥{currentPrice}</span>
             <span className={styles.priceLabel}>/月</span>
           </Flexbox>
           {showYearlyDiscount && (
-            <Flexbox align={'center'} gap={8} horizontal>
+            <Flexbox horizontal align={'center'} gap={8}>
               <span className={styles.priceOriginal}>¥{monthlyTotal}/年</span>
               <Tag color="blue" size={'small'}>
                 {t('billingCycle.yearlyDiscount', '年付优惠')}
@@ -307,7 +306,7 @@ const PlanCard = memo<PlanCardProps>(({
             <Button
               block
               disabled={isButtonDisabled && !isCurrentPlan}
-              onClick={() => !isCurrentPlan && setPaymentModalOpen(true)}
+              type={isCurrentPlan ? 'default' : getButtonType()}
               style={
                 isCurrentPlan
                   ? {
@@ -320,7 +319,7 @@ const PlanCard = memo<PlanCardProps>(({
                     ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }
                     : undefined
               }
-              type={isCurrentPlan ? 'default' : getButtonType()}
+              onClick={() => !isCurrentPlan && setPaymentModalOpen(true)}
             >
               {getButtonText()}
             </Button>
@@ -332,7 +331,7 @@ const PlanCard = memo<PlanCardProps>(({
       <Flexbox className={styles.cardBody} gap={20}>
         {/* Credits Section */}
         <Flexbox gap={8}>
-          <Flexbox align={'center'} gap={4} horizontal>
+          <Flexbox horizontal align={'center'} gap={4}>
             <span className={styles.sectionTitle}>{t('features.credits', '计算积分')}</span>
             <Tooltip title="计算积分用于调用 AI 模型">
               <Icon icon={CircleHelp} size={12} style={{ color: theme.colorTextQuaternary }} />
@@ -343,7 +342,7 @@ const PlanCard = memo<PlanCardProps>(({
           </span>
           <Flexbox gap={6}>
             {(plan.features?.display?.model_estimates || []).map((estimate, index) => (
-              <Flexbox align={'center'} gap={8} horizontal key={index}>
+              <Flexbox horizontal align={'center'} gap={8} key={index}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>{estimate.model}</span>
                 <span className={styles.featureValue}>{estimate.count}</span>
@@ -356,12 +355,12 @@ const PlanCard = memo<PlanCardProps>(({
         <Flexbox gap={8}>
           <span className={styles.sectionTitle}>{t('features.files', '文件存储')}</span>
           <Flexbox gap={6}>
-            <Flexbox align={'center'} gap={8} horizontal>
+            <Flexbox horizontal align={'center'} gap={8}>
               <Icon className={styles.checkIcon} icon={Check} size={14} />
               <span className={styles.featureItem}>{t('features.fileStorage', '文件存储')}</span>
               <span className={styles.featureValue}>{formatStorage(plan.storageLimit)}</span>
             </Flexbox>
-            <Flexbox align={'center'} gap={8} horizontal>
+            <Flexbox horizontal align={'center'} gap={8}>
               <Icon className={styles.checkIcon} icon={Check} size={14} />
               <span className={styles.featureItem}>
                 {t('features.vectorStorage', '向量存储')}
@@ -381,7 +380,7 @@ const PlanCard = memo<PlanCardProps>(({
           <span className={styles.sectionTitle}>{t('features.cloudService', '云服务')}</span>
           <Flexbox gap={6}>
             {plan.features?.cloud_services?.unlimited_history && (
-              <Flexbox align={'center'} gap={8} horizontal>
+              <Flexbox horizontal align={'center'} gap={8}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>
                   {t('features.unlimitedHistory', '无限历史记录')}
@@ -389,7 +388,7 @@ const PlanCard = memo<PlanCardProps>(({
               </Flexbox>
             )}
             {plan.features?.cloud_services?.global_sync && (
-              <Flexbox align={'center'} gap={8} horizontal>
+              <Flexbox horizontal align={'center'} gap={8}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>
                   {t('features.globalSync', '全球同步')}
@@ -397,13 +396,13 @@ const PlanCard = memo<PlanCardProps>(({
               </Flexbox>
             )}
             {plan.features?.cloud_services?.web_search && (
-              <Flexbox align={'center'} gap={8} horizontal>
+              <Flexbox horizontal align={'center'} gap={8}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>{t('features.webSearch', '联网搜索')}</span>
               </Flexbox>
             )}
             {plan.features?.capabilities?.custom_api && (
-              <Flexbox align={'center'} gap={8} horizontal>
+              <Flexbox horizontal align={'center'} gap={8}>
                 <Icon className={styles.checkIcon} icon={Check} size={14} />
                 <span className={styles.featureItem}>{t('features.customApi', '自定义 API')}</span>
               </Flexbox>
@@ -414,7 +413,7 @@ const PlanCard = memo<PlanCardProps>(({
         {/* Support */}
         <Flexbox gap={8}>
           <span className={styles.sectionTitle}>{t('features.support', '技术支持')}</span>
-          <Flexbox align={'center'} gap={8} horizontal>
+          <Flexbox horizontal align={'center'} gap={8}>
             <Icon className={styles.checkIcon} icon={Check} size={14} />
             <span className={styles.featureItem}>
               {plan.features?.support?.level || '-'}
@@ -426,6 +425,8 @@ const PlanCard = memo<PlanCardProps>(({
       {/* Payment Modal - Use UpgradePaymentModal for upgrades, PaymentModal for new subscriptions */}
       {canUpgrade && currentPlanSlug && currentPlanSlug !== 'free' ? (
         <UpgradePaymentModal
+          discount={discount}
+          open={paymentModalOpen}
           currentPlan={{
             billingInterval: currentBillingInterval,
             durationMonths: currentDurationMonths,
@@ -436,7 +437,6 @@ const PlanCard = memo<PlanCardProps>(({
             planValue: currentPlanValue,
             subscriptionType: currentSubscriptionType || 'recurring',
           }}
-          discount={discount}
           newPlan={{
             billingInterval: isYearly ? 'year' : 'month',
             // 原价：年付按月价*12计算（不含折扣），折扣单独显示
@@ -451,21 +451,20 @@ const PlanCard = memo<PlanCardProps>(({
             setPaymentModalOpen(false);
             navigate('/profile');
           }}
-          open={paymentModalOpen}
         />
       ) : (
         <PaymentModal
           amount={isYearly && plan.yearlyPrice ? plan.yearlyPrice : plan.monthlyPrice}
           billingCycle={isYearly ? 'year' : 'month'}
+          open={paymentModalOpen}
+          planId={plan.id}
+          planName={plan.name}
+          subscriptionType="recurring"
           onClose={() => setPaymentModalOpen(false)}
           onSuccess={() => {
             setPaymentModalOpen(false);
             navigate('/profile');
           }}
-          open={paymentModalOpen}
-          planId={plan.id}
-          planName={plan.name}
-          subscriptionType="recurring"
         />
       )}
     </Flexbox>

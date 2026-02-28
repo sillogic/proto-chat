@@ -1,8 +1,9 @@
 'use client';
 
-import { useTheme } from 'antd-style';
-import { PropsWithChildren, memo } from 'react';
 import { Flexbox } from '@lobehub/ui';
+import { useTheme } from 'antd-style';
+import type {PropsWithChildren } from 'react';
+import { memo } from 'react';
 import { Outlet } from 'react-router-dom';
 
 const DesktopSubscriptionWrapper = memo<PropsWithChildren>(() => {
@@ -11,13 +12,13 @@ const DesktopSubscriptionWrapper = memo<PropsWithChildren>(() => {
   return (
     <Flexbox
       align={'center'}
+      width={'100%'}
       style={{
         background: theme.colorBgLayout,
         height: '100%',
         overflowX: 'hidden',
         overflowY: 'auto',
       }}
-      width={'100%'}
     >
       <Flexbox
         gap={24}

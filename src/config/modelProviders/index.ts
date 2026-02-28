@@ -1,8 +1,3 @@
-import { ChatModelCard, ModelProviderCard } from '@/types/llm';
-
-// Re-export all from model-bank/modelProviders
-export * from 'model-bank/modelProviders';
-
 // Import providers from model-bank for use in this file
 import Ai21Provider from 'packages/model-bank/src/modelProviders/ai21';
 import Ai302Provider from 'packages/model-bank/src/modelProviders/ai302';
@@ -73,8 +68,13 @@ import ZenMuxProvider from 'packages/model-bank/src/modelProviders/zenmux';
 import ZeroOneProvider from 'packages/model-bank/src/modelProviders/zeroone';
 import ZhiPuProvider from 'packages/model-bank/src/modelProviders/zhipu';
 
+import type { ChatModelCard, ModelProviderCard } from '@/types/llm';
+
 // Import custom ProtoChat provider
 import ProtoChatProvider from './protochat';
+
+// Re-export all from model-bank/modelProviders
+export * from 'model-bank/modelProviders';
 
 /**
  * @deprecated

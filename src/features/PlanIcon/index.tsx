@@ -84,7 +84,7 @@ const PlanIcon = memo<PlanIconProps>(
       const planTitle = PROTOCHAT_PLAN_NAMES[plan]
         ?? (themes[plan]
           ? t(`plans.plan.${plan}.title`)
-          : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()));
+          : (plan as string).replaceAll('-', ' ').replaceAll(/\b\w/g, (l) => l.toUpperCase()));
 
       return (
         <Tag
@@ -127,7 +127,7 @@ const PlanIcon = memo<PlanIconProps>(
       const planTitle = PROTOCHAT_PLAN_NAMES[plan]
         ?? (themes[plan]
           ? t(`plans.plan.${plan}.title`)
-          : (plan as string).replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()));
+          : (plan as string).replaceAll('-', ' ').replaceAll(/\b\w/g, (l) => l.toUpperCase()));
 
       return (
         <Flexbox horizontal align={'center'} gap={8}>

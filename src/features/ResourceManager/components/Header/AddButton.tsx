@@ -279,7 +279,7 @@ const AddButton = () => {
       </DropdownMenu>
       <GuideModal
         cancelText={t('header.actions.notionGuide.cancel')}
-        cover={<GuideVideo height={269} src={FILE_URL.importFromNotionGuide} width={358} />}
+        cover={<GuideVideo height={269} src={FILE_URL.importFromNotionGuide ?? ''} width={358} />}
         desc={t('header.actions.notionGuide.desc')}
         okText={t('header.actions.notionGuide.ok')}
         open={notionGuideOpen}

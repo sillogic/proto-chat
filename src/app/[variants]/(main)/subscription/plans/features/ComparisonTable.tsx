@@ -3,7 +3,7 @@
 import { Icon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { Check, Minus } from 'lucide-react';
-import { memo } from 'react';
+import { Fragment, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { PlanData } from '../../hooks/useSubscriptionPlans';
@@ -228,8 +228,8 @@ const ComparisonTable = memo<ComparisonTableProps>(({ plans, billingCycle }) => 
       </thead>
       <tbody>
         {features.map((section) => (
-          <>
-            <tr key={section.section}>
+          <Fragment key={section.section}>
+            <tr>
               <td className={styles.sectionHeader} colSpan={plans.length + 1}>
                 {section.section}
               </td>
@@ -252,7 +252,7 @@ const ComparisonTable = memo<ComparisonTableProps>(({ plans, billingCycle }) => 
                 ))}
               </tr>
             ))}
-          </>
+          </Fragment>
         ))}
       </tbody>
     </table>

@@ -1,7 +1,7 @@
 'use client';
 
-import { ProCard } from '@ant-design/pro-components';
 import { QuestionCircleOutlined } from '@ant-design/icons';
+import { ProCard } from '@ant-design/pro-components';
 import { Card, Col, Progress, Row, Space, Tag, Tooltip, Typography } from 'antd';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,13 +24,13 @@ const AccountSummary = memo<AccountSummaryProps>(({ data, isLoading }) => {
       <Row gutter={[24, 24]}>
         <Col lg={10} md={24} span={24}>
           <ProCard
+            headerBordered
+            style={{ borderRadius: '12px', height: '100%' }}
             extra={
               <Tooltip title="包含对话、向量化、绘图等所有消耗。每周期重置一次。">
                 <QuestionCircleOutlined />
               </Tooltip>
             }
-            headerBordered
-            style={{ borderRadius: '12px', height: '100%' }}
             title={
               <Space>
                 <span aria-label="credits" role="img">
@@ -51,15 +51,15 @@ const AccountSummary = memo<AccountSummaryProps>(({ data, isLoading }) => {
                 </Text>
               </div>
               <Progress
+                showInfo={false}
+                size={[-1, 12]}
+                strokeColor={{ '0%': '#1890ff', '100%': '#36cfc9' }}
                 percent={Math.min(
                   100,
                   (Number(data.balance?.totalConsumed || 0) /
                     Math.max(1, Number(data.balance?.limit || 0))) *
                     100,
                 )}
-                showInfo={false}
-                size={[-1, 12]}
-                strokeColor={{ '0%': '#1890ff', '100%': '#36cfc9' }}
               />
               <div
                 style={{
@@ -71,7 +71,7 @@ const AccountSummary = memo<AccountSummaryProps>(({ data, isLoading }) => {
                 <Text style={{ fontSize: '12px' }} type="secondary">
                   下一重置日: {data.resetCountdown?.nextResetDate || '-'}
                 </Text>
-                <Tag variant="filled" color="processing">
+                <Tag color="processing" variant="filled">
                   {data.balance?.currentPlan || '免费版'}
                 </Tag>
               </div>
@@ -87,14 +87,14 @@ const AccountSummary = memo<AccountSummaryProps>(({ data, isLoading }) => {
                 >
                   <Progress
                     format={(p) => `${p?.toFixed(0)}%`}
+                    size={60}
+                    type="circle"
                     percent={Math.min(
                       100,
                       (Number(data.storage?.totalSizeMB || 0) /
                         Math.max(1, Number(data.storage?.limitMB || 1))) *
                         100,
                     )}
-                    size={60}
-                    type="circle"
                   />
                   <div style={{ textAlign: 'right' }}>
                     <Text strong style={{ fontSize: '16px' }}>
@@ -113,15 +113,15 @@ const AccountSummary = memo<AccountSummaryProps>(({ data, isLoading }) => {
                 >
                   <Progress
                     format={(p) => `${p?.toFixed(0)}%`}
+                    size={60}
+                    strokeColor="#722ed1"
+                    type="circle"
                     percent={Math.min(
                       100,
                       (Number(data.vectors?.count || 0) /
                         Math.max(1, Number(data.vectors?.limit || 1))) *
                         100,
                     )}
-                    size={60}
-                    strokeColor="#722ed1"
-                    type="circle"
                   />
                   <div style={{ textAlign: 'right' }}>
                     <Text strong style={{ fontSize: '16px' }}>

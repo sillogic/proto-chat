@@ -1,12 +1,11 @@
 'use client';
 
-import { Icon } from '@lobehub/ui';
+import { Center, Flexbox,Icon  } from '@lobehub/ui';
 import { Button } from 'antd';
 import { createStyles } from 'antd-style';
 import { Building2, GraduationCap, Users } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Center, Flexbox } from '@lobehub/ui';
 import { Link } from 'react-router-dom';
 
 const useStyles = createStyles(({ css, token, isDarkMode }) => ({
@@ -64,9 +63,9 @@ const TeamPlan = memo(() => {
   ];
 
   return (
-    <Flexbox className={styles.card} gap={24} horizontal justify={'space-between'} wrap={'wrap'}>
+    <Flexbox horizontal className={styles.card} gap={24} justify={'space-between'} wrap={'wrap'}>
       <Flexbox gap={20} style={{ flex: 1, minWidth: 280 }}>
-        <Flexbox align={'center'} gap={16} horizontal>
+        <Flexbox horizontal align={'center'} gap={16}>
           <Center className={styles.iconContainer}>
             <Icon color={theme.colorText} icon={Building2} size={26} />
           </Center>
@@ -76,9 +75,9 @@ const TeamPlan = memo(() => {
           </Flexbox>
         </Flexbox>
 
-        <Flexbox gap={12} horizontal wrap={'wrap'}>
+        <Flexbox horizontal gap={12} wrap={'wrap'}>
           {features.map((feature, index) => (
-            <Flexbox align={'center'} gap={8} horizontal key={index}>
+            <Flexbox horizontal align={'center'} gap={8} key={index}>
               <Icon className={styles.featureIcon} icon={feature.icon} size={16} />
               <span className={styles.feature}>{feature.text}</span>
             </Flexbox>
