@@ -78,7 +78,7 @@ export const lobehubSkillExecutor: RemoteToolExecutor = async (p: any) => {
 
   if (!result.success) {
     return createFailedResult(
-      result.error || `LobeHub Skill tool ${provider} ${p.apiName} execution failed`,
+      result.error || `ProtoChat Skill tool ${provider} ${p.apiName} execution failed`,
     );
   }
 

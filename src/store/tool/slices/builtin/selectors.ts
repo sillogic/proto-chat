@@ -14,7 +14,7 @@ export interface LobeToolMetaWithAvailability extends LobeToolMeta {
 }
 
 const toBuiltinMeta = (t: ToolStoreState['builtinTools'][number]): LobeToolMeta => ({
-  author: 'LobeHub',
+  author: 'ProtoChat',
   identifier: t.identifier,
   meta: t.manifest.meta,
   type: 'builtin' as const,
@@ -36,7 +36,7 @@ const getKlavisMetas = (s: ToolStoreState): LobeToolMeta[] =>
       identifier: server.identifier,
       meta: {
         avatar: '☁️',
-        description: `LobeHub Mcp Server: ${server.serverName}`,
+        description: `ProtoChat MCP Server: ${server.serverName}`,
         tags: ['klavis', 'mcp'],
         // title still uses serverName to display friendly name
         title: server.serverName,

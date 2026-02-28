@@ -104,7 +104,7 @@ const PluginItem = memo<PluginItemProps>(({ identifier }) => {
         avatar: '', // Avatar will be rendered by BuiltinToolIcon component
         category: undefined,
         createdAt: '',
-        description: `LobeHub Mcp Server: ${klavisTool.label}`,
+        description: `ProtoChat MCP Server: ${klavisTool.label}`,
         homepage: 'https://klavis.ai',
         identifier: klavisTool.identifier,
         manifest: undefined,
@@ -124,7 +124,7 @@ const PluginItem = memo<PluginItemProps>(({ identifier }) => {
         category: undefined,
         createdAt: '',
         description: lobehubSkill.description,
-        homepage: lobehubSkill.authorUrl || 'https://lobehub.com',
+        homepage: lobehubSkill.authorUrl || 'https://protochat.ai',
         identifier: lobehubSkill.id,
         manifest: undefined,
         related: [],
@@ -138,12 +138,12 @@ const PluginItem = memo<PluginItemProps>(({ identifier }) => {
     // Check builtin tools (like lobe-cloud-sandbox, lobe-memory, etc.)
     if (builtinTool) {
       return {
-        author: 'LobeHub',
+        author: 'ProtoChat',
         avatar: builtinTool.manifest.meta.avatar || '',
         category: undefined,
         createdAt: '',
         description: builtinTool.manifest.meta.description || '',
-        homepage: 'https://lobehub.com',
+        homepage: 'https://protochat.ai',
         identifier: builtinTool.identifier,
         manifest: undefined,
         related: [],

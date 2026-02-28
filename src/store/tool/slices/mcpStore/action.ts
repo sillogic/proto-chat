@@ -234,7 +234,7 @@ export class PluginMCPStoreActionImpl {
     let data: any;
     let result: CheckMcpInstallResult | undefined;
     let connection: any;
-    const userAgent = `LobeHub Desktop/${CURRENT_VERSION}`;
+    const userAgent = `ProtoChat Desktop/${CURRENT_VERSION}`;
 
     try {
       // Check if already cancelled

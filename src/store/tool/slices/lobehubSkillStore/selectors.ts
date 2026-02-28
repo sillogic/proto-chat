@@ -95,12 +95,12 @@ export const lobehubSkillStoreSelectors = {
           identifier: server.identifier,
           manifest: {
             api: apis,
-            author: 'LobeHub Market',
-            homepage: 'https://lobehub.com/market',
+            author: 'ProtoChat',
+            homepage: 'https://protochat.ai',
             identifier: server.identifier,
             meta: {
               avatar: server.icon || '🔗',
-              description: `LobeHub Skill: ${server.name}`,
+              description: `ProtoChat Skill: ${server.name}`,
               tags: ['lobehub-skill', server.identifier],
               title: server.name,
             },
@@ -128,7 +128,7 @@ export const lobehubSkillStoreSelectors = {
         identifier: server.identifier,
         meta: {
           avatar: server.icon || '🔗',
-          description: `LobeHub Skill: ${server.name}`,
+          description: `ProtoChat Skill: ${server.name}`,
           title: server.name,
         },
       }));
