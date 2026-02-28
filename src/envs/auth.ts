@@ -2,7 +2,6 @@
 import { createEnv } from '@t3-oss/env-nextjs';
 import { z } from 'zod';
 
-import { appEnv } from './app';
 
 /**
  * Resolve public auth URL with compatibility fallbacks.
@@ -18,8 +17,11 @@ const resolvePublicAuthUrl = () => {
     }
   }
 
-  // Fallback to appEnv.APP_URL if available
-  return appEnv.APP_URL;
+  // Note: do NOT fall back to appEnv.APP_URL here — APP_URL is a server-only var,
+  // and this module can be initialized in the browser (e.g. via dynamic import in
+  // the TRPC client headers callback). Accessing a server-side t3-env proxy property
+  // in the browser throws "Attempted to access a server-side environment variable on the client".
+  return undefined;
 };
 
 declare global {
