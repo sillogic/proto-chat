@@ -37,6 +37,7 @@
     "postbuild": "npm run build-sitemap && npm run build-migrate-db",
     "build:analyze": "NODE_OPTIONS=--max-old-space-size=81920 ANALYZE=true next build --webpack",
     "build:server": "tsx scripts/prebuild.mts && npm run lint:ts && npm run lint:style && cross-env NODE_OPTIONS=--max-old-space-size=8192 next build --webpack && npm run postbuild",
+    "build:deploy": "tsx scripts/prebuild.mts && cross-env NODE_OPTIONS=--max-old-space-size=8192 next build --webpack && npm run postbuild",
     "build:docker": "npm run prebuild && NODE_OPTIONS=--max-old-space-size=8192 DOCKER=true next build --webpack && npm run build-sitemap",
     "build:vercel": "tsx scripts/prebuild.mts && npm run lint:ts && npm run lint:style && npm run type-check:tsc && npm run lint:circular && cross-env NODE_OPTIONS=--max-old-space-size=6144 next build --webpack && npm run postbuild",
     "build-migrate-db": "bun run db:migrate",
