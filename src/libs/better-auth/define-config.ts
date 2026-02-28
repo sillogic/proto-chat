@@ -6,6 +6,7 @@ import { createNanoId, idGenerator, serverDB } from '@lobechat/database';
 import * as schema from '@lobechat/database/schemas';
 import bcrypt from 'bcryptjs';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { eq } from 'drizzle-orm';
 import { verifyPassword as defaultVerifyPassword } from 'better-auth/crypto';
 import { type BetterAuthOptions } from 'better-auth/minimal';
 import { betterAuth } from 'better-auth/minimal';
@@ -30,6 +31,7 @@ import { createSecondaryStorage, getTrustedOrigins } from '@/libs/better-auth/ut
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
 import { EmailService } from '@/server/services/email';
 import { UserService } from '@/server/services/user';
+import { generateDefaultAvatar, isValidAvatar } from '@/server/utils/avatar';
 
 // Configure HTTP proxy for OAuth provider requests in development (e.g., Google token exchange)
 // Node.js native fetch doesn't respect system proxy settings
@@ -208,6 +210,15 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       user: {
         create: {
           after: async (user) => {
+            // Assign default avatar if user doesn't have one (e.g., email signup with no profile picture)
+            if (!isValidAvatar(user.image)) {
+              const defaultAvatar = generateDefaultAvatar(user.id);
+              await serverDB
+                .update(schema.users)
+                .set({ avatar: defaultAvatar })
+                .where(eq(schema.users.id, user.id));
+            }
+
             /**
              * Delay user initialization for email/password registration when email verification is required.
              * This prevents spam registrations from consuming resources (credits, inbox creation, etc.).
