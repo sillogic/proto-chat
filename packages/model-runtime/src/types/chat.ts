@@ -144,7 +144,7 @@ export interface ChatStreamPayload {
    */
   thinking?: {
     budget_tokens: number;
-    type: 'enabled' | 'disabled' | 'adaptive';
+    type?: 'enabled' | 'disabled' | 'adaptive';
   };
   thinkingBudget?: number;
   /**
