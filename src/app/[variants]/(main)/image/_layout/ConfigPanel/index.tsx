@@ -81,6 +81,12 @@ const ConfigPanel = memo(() => {
         </ConfigItemLayout>
       )}
 
+      {isSupportResolution && (
+        <ConfigItemLayout label={t('config.resolution.label')}>
+          <ResolutionSelect />
+        </ConfigItemLayout>
+      )}
+
       {isSupportSize && (
         <ConfigItemLayout label={t('config.size.label')}>
           <SizeSelect />
@@ -90,12 +96,6 @@ const ConfigPanel = memo(() => {
       {isSupportQuality && (
         <ConfigItemLayout label={t('config.quality.label')}>
           <QualitySelect />
-        </ConfigItemLayout>
-      )}
-
-      {isSupportResolution && (
-        <ConfigItemLayout label={t('config.resolution.label')}>
-          <ResolutionSelect />
         </ConfigItemLayout>
       )}
 

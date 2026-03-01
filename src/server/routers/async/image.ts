@@ -15,6 +15,7 @@ import { GenerationModel } from '@/database/models/generation';
 import { GenerationBatchModel } from '@/database/models/generationBatch';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
+import { FileS3 } from '@/server/modules/S3';
 import { CreditService } from '@/server/services/credit';
 import { GenerationService } from '@/server/services/generation';
 import { sanitizeFileName } from '@/utils/sanitizeFileName';
@@ -252,10 +253,45 @@ export const imageRouter = router({
           // Check if operation has been cancelled
           checkAbortSignal(signal);
           log('Agent runtime initialized, calling createImage with model: %s', modelId);
+
+          // Resolve S3 keys in imageUrls to base64 data URLs using S3 SDK directly.
+          // We cannot use HTTP fetch (presigned URLs) because the OSS endpoint may resolve
+          // to a private IP and be blocked by SSRF protection.
+          let resolvedParams = params as unknown as RuntimeImageGenParams;
+          if (Array.isArray(params.imageUrls) && params.imageUrls.length > 0) {
+            const s3 = new FileS3();
+            const resolvedUrls = await Promise.all(
+              params.imageUrls.map(async (key) => {
+                if (key.startsWith('http')) {
+                  // Already a full URL — return as-is (caller responsible for accessibility)
+                  return key;
+                }
+                // S3 key: download bytes directly via SDK, avoiding any HTTP fetch
+                const bytes = await s3.getFileByteArray(key);
+                const ext = key.split('.').pop()?.toLowerCase() ?? 'jpg';
+                const mimeTypeMap: Record<string, string> = {
+                  gif: 'image/gif',
+                  jpeg: 'image/jpeg',
+                  jpg: 'image/jpeg',
+                  png: 'image/png',
+                  webp: 'image/webp',
+                };
+                const mimeType = mimeTypeMap[ext] ?? 'image/jpeg';
+                const base64 = Buffer.from(bytes).toString('base64');
+                return `data:${mimeType};base64,${base64}`;
+              }),
+            );
+            resolvedParams = { ...resolvedParams, imageUrls: resolvedUrls };
+            log(
+              'Resolved imageUrls to base64 data URLs (lengths): %O',
+              resolvedUrls.map((u) => u.length),
+            );
+          }
+
           const genStartTime = Date.now();
           const response = await modelRuntime.createImage!({
             model: modelId,
-            params: params as unknown as RuntimeImageGenParams,
+            params: resolvedParams,
           });
           const genDuration = Date.now() - genStartTime;
 

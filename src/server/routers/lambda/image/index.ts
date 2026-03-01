@@ -114,33 +114,10 @@ export const imageRouter = router({
       }
     }
 
-    // In development, convert localhost proxy URLs to S3 URLs for async task access
-    let generationParams = params;
-    if (process.env.NODE_ENV === 'development') {
-      const updates: Record<string, unknown> = {};
-
-      // Handle single imageUrl: localhost/f/{id} -> S3 URL
-      if (typeof params.imageUrl === 'string' && params.imageUrl) {
-        const s3Url = await fileService.getFullFileUrl(configForDatabase.imageUrl as string);
-        if (s3Url) {
-          log('Dev: converted proxy URL to S3 URL: %s -> %s', params.imageUrl, s3Url);
-          updates.imageUrl = s3Url;
-        }
-      }
-
-      // Handle multiple imageUrls
-      if (Array.isArray(params.imageUrls) && params.imageUrls.length > 0) {
-        const s3Urls = await Promise.all(
-          (configForDatabase.imageUrls as string[]).map((key) => fileService.getFullFileUrl(key)),
-        );
-        log('Dev: converted proxy URLs to S3 URLs: %O', s3Urls);
-        updates.imageUrls = s3Urls;
-      }
-
-      if (Object.keys(updates).length > 0) {
-        generationParams = { ...params, ...updates };
-      }
-    }
+    // Always use configForDatabase (which holds S3 keys for imageUrls/imageUrl) as generationParams.
+    // The async task downloads reference images directly via S3 SDK (getFileByteArray), avoiding
+    // any HTTP fetch that would be blocked by SSRF protection.
+    const generationParams = configForDatabase;
 
     // Defensive check: ensure no full URLs enter the database
     validateNoUrlsInConfig(configForDatabase, 'configForDatabase');

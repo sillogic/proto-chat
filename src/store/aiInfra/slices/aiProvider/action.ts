@@ -82,13 +82,20 @@ export const normalizeChatModel = async (model: EnabledAiModel): Promise<Provide
 export const normalizeImageModel = async (
   model: EnabledAiModel,
 ): Promise<ProviderModelListItem> => {
-  const fallbackParametersPromise = model.parameters
-    ? Promise.resolve<ModelParamsSchema | undefined>(model.parameters)
-    : getModelPropertyWithFallback<ModelParamsSchema | undefined>(
-        model.id,
-        'parameters',
-        model.providerId,
-      );
+  // For ProtoChat models (id: protochat::<alias>::<originalId>), extract the original model ID
+  // so we can look up the full parameter schema from model-bank, even if the DB record was
+  // created before a parameter (e.g. resolution) was added to the schema.
+  const originalId = model.id.startsWith('protochat::')
+    ? model.id.split('::').slice(2).join('::')
+    : model.id;
+
+  // OpenRouter wraps model IDs as `provider/model` (e.g. `google/gemini-3-pro-image-preview:image`)
+  // but our model-bank registers them without the provider prefix (`gemini-3-pro-image-preview:image`).
+  // Build a list of candidate IDs to try in order.
+  const lookupCandidates = [originalId];
+  if (originalId.includes('/')) {
+    lookupCandidates.push(originalId.slice(originalId.indexOf('/') + 1));
+  }
 
   const modelWithPricing = model as AIImageModelCard;
   const fallbackPricingPromise = modelWithPricing.pricing
@@ -101,13 +108,32 @@ export const normalizeImageModel = async (
     model.providerId,
   );
 
-  const [fallbackParameters, fallbackPricing, fallbackDescription] = await Promise.all([
-    fallbackParametersPromise,
+  // Try each candidate ID until we find parameters in model-bank
+  const modelBankParametersPromise = (async () => {
+    for (const candidateId of lookupCandidates) {
+      const result = await getModelPropertyWithFallback<ModelParamsSchema | undefined>(
+        candidateId,
+        'parameters',
+        model.providerId,
+      );
+      if (result) return result;
+    }
+    return undefined;
+  })();
+
+  const [modelBankParameters, fallbackPricing, fallbackDescription] = await Promise.all([
+    modelBankParametersPromise,
     fallbackPricingPromise,
     fallbackDescriptionPromise,
   ]);
 
-  const parameters = model.parameters ?? fallbackParameters;
+  // Merge model-bank schema (base) with DB-stored params (override).
+  // This ensures new parameters added to model-bank are picked up even for older DB records.
+  const dbParameters = model.parameters as ModelParamsSchema | undefined;
+  const parameters =
+    modelBankParameters && dbParameters && Object.keys(dbParameters).length > 0
+      ? { ...modelBankParameters, ...dbParameters }
+      : (dbParameters ?? modelBankParameters);
   const pricing = fallbackPricing;
   const description = fallbackDescription;
   const { price, approximatePrice } = resolveImageSinglePrice(pricing);

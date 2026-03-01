@@ -15,6 +15,7 @@ export default {
   'config.quality.options.hd': 'High Definition',
   'config.quality.options.standard': 'Standard',
   'config.resolution.label': 'Resolution',
+  'config.resolution.options.0.5K': '0.5K',
   'config.resolution.options.1K': '1K',
   'config.resolution.options.2K': '2K',
   'config.resolution.options.4K': '4K',

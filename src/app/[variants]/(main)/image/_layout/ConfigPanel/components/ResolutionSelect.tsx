@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useGenerationConfigParam } from '@/store/image/slices/generationConfig/hooks';
 
+const DISABLED_RESOLUTIONS = new Set(['0.5K']);
+
 const ResolutionSelect = memo(() => {
   const { t } = useTranslation('image');
   const { value, setValue, enumValues } = useGenerationConfigParam('resolution');
@@ -18,6 +20,7 @@ const ResolutionSelect = memo(() => {
   const options = useMemo(() => {
     if (!enumValues || enumValues.length === 0) return [];
     return enumValues.map((resolution) => ({
+      disabled: DISABLED_RESOLUTIONS.has(resolution),
       label: t(`config.resolution.options.${resolution}`, { defaultValue: resolution }),
       value: resolution,
     }));

@@ -31,6 +31,10 @@ export const nanoBananaParameters: ModelParamsSchema = {
     default: [],
   },
   prompt: { default: '' },
+  resolution: {
+    default: '1K',
+    enum: ['0.5K', '1K', '2K', '4K'],
+  },
 };
 
 export const nanoBananaProParameters: ModelParamsSchema = {
@@ -44,7 +48,7 @@ export const nanoBananaProParameters: ModelParamsSchema = {
   prompt: { default: '' },
   resolution: {
     default: '1K',
-    enum: ['1K', '2K', '4K'],
+    enum: ['0.5K', '1K', '2K', '4K'],
   },
 };
 

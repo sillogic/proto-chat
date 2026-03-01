@@ -6,7 +6,6 @@ import type OpenAI from 'openai';
 
 import type { CreateImagePayload, CreateImageResponse } from '../../types/image';
 import { getModelPricing } from '../../utils/getModelPricing';
-import { parseDataUri } from '../../utils/uriParser';
 import { convertImageUrlToFile } from '../contextBuilders/openai';
 import { convertOpenAIImageUsage } from '../usageConverters/openai';
 
@@ -131,20 +130,25 @@ async function generateByImageMode(
  * Process image URL for chat model input
  */
 async function processImageUrlForChat(imageUrl: string): Promise<string> {
-  const { type, base64, mimeType } = parseDataUri(imageUrl);
-
-  if (type === 'base64') {
-    if (!base64) {
-      throw new TypeError("Image URL doesn't contain base64 data");
+  // Fast-path for data URIs: avoid regex on potentially huge base64 strings
+  // (regex `.+$` on megabyte-length strings can overflow the V8 call stack)
+  if (imageUrl.startsWith('data:')) {
+    const commaIndex = imageUrl.indexOf(',');
+    if (commaIndex === -1 || !imageUrl.slice(0, commaIndex).includes(';base64')) {
+      throw new TypeError('Image data URI is not in base64 format');
     }
-    return `data:${mimeType || 'image/png'};base64,${base64}`;
-  } else if (type === 'url') {
-    // For URL type, convert to base64 first
-    const { base64: urlBase64, mimeType: urlMimeType } = await imageUrlToBase64(imageUrl);
-    return `data:${urlMimeType};base64,${urlBase64}`;
-  } else {
+    // Already a valid base64 data URL — return as-is
+    return imageUrl;
+  }
+
+  // For regular URLs, convert to base64 via HTTP fetch
+  try {
+    new URL(imageUrl);
+  } catch {
     throw new TypeError(`Currently we don't support image url: ${imageUrl}`);
   }
+  const { base64: urlBase64, mimeType: urlMimeType } = await imageUrlToBase64(imageUrl);
+  return `data:${urlMimeType};base64,${urlBase64}`;
 }
 
 /**
@@ -167,22 +171,30 @@ async function generateByChatModel(
     },
   ];
 
-  // Add image for editing mode if provided
-  if (params.imageUrl && params.imageUrl !== null) {
-    log('Processing image URL for editing mode: %s', params.imageUrl);
+  // Add reference images (supports both single imageUrl and imageUrls array)
+  const imageUrlList = [
+    ...(params.imageUrl ? [params.imageUrl] : []),
+    ...(Array.isArray(params.imageUrls) ? params.imageUrls : []),
+  ].filter(Boolean);
+
+  if (imageUrlList.length > 0) {
+    log('Processing %d reference image(s) for chat input', imageUrlList.length);
     try {
-      const processedImageUrl = await processImageUrlForChat(params.imageUrl);
-      content.push({
-        image_url: {
-          url: processedImageUrl,
-        },
-        type: 'image_url',
-      });
-      log('Successfully processed image URL for chat input');
+      const processedUrls = await Promise.all(imageUrlList.map(processImageUrlForChat));
+      for (const processedImageUrl of processedUrls) {
+        content.push({ image_url: { url: processedImageUrl }, type: 'image_url' });
+      }
+      log('Successfully processed reference images for chat input');
     } catch (error) {
-      throw new Error(`Failed to process image URL: ${error}`);
+      throw new Error(`Failed to process reference image URL: ${error}`);
     }
   }
+
+  // Build image_config for OpenRouter-style image generation
+  // https://openrouter.ai/docs/guides/overview/multimodal/image-generation
+  const imageConfig: Record<string, string> = {};
+  if (params.aspectRatio) imageConfig.aspect_ratio = params.aspectRatio;
+  if (params.resolution) imageConfig.image_size = params.resolution;
 
   // Call chat completion API
   const response = await client.chat.completions.create({
@@ -193,8 +205,10 @@ async function generateByChatModel(
       },
     ],
     model: actualModel,
+    modalities: ['image', 'text'],
+    ...(Object.keys(imageConfig).length > 0 ? { image_config: imageConfig } : {}),
     stream: false,
-  });
+  } as any);
 
   log('Chat API response: %O', response);
 
