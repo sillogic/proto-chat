@@ -18,7 +18,6 @@ import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { ChunkService } from '@/server/services/chunk';
 import { AsyncTaskError } from '@/types/asyncTask';
-import { getXorPayload } from '@/utils/server';
 
 const ragEvalProcedure = asyncAuthedProcedure.use(async (opts) => {
   const { ctx } = opts;
@@ -54,10 +53,9 @@ export const ragEvalRouter = router({
       try {
         const { question, languageModel, embeddingModel } = evalRecord;
 
-        const payload = getXorPayload(ctx.authorizationToken!);
         const { runtime: modelRuntime } = await initModelRuntimeWithUserPayload(
           ModelProvider.OpenAI,
-          payload,
+          {},
           { model: embeddingModel || DEFAULT_EMBEDDING_MODEL },
         );
 

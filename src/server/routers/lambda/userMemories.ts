@@ -49,7 +49,6 @@ import { keyVaults, serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { getServerDefaultFilesConfig } from '@/server/globalConfig';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
-import { getXorPayload } from '@/utils/server';
 
 const EMPTY_SEARCH_RESULT: SearchMemoryResult = {
   activities: [],
@@ -204,25 +203,22 @@ const searchUserMemories = async (
       baseURL: systemConfig.baseUrl || undefined,
     };
 
-    const result = await initModelRuntimeWithUserPayload(
-      provider,
-      embeddingPayload,
-      { model: embeddingModel },
-    );
+    const result = await initModelRuntimeWithUserPayload(provider, embeddingPayload, {
+      model: embeddingModel,
+    });
     modelRuntime = result.runtime;
     actualModel = result.actualModel;
   } else {
     // Fallback to environment variable configuration
-    const envConfig = getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
+    const envConfig =
+      getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
     provider = envConfig.provider;
     embeddingModel = envConfig.model;
 
     // ctx.jwtPayload is already a ClientSecretPayload object (parsed by keyVaults middleware)
-    const result = await initModelRuntimeWithUserPayload(
-      provider,
-      ctx.jwtPayload,
-      { model: embeddingModel },
-    );
+    const result = await initModelRuntimeWithUserPayload(provider, ctx.jwtPayload, {
+      model: embeddingModel,
+    });
     modelRuntime = result.runtime;
     actualModel = result.actualModel;
   }
@@ -283,16 +279,12 @@ const searchUserMemories = async (
   return mapMemorySearchResult(layeredResults);
 };
 
-const getEmbeddingRuntime = async (
-  serverDB: LobeChatDatabase,
-  userId: string,
-  jwtPayload: any,
-) => {
+const getEmbeddingRuntime = async (serverDB: LobeChatDatabase, userId: string, jwtPayload: any) => {
   const { provider, model: embeddingModel } =
     getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
 
   const effectiveProvider = ENABLE_BUSINESS_FEATURES ? BRANDING_PROVIDER : provider;
-  const payload = getXorPayload(jwtPayload);
+  const payload = jwtPayload;
   const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(
     effectiveProvider,
     payload,
@@ -1060,17 +1052,14 @@ export const userMemoriesRouter = router({
       }
     }),
 
-  searchMemory: memoryProcedure
-    .input(searchMemorySchema)
-    .query(async ({ input, ctx }) => {
-      try {
-        return await searchUserMemories(ctx, input);
-      } catch (error) {
-        console.error('Failed to retrieve memories:', error);
-        return EMPTY_SEARCH_RESULT;
-      }
+  searchMemory: memoryProcedure.input(searchMemorySchema).query(async ({ input, ctx }) => {
+    try {
+      return await searchUserMemories(ctx, input);
+    } catch (error) {
+      console.error('Failed to retrieve memories:', error);
+      return EMPTY_SEARCH_RESULT;
     }
-  ),
+  }),
 
   toolAddActivityMemory: memoryProcedure
     .input(ActivityMemoryItemSchema)

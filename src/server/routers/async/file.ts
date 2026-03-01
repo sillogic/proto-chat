@@ -26,7 +26,6 @@ import { type IAsyncTaskError } from '@/types/asyncTask';
 import { AsyncTaskError, AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
 import { safeParseJSON } from '@/utils/safeParseJSON';
 import { sanitizeUTF8 } from '@/utils/sanitizeUTF8';
-import { getXorPayload } from '@/utils/server';
 
 const fileProcedure = asyncAuthedProcedure.use(async (opts) => {
   const { ctx } = opts;
@@ -68,7 +67,10 @@ export const fileRouter = router({
       }
 
       if (!file) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: isDocument ? 'Document not found' : 'File not found' });
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: isDocument ? 'Document not found' : 'File not found',
+        });
       }
 
       const asyncTask = await ctx.asyncTaskModel.findById(input.taskId);
@@ -81,7 +83,7 @@ export const fileRouter = router({
       let model: string;
       let provider: string;
       let modelInputPrice: number | null = null;
-      let embeddingPayload = getXorPayload(ctx.authorizationToken!); // Default to user's payload
+      let embeddingPayload: Record<string, any> = {}; // Async router reads credentials from system config or env vars
 
       if (systemConfig && systemConfig.providerId && systemConfig.modelId) {
         // Use system configuration from database
@@ -105,13 +107,13 @@ export const fileRouter = router({
 
         // Create custom payload with system config
         embeddingPayload = {
-          ...getXorPayload(ctx.authorizationToken!),
           apiKey: decryptedApiKey,
           baseURL: systemConfig.baseUrl || undefined,
         };
       } else {
         // Fallback to environment variable configuration
-        const envConfig = getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
+        const envConfig =
+          getServerDefaultFilesConfig().embeddingModel || DEFAULT_FILE_EMBEDDING_MODEL_ITEM;
         provider = envConfig.provider;
         model = envConfig.model;
       }
@@ -149,7 +151,8 @@ export const fileRouter = router({
             await pMap(
               requestArray,
               async (chunks) => {
-                const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, embeddingPayload, { model });
+                const { runtime: agentRuntime, actualModel } =
+                  await initModelRuntimeWithUserPayload(provider, embeddingPayload, { model });
                 const modelId = actualModel || model;
 
                 const embeddings = await agentRuntime.embeddings({
@@ -169,7 +172,10 @@ export const fileRouter = router({
                 await ctx.embeddingModel.bulkCreate(items);
 
                 // Calculate tokens for this batch (estimate: characters / 4)
-                const batchTokens = chunks.reduce((sum, c) => sum + Math.ceil(c.text.length / 4), 0);
+                const batchTokens = chunks.reduce(
+                  (sum, c) => sum + Math.ceil(c.text.length / 4),
+                  0,
+                );
                 totalInputTokens += batchTokens;
                 totalTokens += batchTokens;
               },
@@ -230,9 +236,7 @@ export const fileRouter = router({
           status: AsyncTaskStatus.Error,
         });
 
-        const fileName = isDocument
-          ? (file.title || file.filename || 'Document')
-          : file.name;
+        const fileName = isDocument ? file.title || file.filename || 'Document' : file.name;
 
         return {
           message: `File ${fileName}(${input.taskId}) failed to embedding: ${(e as Error).message}`,
@@ -249,7 +253,12 @@ export const fileRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      console.info('[parseFileToChunks] Received request for fileId:', input.fileId, 'taskId:', input.taskId);
+      console.info(
+        '[parseFileToChunks] Received request for fileId:',
+        input.fileId,
+        'taskId:',
+        input.taskId,
+      );
 
       // Support both files and documents
       let file: any;
@@ -265,10 +274,20 @@ export const fileRouter = router({
       }
 
       if (!file) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: `${isDocument ? 'Document' : 'File'} not found` });
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `${isDocument ? 'Document' : 'File'} not found`,
+        });
       }
 
-      console.info('[parseFileToChunks] Found', isDocument ? 'document' : 'file', '- name:', file.name || file.title || file.filename, '- fileType:', file.fileType);
+      console.info(
+        '[parseFileToChunks] Found',
+        isDocument ? 'document' : 'file',
+        '- name:',
+        file.name || file.title || file.filename,
+        '- fileType:',
+        file.fileType,
+      );
 
       let content: Uint8Array | undefined;
 
@@ -358,7 +377,12 @@ export const fileRouter = router({
             console.info('[parseFileToChunks] Appended extension to filename:', filename);
           }
 
-          console.info('[parseFileToChunks] Chunking with fileType:', effectiveFileType, 'filename:', filename);
+          console.info(
+            '[parseFileToChunks] Chunking with fileType:',
+            effectiveFileType,
+            'filename:',
+            filename,
+          );
 
           // partition file to chunks
           const chunkResult = await chunkService.chunkContent({

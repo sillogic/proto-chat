@@ -18,7 +18,6 @@ import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 import { CreditService } from '@/server/services/credit';
 import { GenerationService } from '@/server/services/generation';
 import { sanitizeFileName } from '@/utils/sanitizeFileName';
-import { getXorPayload } from '@/utils/server';
 
 const log = debug('lobe-image:async');
 
@@ -243,7 +242,11 @@ export const imageRouter = router({
         const imageGenerationPromise = async (signal: AbortSignal) => {
           log('Initializing agent runtime for provider: %s, model: %s', provider, model);
 
-          const { runtime: modelRuntime, actualModel } = await initModelRuntimeWithUserPayload(provider, getXorPayload(ctx.authorizationToken!), { model });
+          const { runtime: modelRuntime, actualModel } = await initModelRuntimeWithUserPayload(
+            provider,
+            {},
+            { model },
+          );
           const modelId = actualModel || model;
 
           // Check if operation has been cancelled
@@ -299,7 +302,11 @@ export const imageRouter = router({
                 log('Credits deducted for image generation: %s, cost: %s', taskId, cost);
               }
             } catch (creditError: any) {
-              log('Failed to deduct credits for image generation: %s, error: %s', taskId, creditError.message);
+              log(
+                'Failed to deduct credits for image generation: %s, error: %s',
+                taskId,
+                creditError.message,
+              );
             }
           }
 
