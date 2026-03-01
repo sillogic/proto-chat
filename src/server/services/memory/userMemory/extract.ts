@@ -106,6 +106,12 @@ export interface TopicWorkflowCursor extends MemoryExtractionWorkflowCursor {
   userId: string;
 }
 
+export interface MemoryExtractionHourlyWorkflowPayload {
+  baseUrl?: string;
+  cursor?: MemoryExtractionWorkflowCursor;
+  dryRun?: boolean;
+}
+
 export interface MemoryExtractionNormalizedPayload {
   asyncTaskId?: string;
   baseUrl: string;
@@ -1281,7 +1287,10 @@ export class MemoryExtractionExecutor {
           > = {};
           const agentStartedAt: Partial<Record<MemoryExtractionAgent, number>> = {};
           const agentUsage: Partial<
-            Record<MemoryExtractionAgent, { inputTokens: number; model: string; outputTokens: number }>
+            Record<
+              MemoryExtractionAgent,
+              { inputTokens: number; model: string; outputTokens: number }
+            >
           > = {};
 
           const recordRequest = (agent: MemoryExtractionAgent, request: GenerateObjectPayload) => {
@@ -1679,6 +1688,35 @@ export class MemoryExtractionExecutor {
     const db = await this.db;
 
     const rows = await UserModel.listUsersForMemoryExtractor(db, {
+      cursor,
+      limit,
+      whitelist: this.privateConfig.whitelistUsers,
+    });
+    if (!rows?.length) {
+      return { ids: [] };
+    }
+
+    const last = rows.at(-1);
+    const nextCursor = last
+      ? {
+          createdAt: last.createdAt,
+          id: last.id,
+        }
+      : undefined;
+
+    return {
+      cursor: nextCursor,
+      ids: rows.map((row) => row.id),
+    };
+  }
+
+  async getUsersForHourlyExtraction(
+    limit: number,
+    cursor?: ListUsersForMemoryExtractorCursor,
+  ): Promise<UserPaginationResult> {
+    const db = await this.db;
+
+    const rows = await UserModel.listUsersForHourlyMemoryExtractor(db, {
       cursor,
       limit,
       whitelist: this.privateConfig.whitelistUsers,
@@ -2220,6 +2258,7 @@ export class MemoryExtractionExecutor {
 }
 
 const WORKFLOW_PATHS = {
+  hourly: '/api/workflows/memory-user-memory/call-cron-hourly-analysis',
   personaUpdate: '/api/workflows/memory-user-memory/pipelines/persona/update-writing',
   topicBatch: '/api/workflows/memory-user-memory/pipelines/chat-topic/process-topics',
   userTopics: '/api/workflows/memory-user-memory/pipelines/chat-topic/process-user-topics',
@@ -2265,6 +2304,18 @@ export class MemoryExtractionWorkflowService {
     }
 
     const url = getWorkflowUrl(WORKFLOW_PATHS.users, payload.baseUrl);
+    return this.getClient().trigger({ body: payload, headers: options?.extraHeaders, url });
+  }
+
+  static triggerHourly(
+    payload: MemoryExtractionHourlyWorkflowPayload,
+    options?: { extraHeaders?: Record<string, string> },
+  ) {
+    if (!payload.baseUrl) {
+      throw new Error('Missing baseUrl for workflow trigger');
+    }
+
+    const url = getWorkflowUrl(WORKFLOW_PATHS.hourly, payload.baseUrl);
     return this.getClient().trigger({ body: payload, headers: options?.extraHeaders, url });
   }
 
