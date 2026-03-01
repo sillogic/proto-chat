@@ -230,11 +230,7 @@ export function defineConfig() {
     return response;
   };
 
-  logDefault('Middleware configuration: %O', {
-    enableOIDC: authEnv.ENABLE_OIDC,
-  });
+  logDefault('Middleware configuration: %O', { enableOIDC: authEnv.ENABLE_OIDC });
 
-  return {
-    middleware: betterAuthMiddleware,
-  };
+  return { middleware: betterAuthMiddleware };
 }
