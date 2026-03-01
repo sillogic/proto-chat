@@ -20,6 +20,7 @@ import { businessEmailValidator } from '@/business/server/better-auth';
 import { appEnv } from '@/envs/app';
 import { authEnv } from '@/envs/auth';
 import {
+  getChangeEmailVerificationTemplate,
   getMagicLinkEmailTemplate,
   getResetPasswordEmailTemplate,
   getVerificationEmailTemplate,
@@ -153,11 +154,19 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
           return;
         }
 
-        const template = getVerificationEmailTemplate({
-          expiresInSeconds: VERIFICATION_LINK_EXPIRES_IN,
-          url,
-          userName: user.name,
-        });
+        // Use different template for change-email vs signup verification
+        const isChangeEmail = request?.url?.includes('/change-email');
+        const template = isChangeEmail
+          ? getChangeEmailVerificationTemplate({
+              expiresInSeconds: VERIFICATION_LINK_EXPIRES_IN,
+              url,
+              userName: user.name,
+            })
+          : getVerificationEmailTemplate({
+              expiresInSeconds: VERIFICATION_LINK_EXPIRES_IN,
+              url,
+              userName: user.name,
+            });
 
         const emailService = new EmailService();
         await emailService.sendMail({
@@ -252,6 +261,9 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       },
     },
     user: {
+      changeEmail: {
+        enabled: true,
+      },
       additionalFields: {
         username: {
           required: false,
