@@ -207,11 +207,6 @@
       "count": 1
     }
   },
-  "src/layout/AuthProvider/MarketAuth/oidc.ts": {
-    "prefer-const": {
-      "count": 1
-    }
-  },
   "src/libs/better-auth/define-config.ts": {
     "sort-keys-fix/sort-keys-fix": {
       "count": 1
