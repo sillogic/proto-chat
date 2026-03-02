@@ -55,7 +55,7 @@ export const LobeStraicoAI = createOpenAICompatibleRuntime({
       }
 
       const json: StraicoModelsResponse = await response.json();
-      const chatModels: StraicoChatModel[] = json?.data?.chat || []; // 另有 audio, image 模型待适配
+      const chatModels: StraicoChatModel[] = json?.data?.chat || []; // Other audio and image models are pending integration
 
       // Transform Straico models to standardized format
       const formattedModels = chatModels.map((model) => {

@@ -68,13 +68,13 @@ export const params = {
       return [];
     }
 
-    // 处理前端获取的模型信息，转换为标准格式
+    // Process model information fetched from the API, convert to standard format
     const formattedModels = modelList.map((model) => {
       const { top_provider, architecture, pricing, supported_parameters } = model;
 
       const inputModalities = architecture.input_modalities || [];
 
-      // 处理 name，默认去除冒号及其前面的内容
+      // Process name, by default strip the colon and any content before it
       let displayName = model.name;
       const colonIndex = displayName.indexOf(':');
       if (colonIndex !== -1) {
