@@ -15,6 +15,7 @@ import {
   serverConfigSelectors,
   useServerConfigStore,
 } from '@/store/serverConfig';
+import { isModifierClick } from '@/utils/navigation';
 
 import { type NavItemProps } from '../../../../../../../features/NavPanel/components/NavItem';
 import NavItem from '../../../../../../../features/NavPanel/components/NavItem';
@@ -112,6 +113,7 @@ const Nav = memo(() => {
             key={item.key}
             to={item.url}
             onClick={(e) => {
+              if (isModifierClick(e)) return;
               e.preventDefault();
               item?.onClick?.();
               if (item.url) {

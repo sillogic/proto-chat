@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import SkeletonList from '@/features/NavPanel/components/SkeletonList';
 import { useEvalStore } from '@/store/eval';
+import { isModifierClick } from '@/utils/navigation';
 
 const SYSTEM_ICONS = [LoaderPinwheel, Volleyball, Server, Target, Award, Trophy, Activity, BarChart3, TrendingUp, Gauge, Zap];
 
@@ -55,6 +56,7 @@ const BenchmarkList = memo<BenchmarkListProps>(({ activeKey, itemKey }) => {
               key={b.id}
               to={`/eval/bench/${b.id}`}
               onClick={(e) => {
+                if (isModifierClick(e)) return;
                 e.preventDefault();
                 navigate(`/eval/bench/${b.id}`);
               }}

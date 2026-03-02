@@ -97,6 +97,10 @@ const Tool = memo<GroupToolProps>(
       if (isAlwaysExpand && expand === false) {
         return;
       }
+      // When collapsing, also turn off debug mode so the accordion can actually collapse
+      if (expand === false) {
+        setShowDebug(false);
+      }
       setShowToolRender(!!expand);
     };
 
