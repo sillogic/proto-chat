@@ -62,6 +62,7 @@
     "node_modules",
     "public/sw.js",
     "apps/desktop/**",
+    "apps/device-gateway/**",
     "apps/mobile/**",
     "tmp",
     "temp",
