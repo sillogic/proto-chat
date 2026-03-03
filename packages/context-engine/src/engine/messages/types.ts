@@ -98,11 +98,18 @@ export interface UserMemoryActivityItem {
 }
 
 export interface UserMemoryIdentityItem {
+  capturedAt?: string | Date | null;
   description?: string | null;
   id?: string;
   role?: string | null;
   /** Identity type: personal (role), professional (occupation), demographic (attribute) */
   type?: 'demographic' | 'personal' | 'professional' | string | null;
+  [key: string]: unknown;
+}
+
+export interface UserMemoryPersonaItem {
+  narrative?: string | null;
+  tagline?: string | null;
   [key: string]: unknown;
 }
 
@@ -115,6 +122,7 @@ export interface UserMemoryData {
   contexts: UserMemoryContextItem[];
   experiences: UserMemoryExperienceItem[];
   identities?: UserMemoryIdentityItem[];
+  persona?: UserMemoryPersonaItem;
   preferences: UserMemoryPreferenceItem[];
 }
 
