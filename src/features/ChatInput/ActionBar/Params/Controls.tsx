@@ -226,17 +226,17 @@ const Controls = memo<ControlsProps>(({ setUpdating }) => {
         form.setFieldValue(namePath, nextValue);
       }
 
-      // 立即保存变更 - 手动构造配置对象确保使用最新值
+      // Save changes immediately - manually construct config object to ensure latest values are used
       setUpdating(true);
       const currentValues = form.getFieldsValue();
       const prevParams = (currentValues.params ?? {}) as Record<ParamKey, number | undefined>;
       const currentParams: Record<ParamKey, number | undefined> = { ...prevParams };
 
       if (newValue === undefined) {
-        // 显式删除该属性，而不是设置为 undefined
-        // 这样可以确保 Form 表单状态同步
+        // Explicitly delete the property rather than setting it to undefined
+        // This ensures Form state stays in sync
         delete currentParams[key];
-        // 使用 null 作为禁用标记（数据库会保留 null，前端据此判断复选框状态）
+        // Use null as disabled marker (database preserves null, frontend uses it to determine checkbox state)
         currentParams[key] = null as any;
       } else {
         currentParams[key] = newValue;
@@ -253,7 +253,7 @@ const Controls = memo<ControlsProps>(({ setUpdating }) => {
     [form, setUpdating, updateAgentConfig],
   );
 
-  // 使用 useMemo 确保防抖函数只创建一次
+  // Use useMemo to ensure the debounce function is only created once
   const handleValuesChange = useCallback(
     debounce(async (values) => {
       setUpdating(true);
