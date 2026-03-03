@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { type SearchMode } from '../search';
-import  { type UserMemoryEffort } from '../user/settings/memory';
+import { type UserMemoryEffort } from '../user/settings/memory';
 import { type LocalSystemConfig } from './agentConfig';
 
 export interface WorkingModel {
@@ -11,6 +11,7 @@ export interface WorkingModel {
 
 export interface AgentMemoryChatConfig {
   memory?: {
+    enabled?: boolean;
     effort?: UserMemoryEffort;
     toolPermission?: 'read-only' | 'read-write';
   };
