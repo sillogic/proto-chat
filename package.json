@@ -202,8 +202,6 @@
     "@lobechat/builtin-tool-web-browsing": "workspace:*",
     "@lobechat/business-config": "workspace:*",
     "@lobechat/business-const": "workspace:*",
-    "@lobechat/eval-dataset-parser": "workspace:*",
-    "@lobechat/eval-rubric": "workspace:*",
     "@lobechat/config": "workspace:*",
     "@lobechat/const": "workspace:*",
     "@lobechat/context-engine": "workspace:*",
@@ -214,6 +212,8 @@
     "@lobechat/editor-runtime": "workspace:*",
     "@lobechat/electron-client-ipc": "workspace:*",
     "@lobechat/electron-server-ipc": "workspace:*",
+    "@lobechat/eval-dataset-parser": "workspace:*",
+    "@lobechat/eval-rubric": "workspace:*",
     "@lobechat/fetch-sse": "workspace:*",
     "@lobechat/file-loaders": "workspace:*",
     "@lobechat/memory-user-memory": "workspace:*",
@@ -493,6 +493,11 @@
       "better-auth": "1.4.6",
       "better-call": "1.1.8",
       "drizzle-orm": "0.44.7"
+    },
+    "patchedDependencies": {
+      "@swagger-api/apidom-reference": "patches/@swagger-api__apidom-reference.patch",
+      "@upstash/qstash": "patches/@upstash__qstash.patch",
+      "@lobehub/ui@4.38.4": "patches/@lobehub__ui@4.38.4.patch"
     }
   }
 }
