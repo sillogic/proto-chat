@@ -1,5 +1,3 @@
-'use client';
-
 import { ConfigProvider } from 'antd';
 import dayjs from 'dayjs';
 import { type PropsWithChildren } from 'react';
@@ -11,6 +9,11 @@ import { isOnServerSide } from '@/utils/env';
 import { getAntdLocale } from '@/utils/locale';
 
 import Editor from './Editor';
+
+const dayjsLocaleAliases: Record<string, string> = {
+  'en-us': 'en',
+  'zh': 'zh-cn',
+};
 
 const updateDayjs = async (lang: string) => {
   let dayJSLocale;
@@ -66,7 +69,7 @@ const Locale = memo<LocaleLayoutProps>(({ children, defaultLang, antdLocale }) =
     return () => {
       i18n.instance.off('languageChanged', handleLang);
     };
-  }, [i18n, lang]);
+  }, [i18n]);
 
   // detect document direction
   const documentDir = isRtlLang(lang!) ? 'rtl' : 'ltr';

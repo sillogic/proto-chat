@@ -1,5 +1,7 @@
 'use client';
 
+import { type RouteObject } from 'react-router-dom';
+
 import MobileMainLayout from '@/app/[variants]/(mobile)/_layout';
 import MobileHome from '@/app/[variants]/(mobile)/(home)/';
 import MobileHomeLayout from '@/app/[variants]/(mobile)/(home)/_layout';
@@ -8,17 +10,17 @@ import MobileMeHomeLayout from '@/app/[variants]/(mobile)/me/(home)/layout';
 import MobileMeProfileLayout from '@/app/[variants]/(mobile)/me/profile/layout';
 import MobileMeSettingsLayout from '@/app/[variants]/(mobile)/me/settings/layout';
 import MobileSettingsProviderLayout from '@/app/[variants]/(mobile)/settings/provider/_layout';
+
 import {
   BusinessMobileRoutesWithMainLayout,
   BusinessMobileRoutesWithoutMainLayout,
 } from '@/business/client/BusinessMobileRoutes';
-import { type RouteConfig } from '@/utils/router';
 import { dynamicElement, ErrorBoundary, redirectElement } from '@/utils/router';
 
 import MobileSettingsLayout from '../settings/_layout';
 
 // Mobile router configuration (declarative mode)
-export const mobileRoutes: RouteConfig[] = [
+export const mobileRoutes: RouteObject[] = [
   {
     children: [
       // Chat routes

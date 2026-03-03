@@ -1,7 +1,8 @@
 'use client';
 
+import { toast } from '@lobehub/ui';
 import { type ComponentType, type ReactElement } from 'react';
-import { createElement, lazy, memo, Suspense, useCallback, useEffect } from 'react';
+import { createElement, lazy, memo, Suspense, useCallback, useEffect, useRef } from 'react';
 import { Navigate, Route, useNavigate, useRouteError } from 'react-router-dom';
 
 import Loading from '@/components/Loading/BrandTextLoading';
@@ -65,11 +66,36 @@ export const ErrorBoundary = ({ resetPath }: ErrorBoundaryProps) => {
   const ErrorCapture = require('@/components/Error').default;
 
   const error = useRouteError() as Error;
+  const reloadRef = useRef(false);
   const navigate = useNavigate();
-
   const reset = useCallback(() => {
     navigate(resetPath);
   }, [navigate, resetPath]);
+  let message = '';
+
+  if (error instanceof Error) {
+    message = error.message;
+  } else if (typeof error === 'string') {
+    message = error;
+  } else if (error && typeof error === 'object' && 'statusText' in error) {
+    const statusText = (error as { statusText?: unknown }).statusText;
+    if (typeof statusText === 'string') message = statusText;
+  }
+
+  if (
+    typeof window !== 'undefined' &&
+    message?.startsWith('Failed to fetch dynamically imported module') &&
+    window.sessionStorage.getItem('reload') !== '1'
+  ) {
+    if (reloadRef.current) return null;
+
+    toast.info('Web app has been updated so it needs to be reloaded.');
+    window.sessionStorage.setItem('reload', '1');
+    window.location.reload();
+    reloadRef.current = true;
+
+    return null;
+  }
 
   return createElement(ErrorCapture, { error, reset });
 };
