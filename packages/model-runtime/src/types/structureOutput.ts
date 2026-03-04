@@ -32,6 +32,12 @@ export interface GenerateObjectOptions {
    */
   headers?: Record<string, any>;
 
+  /**
+   * Callback invoked with token usage after a successful generateObject call.
+   * inputTokens = prompt tokens, outputTokens = completion tokens.
+   */
+  onUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
+
   signal?: AbortSignal;
   /**
    * userId for the GenerateObject

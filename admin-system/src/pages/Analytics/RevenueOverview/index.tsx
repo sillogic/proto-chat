@@ -377,14 +377,13 @@ const RevenueOverview: React.FC = () => {
             columns={[
               { title: '类别', dataIndex: 'category' },
               {
-                title: '上行 Token',
-                dataIndex: 'inputTokens',
-                render: (_, r: any) => r.inputTokens ? Number(r.inputTokens).toLocaleString() : '-',
-              },
-              {
-                title: '下行 Token',
-                dataIndex: 'outputTokens',
-                render: (_, r: any) => r.outputTokens ? Number(r.outputTokens).toLocaleString() : '-',
+                title: '用量',
+                render: (_, r: any) => {
+                  if (r.requestCount !== undefined) return `${Number(r.requestCount).toLocaleString()} 次`;
+                  if (r.jobCount !== undefined) return `${Number(r.jobCount).toLocaleString()} 次提取`;
+                  if (r.inputTokens) return `${Number(r.inputTokens).toLocaleString()} tokens`;
+                  return '-';
+                },
               },
               {
                 title: '成本 (USD)',

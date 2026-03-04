@@ -283,6 +283,104 @@ const CostAnalysis: React.FC = () => {
         </Col>
       </Row>
 
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>记忆提取任务数</span>
+                  <Tag color="cyan">记忆</Tag>
+                </Space>
+              }
+              value={data?.overview?.memoryJobCount || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>记忆条目数</span>
+                  <Tag color="cyan">新增</Tag>
+                </Space>
+              }
+              value={data?.overview?.memoryRecordCount || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>记忆 LLM 输入 Tokens</span>
+                  <Tag color="cyan">LLM</Tag>
+                </Space>
+              }
+              value={data?.overview?.memoryLlmInputTokens || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>记忆 LLM 输出 Tokens</span>
+                  <Tag color="cyan">LLM</Tag>
+                </Space>
+              }
+              value={data?.overview?.memoryLlmOutputTokens || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>记忆 Embedding Tokens</span>
+                  <Tag color="cyan">向量化</Tag>
+                </Space>
+              }
+              value={data?.overview?.memoryEmbeddingTokens || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title="记忆 LLM 成本 (USD)"
+              value={data?.overview?.memoryLlmCost || 0}
+              precision={6}
+              prefix="$"
+              valueStyle={{ color: '#13c2c2' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title="记忆总成本 (USD)"
+              value={data?.overview?.memoryCost || 0}
+              precision={6}
+              prefix="$"
+              valueStyle={{ color: '#13c2c2', fontWeight: 'bold' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       {/* Token Trend Chart */}
       <ProCard
         title={period === 'year' ? '每月 Token 用量趋势 (按模型)' : '每日 Token 用量趋势 (按模型)'}

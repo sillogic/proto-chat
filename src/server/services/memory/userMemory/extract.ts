@@ -1280,6 +1280,9 @@ export class MemoryExtractionExecutor {
             Record<MemoryExtractionAgent, MemoryExtractionAgentCallTrace<GenerateObjectPayload>>
           > = {};
           const agentStartedAt: Partial<Record<MemoryExtractionAgent, number>> = {};
+          const agentUsage: Partial<
+            Record<MemoryExtractionAgent, { inputTokens: number; model: string; outputTokens: number }>
+          > = {};
 
           const recordRequest = (agent: MemoryExtractionAgent, request: GenerateObjectPayload) => {
             agentStartedAt[agent] = Date.now();
@@ -1301,6 +1304,18 @@ export class MemoryExtractionExecutor {
               ...agentCalls[agent],
               durationMs: duration,
               error: serializeError(error),
+            };
+          };
+
+          const recordUsage = (
+            agent: MemoryExtractionAgent,
+            usage: { inputTokens: number; model: string; outputTokens: number },
+          ) => {
+            const existing = agentUsage[agent];
+            agentUsage[agent] = {
+              inputTokens: (existing?.inputTokens ?? 0) + usage.inputTokens,
+              model: usage.model,
+              outputTokens: (existing?.outputTokens ?? 0) + usage.outputTokens,
             };
           };
 
@@ -1342,19 +1357,26 @@ export class MemoryExtractionExecutor {
           const shouldRecordTrace = Boolean(observabilityS3);
 
           extraction = await service.run(extractionJob, {
-            callbacks: shouldRecordTrace
-              ? {
-                  onExtractError: async (agent, error) => {
+            callbacks: {
+              onExtractError: shouldRecordTrace
+                ? async (agent, error) => {
                     recordError(agent, error);
-                  },
-                  onExtractRequest: async (agent, payload) => {
+                  }
+                : undefined,
+              onExtractRequest: shouldRecordTrace
+                ? async (agent, payload) => {
                     recordRequest(agent, payload);
-                  },
-                  onExtractResponse: async (agent, response) => {
+                  }
+                : undefined,
+              onExtractResponse: shouldRecordTrace
+                ? async (agent, response) => {
                     recordResponse(agent, response);
-                  },
-                }
-              : undefined,
+                  }
+                : undefined,
+              onUsage: async (agent, usage) => {
+                recordUsage(agent, usage);
+              },
+            },
             contextProvider: topicContextProvider,
             gatekeeperLanguage: this.privateConfig.agentGateKeeper.language || 'English',
             language,
@@ -1394,6 +1416,34 @@ export class MemoryExtractionExecutor {
             ...persistedRes,
             processedMemoryCount: persistedRes.createdIds.length,
           });
+
+          // Persist accumulated LLM token usage to async_tasks metadata
+          if (job.asyncTaskId) {
+            const totalInputTokens = Object.values(agentUsage).reduce(
+              (sum, u) => sum + (u?.inputTokens ?? 0),
+              0,
+            );
+            const totalOutputTokens = Object.values(agentUsage).reduce(
+              (sum, u) => sum + (u?.outputTokens ?? 0),
+              0,
+            );
+            if (totalInputTokens > 0 || totalOutputTokens > 0) {
+              const primaryModel =
+                Object.values(agentUsage).find(Boolean)?.model ?? this.modelConfig.gateModel;
+              try {
+                const asyncTaskModel = new AsyncTaskModel(await this.db, job.userId);
+                await asyncTaskModel.accumulateTokenUsage(
+                  job.asyncTaskId,
+                  totalInputTokens,
+                  totalOutputTokens,
+                  primaryModel,
+                );
+              } catch (e) {
+                console.error('[memory-extraction] failed to save token usage to async task:', e);
+              }
+            }
+          }
+
           this.recordJobMetrics(extractionJob, 'completed', Date.now() - startTime);
           span.setStatus({ code: SpanStatusCode.OK });
           span.setAttribute('memory.processed_memory_count', persistedRes.createdIds.length);

@@ -673,6 +673,13 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
           { headers: options?.headers, signal: options?.signal },
         );
 
+        if (res.usage && options?.onUsage) {
+          options.onUsage({
+            inputTokens: res.usage.prompt_tokens || 0,
+            outputTokens: res.usage.completion_tokens || 0,
+          });
+        }
+
         const toolCalls = res.choices[0].message.tool_calls!;
 
         try {
@@ -724,6 +731,13 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
 
         const text = res.output_text;
         log('received structured output from Responses API, length: %d', text?.length || 0);
+        if ((res as any).usage && options?.onUsage) {
+          const usage = (res as any).usage;
+          options.onUsage({
+            inputTokens: usage.input_tokens || 0,
+            outputTokens: usage.output_tokens || 0,
+          });
+        }
         try {
           const result = JSON.parse(text);
           log('successfully parsed JSON output');
@@ -748,6 +762,12 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
       const text = res.choices[0].message.content!;
 
       log('received structured output from Chat Completions API, length: %d', text?.length || 0);
+      if (res.usage && options?.onUsage) {
+        options.onUsage({
+          inputTokens: res.usage.prompt_tokens || 0,
+          outputTokens: res.usage.completion_tokens || 0,
+        });
+      }
 
       try {
         const result = JSON.parse(text);
@@ -1076,6 +1096,13 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
         const functionCalls = res.output?.filter((item: any) => item.type === 'function_call');
 
         log('received %d function calls from Responses API', functionCalls?.length || 0);
+        if ((res as any).usage && options?.onUsage) {
+          const usage = (res as any).usage;
+          options.onUsage({
+            inputTokens: usage.input_tokens || 0,
+            outputTokens: usage.output_tokens || 0,
+          });
+        }
 
         try {
           const result = functionCalls?.map((item: any) => ({
@@ -1112,6 +1139,12 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
       const toolCalls = res.choices[0].message.tool_calls!;
 
       log('received %d tool calls from Chat Completions API', toolCalls?.length || 0);
+      if (res.usage && options?.onUsage) {
+        options.onUsage({
+          inputTokens: res.usage.prompt_tokens || 0,
+          outputTokens: res.usage.completion_tokens || 0,
+        });
+      }
 
       try {
         const result = toolCalls.map((item) => ({

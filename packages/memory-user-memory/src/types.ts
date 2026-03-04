@@ -41,6 +41,10 @@ export interface ExtractorOptions extends ExtractorTemplateProps {
       agent: MemoryExtractionAgent,
       response: TOutput,
     ) => Promise<void> | void;
+    onUsage?: (
+      agent: MemoryExtractionAgent,
+      usage: { inputTokens: number; model: string; outputTokens: number },
+    ) => Promise<void> | void;
   };
   messageIds?: string[];
   sourceId?: string;

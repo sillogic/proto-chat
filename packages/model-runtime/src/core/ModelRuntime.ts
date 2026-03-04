@@ -10,6 +10,7 @@ import type {
   ChatStreamPayload,
   EmbeddingsOptions,
   EmbeddingsPayload,
+  GenerateObjectOptions,
   GenerateObjectPayload,
   ModelRequestOptions,
   PullModelParams,
@@ -75,8 +76,8 @@ export class ModelRuntime {
     return this._runtime.chat(payload, options);
   }
 
-  async generateObject(payload: GenerateObjectPayload) {
-    return this._runtime.generateObject!(payload);
+  async generateObject(payload: GenerateObjectPayload, options?: GenerateObjectOptions) {
+    return this._runtime.generateObject!(payload, options);
   }
 
   async createImage(payload: CreateImagePayload) {

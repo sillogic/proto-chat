@@ -50,6 +50,30 @@ export class AsyncTaskModel {
       .where(and(eq(asyncTasks.id, taskId)));
   }
 
+  accumulateTokenUsage = async (
+    taskId: string,
+    inputTokens: number,
+    outputTokens: number,
+    model: string,
+  ) => {
+    return this.db
+      .update(asyncTasks)
+      .set({
+        metadata: sql`jsonb_set(
+          ${asyncTasks.metadata},
+          '{llmUsage}',
+          jsonb_build_object(
+            'inputTokens', COALESCE((${asyncTasks.metadata} -> 'llmUsage' ->> 'inputTokens')::int, 0) + ${inputTokens},
+            'outputTokens', COALESCE((${asyncTasks.metadata} -> 'llmUsage' ->> 'outputTokens')::int, 0) + ${outputTokens},
+            'model', ${model}
+          ),
+          true
+        )`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(asyncTasks.id, taskId), eq(asyncTasks.userId, this.userId)));
+  };
+
   findActiveByType = async (type: AsyncTaskType) => {
     return this.db.query.asyncTasks.findFirst({
       where: and(

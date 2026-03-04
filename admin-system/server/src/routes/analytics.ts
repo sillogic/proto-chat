@@ -129,7 +129,37 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       GROUP BY metadata ->> 'model', metadata ->> 'provider'
     `);
 
-    // 5. 获取免费用户成本统计（用于计算纯支出，只统计 protochat 供应商）
+    // 5. 获取记忆统计
+    const memoryJobStats = await db.execute(sql`
+      SELECT
+        COUNT(*) as "jobCount",
+        COALESCE(SUM((metadata -> 'llmUsage' ->> 'inputTokens')::int), 0) as "llmInputTokens",
+        COALESCE(SUM((metadata -> 'llmUsage' ->> 'outputTokens')::int), 0) as "llmOutputTokens",
+        MAX(metadata -> 'llmUsage' ->> 'model') as "llmModel"
+      FROM async_tasks
+      WHERE type = 'user_memory_extraction:chat_topic'
+        AND created_at >= ${startStr}
+        AND created_at < ${endStr}
+    `);
+
+    const memoryRecordStats = await db.execute(sql`
+      SELECT COUNT(*) as "recordCount"
+      FROM user_memories
+      WHERE created_at >= ${startStr}
+        AND created_at < ${endStr}
+    `);
+
+    const memoryEmbeddingStats = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(input_tokens), 0) as "totalTokens",
+        COALESCE(SUM(cost_price::numeric), 0) as "totalCost"
+      FROM embedding_usage_logs
+      WHERE created_at >= ${startStr}
+        AND created_at < ${endStr}
+        AND operation_type IN ('memory_search', 'memory_extraction')
+    `);
+
+    // 5b. 获取免费用户成本统计（用于计算纯支出，只统计 protochat 供应商）
     const freeUserStats = await db.execute(sql`
       SELECT
         m.model,
@@ -230,6 +260,20 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
 
     const embeddingTokens = parseInt((embeddingStats[0] as any)?.totalTokens || '0');
     const embeddingCost = parseFloat((embeddingStats[0] as any)?.totalCost || '0');
+    const memoryJobCount = parseInt((memoryJobStats[0] as any)?.jobCount || '0');
+    const memoryRecordCount = parseInt((memoryRecordStats[0] as any)?.recordCount || '0');
+    const memoryEmbeddingTokens = parseInt((memoryEmbeddingStats[0] as any)?.totalTokens || '0');
+    const memoryEmbeddingCost = parseFloat((memoryEmbeddingStats[0] as any)?.totalCost || '0');
+
+    // LLM cost for memory extraction (from async_tasks.metadata.llmUsage)
+    const memoryLlmInputTokens = parseInt((memoryJobStats[0] as any)?.llmInputTokens || '0');
+    const memoryLlmOutputTokens = parseInt((memoryJobStats[0] as any)?.llmOutputTokens || '0');
+    const memoryLlmModel = (memoryJobStats[0] as any)?.llmModel || '';
+    const memoryLlmPrice = getProtochatModelPrice(memoryLlmModel, 'protochat', priceMap);
+    const memoryLlmCost =
+      (memoryLlmInputTokens / 1_000_000) * memoryLlmPrice.inputPrice +
+      (memoryLlmOutputTokens / 1_000_000) * memoryLlmPrice.outputPrice;
+    const memoryCostTotal = memoryEmbeddingCost + memoryLlmCost;
 
     // 统计图片生成成本（积分，需转换为美元）
     // 假设 1 USD = 500,000 积分（与 SYNC_MULTIPLIER 一致）
@@ -274,6 +318,13 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
           embeddingCost: embeddingCost.toFixed(6),
           imageRequests: totalImageRequests,
           imageCost: totalImageCost.toFixed(6),
+          memoryJobCount,
+          memoryRecordCount,
+          memoryEmbeddingTokens,
+          memoryCost: memoryCostTotal.toFixed(6),
+          memoryLlmInputTokens,
+          memoryLlmOutputTokens,
+          memoryLlmCost: memoryLlmCost.toFixed(6),
           freeUserCost: freeUserCost.toFixed(6),
           requestCount: totalRequestCount + totalImageRequests,
           totalCost: (totalChatCost + embeddingCost + totalImageCost).toFixed(6),
@@ -349,6 +400,39 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
         AND created_at < ${endStr}
         AND metadata ->> 'type' = 'image'
     `);
+
+    // 4b. 记忆相关 Embedding 成本（memory_search + memory_extraction）
+    const memoryEmbeddingCostStats = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(input_tokens), 0) as "totalTokens",
+        COALESCE(SUM(cost_price::numeric), 0) as "totalCost"
+      FROM embedding_usage_logs
+      WHERE created_at >= ${startStr}
+        AND created_at < ${endStr}
+        AND operation_type IN ('memory_search', 'memory_extraction')
+    `);
+
+    // 4c. 记忆提取任务数、记忆条目数及 LLM 用量
+    const revenueMemoryJobStats = await db.execute(sql`
+      SELECT
+        COUNT(*) as "jobCount",
+        COALESCE(SUM((metadata -> 'llmUsage' ->> 'inputTokens')::int), 0) as "llmInputTokens",
+        COALESCE(SUM((metadata -> 'llmUsage' ->> 'outputTokens')::int), 0) as "llmOutputTokens",
+        MAX(metadata -> 'llmUsage' ->> 'model') as "llmModel"
+      FROM async_tasks
+      WHERE type = 'user_memory_extraction:chat_topic'
+        AND created_at >= ${startStr}
+        AND created_at < ${endStr}
+    `);
+    const memoryJobCount = parseInt((revenueMemoryJobStats[0] as any)?.jobCount || '0');
+
+    const revenueMemoryRecordStats = await db.execute(sql`
+      SELECT COUNT(*) as "recordCount"
+      FROM user_memories
+      WHERE created_at >= ${startStr}
+        AND created_at < ${endStr}
+    `);
+    const memoryRecordCount = parseInt((revenueMemoryRecordStats[0] as any)?.recordCount || '0');
 
     // 5. 收支趋势（收入，月度按天/年度按月）
     const dailyRevenue = await db.execute(sql`
@@ -427,6 +511,19 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
     const embeddingCostUSD = parseFloat((embeddingCost[0] as any)?.totalCost || '0');
     const imageCostInCredits = parseFloat((imageCost[0] as any)?.totalCost || '0');
     const imageCostUSD = imageCostInCredits / 500000; // 转换为美元
+    const memoryEmbeddingCostUSD = parseFloat((memoryEmbeddingCostStats[0] as any)?.totalCost || '0');
+    const memoryEmbeddingTokens = parseInt((memoryEmbeddingCostStats[0] as any)?.totalTokens || '0');
+
+    // LLM cost for memory extraction
+    const revMemoryLlmInputTokens = parseInt((revenueMemoryJobStats[0] as any)?.llmInputTokens || '0');
+    const revMemoryLlmOutputTokens = parseInt((revenueMemoryJobStats[0] as any)?.llmOutputTokens || '0');
+    const revMemoryLlmModel = (revenueMemoryJobStats[0] as any)?.llmModel || '';
+    const revMemoryLlmPrice = getProtochatModelPrice(revMemoryLlmModel, 'protochat', priceMap);
+    const revMemoryLlmCostUSD =
+      (revMemoryLlmInputTokens / 1_000_000) * revMemoryLlmPrice.inputPrice +
+      (revMemoryLlmOutputTokens / 1_000_000) * revMemoryLlmPrice.outputPrice;
+    const revMemoryCostUSD = memoryEmbeddingCostUSD + revMemoryLlmCostUSD;
+
     const totalCostUSD = totalChatCostUSD + embeddingCostUSD + imageCostUSD;
 
     // 获取 Embedding token 数
@@ -448,12 +545,15 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       percentage: totalCostUSD > 0 ? ((totalChatCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
     });
 
+    const nonMemoryEmbeddingTokens = Math.max(0, embeddingTokens - memoryEmbeddingTokens);
+    const nonMemoryEmbeddingCostUSD = Math.max(0, embeddingCostUSD - memoryEmbeddingCostUSD);
+
     costBreakdown.push({
       category: 'Embedding 向量化',
-      inputTokens: embeddingTokens,
+      inputTokens: nonMemoryEmbeddingTokens,
       outputTokens: 0,
-      costUSD: embeddingCostUSD.toFixed(6),
-      percentage: totalCostUSD > 0 ? ((embeddingCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
+      costUSD: nonMemoryEmbeddingCostUSD.toFixed(6),
+      percentage: totalCostUSD > 0 ? ((nonMemoryEmbeddingCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
     });
 
     // 图片生成成本（从 user_transactions 统计请求数）
@@ -474,6 +574,16 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       requestCount: imageRequests,
       costUSD: imageCostUSD.toFixed(6),
       percentage: totalCostUSD > 0 ? ((imageCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
+    });
+
+    costBreakdown.push({
+      category: '记忆提取',
+      inputTokens: memoryEmbeddingTokens + revMemoryLlmInputTokens,
+      outputTokens: revMemoryLlmOutputTokens,
+      jobCount: memoryJobCount,
+      recordCount: memoryRecordCount,
+      costUSD: revMemoryCostUSD.toFixed(6),
+      percentage: totalCostUSD > 0 ? ((revMemoryCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
     });
 
     // 计算每日成本（只统计 protochat 供应商）

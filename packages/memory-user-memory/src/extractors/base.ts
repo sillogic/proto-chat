@@ -155,7 +155,15 @@ export abstract class BaseMemoryExtractor<
               }
 
               span.addEvent('gen_ai.request.send');
-              const result = await this.runtime.generateObject(payload);
+              const result = await this.runtime.generateObject(payload, {
+                onUsage: options?.callbacks?.onUsage
+                  ? (usage) =>
+                      options.callbacks!.onUsage!(this.agent, {
+                        ...usage,
+                        model: this.model,
+                      })
+                  : undefined,
+              });
               span.addEvent('gen_ai.response.receive');
 
               span.setAttributes({
