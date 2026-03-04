@@ -4,7 +4,7 @@ import { type AgentStoreState } from '@/store/agent/initialState';
 
 import { chatConfigByIdSelectors } from './chatConfigByIdSelectors';
 
-// ============ Current Agent Selectors (复用 chatConfigByIdSelectors) ============ //
+// ============ Current Agent Selectors (reusing chatConfigByIdSelectors) ============ //
 
 const currentChatConfig = (s: AgentStoreState): LobeAgentChatConfig =>
   chatConfigByIdSelectors.getChatConfigById(s.activeAgentId || '')(s);
