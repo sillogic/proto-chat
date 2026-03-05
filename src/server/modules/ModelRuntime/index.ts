@@ -349,14 +349,14 @@ const buildVertexOptions = (
 };
 
 /**
- * 初始化ProtoChat Runtime（套壳供应商）
+ * Initialize ProtoChat Runtime (wrapper provider)
  *
- * ProtoChat是一个"套壳"供应商，整合底层供应商（OpenRouter、DeepSeek等）
- * 需要查询数据库获取模型映射和底层供应商配置
+ * ProtoChat is a "wrapper" provider that integrates underlying providers (OpenRouter, DeepSeek, etc.)
+ * Requires querying the database to get model mappings and underlying provider configurations
  *
- * @param payload - 用户payload
- * @param params - 运行时参数，必须包含model字段
- * @returns 包含runtime和actualModel的对象
+ * @param payload - User payload
+ * @param params - Runtime parameters, must include the model field
+ * @returns Object containing runtime and actualModel
  */
 const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = {}) => {
   const modelId = params?.model;
@@ -365,31 +365,31 @@ const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = 
     throw new Error('Model ID is required for ProtoChat provider');
   }
 
-  // 1. 创建ProtoChat服务实例
+  // 1. Create ProtoChat service instance
   const protochatService = new ProtoChatService(serverDB);
 
-  // 2. 查询模型映射（从数据库）；视频生成时忽略模型的 chat enabled 检查
+  // 2. Query model mapping (from database); ignore chat enabled check for video generation
   const mapping = await protochatService.getModelMapping(modelId, {
     ignoreModelEnabled: params?.ignoreModelEnabled,
   });
 
-  // 3. 转换模型ID: 'openrouter::openai/gpt-4o' → 'openai/gpt-4o'
+  // 3. Convert model ID: 'openrouter::openai/gpt-4o' → 'openai/gpt-4o'
   const actualModelId = protochatService.convertModelId(mapping.originalId);
 
-  // 4. 确定实际使用的供应商runtime
-  // OpenRouter使用openrouter的runtime，DeepSeek使用deepseek的runtime
+  // 4. Determine the actual provider runtime to use
+  // OpenRouter uses openrouter runtime, DeepSeek uses deepseek runtime
   const runtimeProvider = mapping.originalProvider;
 
-  // 5. 构建运行时参数
+  // 5. Build runtime parameters
   const runtimeParams = {
     apiKey: mapping.apiKey,
     baseURL: mapping.baseUrl,
   };
 
-  // 6. 使用底层供应商初始化Runtime
+  // 6. Initialize Runtime using the underlying provider
   const runtime = await ModelRuntime.initializeWithProvider(runtimeProvider, runtimeParams);
 
-  // 7. 返回runtime和转换后的模型ID（调用者需要在调用chat()时使用actualModel）
+  // 7. Return runtime and converted model ID (callers should use actualModel when calling chat())
   return {
     actualModel: actualModelId,
     runtime,
@@ -401,14 +401,14 @@ const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = 
  * @param provider - The provider name.
  * @param payload - The JWT payload.
  * @param params
- * @returns 包含runtime的对象，对于ProtoChat还包含actualModel
+ * @returns Object containing runtime; also includes actualModel for ProtoChat
  */
 export const initModelRuntimeWithUserPayload = async (
   provider: string,
   payload: ClientSecretPayload,
   params: any = {},
 ): Promise<{ actualModel?: string; runtime: ModelRuntime }> => {
-  // 特殊处理ProtoChat供应商
+  // Special handling for ProtoChat provider
   if (ProtoChatService.isProtoChatProvider(provider)) {
     return await initProtoChatRuntime(payload, params);
   }
