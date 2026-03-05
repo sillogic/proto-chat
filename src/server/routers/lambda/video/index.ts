@@ -205,11 +205,11 @@ export const videoRouter = router({
 
     // Step 2: Call model runtime to submit video generation task
     try {
-      // ProtoChat 供应商需要解析实际底层模型 ID（如 protochat::a1::seed-1.6-flash → seed-1.6-flash）
+      // ProtoChat provider needs to resolve the actual underlying model ID (e.g., protochat::a1::seed-1.6-flash → seed-1.6-flash)
       let modelToUse = model;
       const modelRuntime = await (async () => {
         if (ProtoChatService.isProtoChatProvider(provider)) {
-          // 视频模型的 enabled 字段控制聊天页面可见性，与视频能力无关，需忽略该检查
+          // The enabled field for video models controls chat page visibility, unrelated to video capability, so this check must be ignored
           const { runtime, actualModel } = await initModelRuntimeWithUserPayload(
             provider,
             {},
