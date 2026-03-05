@@ -13,7 +13,6 @@ export interface AgentMemoryChatConfig {
   memory?: {
     enabled?: boolean;
     effort?: UserMemoryEffort;
-    enabled?: boolean;
     toolPermission?: 'read-only' | 'read-write';
   };
 }

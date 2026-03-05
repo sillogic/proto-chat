@@ -38,7 +38,7 @@ const ErrorCapture = ({ error, reset }: ErrorCaptureProps) => {
       <p style={{ marginBottom: '2em' }}>{t('error.desc')}</p>
       {hasStack && (
         <Collapse
-          defaultActiveKey={__CI__ ? ['stack'] : []}
+          defaultActiveKey={process.env.CI ? ['stack'] : []}
           expandIconPlacement={'end'}
           size={'small'}
           style={{ marginBottom: '1em', maxWidth: '90vw', width: 560 }}

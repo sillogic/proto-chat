@@ -1,3 +1,5 @@
+'use client';
+
 import { ConfigProvider } from 'antd';
 import dayjs from 'dayjs';
 import { type PropsWithChildren } from 'react';

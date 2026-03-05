@@ -3,7 +3,7 @@
 import { toast } from '@lobehub/ui';
 import { type ComponentType, type ReactElement } from 'react';
 import { createElement, lazy, memo, Suspense, useCallback, useEffect, useRef } from 'react';
-import { Navigate, Route, useNavigate, useRouteError } from 'react-router-dom';
+import { Navigate, type RouteObject, Route, useNavigate, useRouteError } from 'react-router-dom';
 
 import Loading from '@/components/Loading/BrandTextLoading';
 import { useGlobalStore } from '@/store/global';
@@ -161,9 +161,9 @@ export interface RouteConfig {
  *   <Routes>{renderRoutes(routes)}</Routes>
  * </BrowserRouter>
  */
-export function renderRoutes(routes: RouteConfig[]): ReactElement[] {
+export function renderRoutes(routes: RouteObject[]): ReactElement[] {
   return routes.map((route, index) => {
-    const { path, element, children, index: isIndex } = route;
+    const { path, element, children, index: isIndex } = route as RouteConfig;
 
     const childRoutes = children ? renderRoutes(children) : undefined;
 
