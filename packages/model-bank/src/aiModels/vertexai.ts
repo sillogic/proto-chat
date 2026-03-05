@@ -183,6 +183,7 @@ const vertexaiChatModels: AIChatModelCard[] = [
     },
     releasedAt: '2025-11-20',
     settings: {
+      extendParams: ['imageAspectRatio', 'imageResolution'],
       searchImpl: 'params',
       searchProvider: 'google',
     },
