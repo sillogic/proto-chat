@@ -503,7 +503,7 @@
     "patchedDependencies": {
       "@swagger-api/apidom-reference": "patches/@swagger-api__apidom-reference.patch",
       "@upstash/qstash": "patches/@upstash__qstash.patch",
-      "@lobehub/ui@4.38.4": "patches/@lobehub__ui@4.38.4.patch"
+      "@lobehub/ui@5.3.0": "patches/@lobehub__ui@5.3.0.patch"
     }
   }
 }
