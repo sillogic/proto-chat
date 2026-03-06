@@ -133,7 +133,7 @@ export const LOBE_DEFAULT_MODEL_LIST: ChatModelCard[] = [
 ].flat();
 
 export const DEFAULT_MODEL_PROVIDER_LIST = [
-  ProtoChatProvider, // ProtoChat自有供应商（放在最前面）
+  ProtoChatProvider, // ProtoChat proprietary provider (placed first)
   OpenAIProvider,
   { ...AzureProvider, chatModels: [] },
   AzureAIProvider,
