@@ -2,7 +2,7 @@ import { db } from '../config/database';
 import { modelPricings, NewModelPricing } from '../db/subscription-schema';
 import { aiProviders, aiModels } from '../db/ai-providers-schema';
 import { protochatProviders, protochatSettings, protochatModels, protochatModelPricing } from '../db/protochat-schema';
-import { eq, desc, and, or, isNull } from 'drizzle-orm';
+import { eq, desc, and, or, isNull, like } from 'drizzle-orm';
 // @ts-ignore - workspace package with type issues
 import { LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
 import { idGenerator } from '../utils/id-generator';
@@ -86,11 +86,13 @@ export class PricingService {
         const multiplier = await this.getPricingMultiplier();
         console.log(`[Pricing Sync] Using pricing multiplier: ${multiplier}`);
 
-        // 2. Clear existing token-based pricings (preserve per-request pricing for image models)
+        // 2. Clear existing token-based pricings, and auto-synced per-request image entries.
+        // Manually-set per-request entries (memo NOT starting with '[auto-image]') are preserved.
         await db.delete(modelPricings).where(
             or(
                 eq(modelPricings.perRequestPrice, '0'),
                 isNull(modelPricings.perRequestPrice),
+                like(modelPricings.memo, '[auto-image]%'),
             ),
         );
 
@@ -242,6 +244,36 @@ export class PricingService {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 } as any);
+
+                // For imageOutput models: also create a per-request pricing entry
+                // using extraPricing.imagePrice stored during model sync from OpenRouter.
+                const capabilities = model.capabilities as any;
+                const settings = model.settings as any;
+                const imagePricePerUnit = parseFloat(settings?.extraPricing?.imagePrice || '0');
+
+                if (capabilities?.imageOutput && imagePricePerUnit > 0) {
+                    const imageKey = `${model.id}-protochat-${subProvider.id}-image`;
+                    if (!pricingMap.has(imageKey)) {
+                        // OpenRouter imagePrice is USD per image; convert to credits
+                        const costImagePrice = Math.ceil(imagePricePerUnit * SYNC_MULTIPLIER * 100) / 100;
+                        const userImagePrice = Math.ceil(costImagePrice * multiplier * 100) / 100;
+
+                        pricingMap.set(imageKey, {
+                            id: idGenerator('mp'),
+                            model: model.id,
+                            provider: 'protochat',
+                            subProvider: subProvider.id,
+                            inputPrice: '0',
+                            outputPrice: '0',
+                            userInputPrice: '0',
+                            userOutputPrice: '0',
+                            perRequestPrice: userImagePrice.toFixed(2),
+                            memo: `[auto-image] ProtoChat (${subProvider.name || subProvider.id})`,
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                        } as any);
+                    }
+                }
             }
         }
 
