@@ -36,6 +36,16 @@ export const getServerGlobalConfig = async () => {
             lobehub: {
               enabled: true,
             },
+            // In commercial deployment, disable providers that default to enabled
+            // (via ENABLED_X !== '0' logic) but have no server-side API keys.
+            // New users should only see ProtoChat enabled out of the box.
+            // Users can still enable these themselves by adding their own API keys.
+            anthropic: { enabled: false },
+            comfyui: { enabled: false },
+            fal: { enabled: false },
+            google: { enabled: false },
+            ollama: { enabled: isDesktop ? true : false },
+            openai: { enabled: false },
           }
         : {}),
       azure: {

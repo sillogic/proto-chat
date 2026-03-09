@@ -4,10 +4,21 @@ import { Tag } from '@lobehub/ui';
 import type { TableColumnType} from 'antd';
 import { Space,Table, Typography } from 'antd';
 import { memo } from 'react';
+import { LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
 
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';
 import { formatDate } from '@/utils/format';
+
+// Resolve internal model IDs to user-friendly display names.
+// ProtoChat IDs have the format: protochat::{alias}::{cleanModelId}
+const resolveModelDisplayName = (modelId: string): string => {
+  if (!modelId || modelId === '-') return modelId;
+  const parts = modelId.split('::');
+  const cleanId = parts.length >= 3 ? parts.slice(2).join('::') : modelId;
+  const entry = (LOBE_DEFAULT_MODEL_LIST as any[]).find((m: any) => m.id === cleanId || m.id === `${cleanId}:image`);
+  return entry?.displayName || cleanId;
+};
 
 const { Text } = Typography;
 
@@ -47,7 +58,7 @@ const baseColumns: TableColumnType<any>[] = [
     render: (_, record) => (
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Text strong style={{ fontSize: '13px' }}>
-          {record.model}
+          {resolveModelDisplayName(record.model)}
         </Text>
         <Text style={{ fontSize: '10px' }} type="secondary">
           {record.provider?.toUpperCase()}

@@ -53,8 +53,11 @@ export class CreditService {
         const userOutputPrice = parseFloat(pricing.userOutputPrice || '0');
         const perRequestPrice = parseFloat(pricing.perRequestPrice || '0');
 
-        // Price is in credits per 1,000,000 tokens
-        const cost = (inputTokens / 1_000_000) * userInputPrice + (outputTokens / 1_000_000) * userOutputPrice + perRequestPrice;
+        // Price is in credits per 1,000,000 tokens.
+        // perRequestPrice is only applied when there are no tokens (pure per-request billing,
+        // e.g. image generation). When tokens > 0 (chat window), token pricing applies instead.
+        const perCost = inputTokens === 0 && outputTokens === 0 ? perRequestPrice : 0;
+        const cost = (inputTokens / 1_000_000) * userInputPrice + (outputTokens / 1_000_000) * userOutputPrice + perCost;
 
         const subProviderInfo = pricing.subProvider ? ` (via ${pricing.subProvider})` : '';
         console.info(`[Credit] Charging for ${provider}::${model}${subProviderInfo}, cost: ${cost.toFixed(4)} credits`);

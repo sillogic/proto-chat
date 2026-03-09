@@ -96,21 +96,22 @@ export class PricingService {
             ),
         );
 
-        // 3. Fetch enabled global providers
+        // Use a map to deduplicate (model, provider, subProvider) tuples
+        const pricingMap = new Map<string, NewModelPricing>();
+
+        // 3. Always sync ProtoChat pricing from its own tables (protochatProviders/Models),
+        // independent of whether 'protochat' appears in aiProviders.
+        await this.syncProtoChatPricing(pricingMap, multiplier);
+
+        // 4. Fetch enabled global non-ProtoChat providers
         const enabledProviders = await db
             .select()
             .from(aiProviders)
             .where(and(eq(aiProviders.enabled, true), eq(aiProviders.isGlobal, true)));
 
-        // Use a map to deduplicate (model, provider, subProvider) tuples
-        const pricingMap = new Map<string, NewModelPricing>();
-
         for (const provider of enabledProviders) {
-            // Special handling for ProtoChat
-            if (provider.id === 'protochat') {
-                await this.syncProtoChatPricing(pricingMap, multiplier);
-                continue;
-            }
+            // Skip ProtoChat — already handled above
+            if (provider.id === 'protochat') continue;
 
             // Normal provider handling - read from database
             const providerModels = await db
@@ -163,11 +164,27 @@ export class PricingService {
 
         const newPricings = Array.from(pricingMap.values());
 
-        if (newPricings.length > 0) {
-            await db.insert(modelPricings).values(newPricings);
+        // Use individual upserts to handle existing manual entries that survived the delete step.
+        // The actual DB unique constraint is on (model, provider), so we target those columns.
+        for (const pricing of newPricings) {
+            await db.insert(modelPricings)
+                .values(pricing as any)
+                .onConflictDoUpdate({
+                    target: [modelPricings.model, modelPricings.provider],
+                    set: {
+                        inputPrice: (pricing.inputPrice || '0') as string,
+                        outputPrice: (pricing.outputPrice || '0') as string,
+                        userInputPrice: (pricing.userInputPrice || '0') as string,
+                        userOutputPrice: (pricing.userOutputPrice || '0') as string,
+                        perRequestPrice: (pricing.perRequestPrice || '0') as string,
+                        subProvider: (pricing.subProvider || null) as string | null,
+                        memo: pricing.memo as string,
+                        updatedAt: new Date(),
+                    } as any,
+                });
         }
 
-        console.log(`[Pricing Sync] Created ${newPricings.length} pricing entries`);
+        console.log(`[Pricing Sync] Created/updated ${newPricings.length} pricing entries`);
         return { count: newPricings.length };
     }
 
@@ -179,11 +196,9 @@ export class PricingService {
             .from(protochatProviders)
             .where(eq(protochatProviders.enabled, true));
 
-        // Aggregate all enabled models for aiProviders sync
         const allEnabledModels = new Set<string>();
 
         for (const subProvider of subProviders) {
-            // Fetch enabled models from database for this sub-provider
             const subProviderModels = await db
                 .select()
                 .from(protochatModels)
@@ -195,15 +210,18 @@ export class PricingService {
             console.log(`[ProtoChat Sync] Found ${subProviderModels.length} enabled models for sub-provider ${subProvider.id}`);
 
             for (const model of subProviderModels) {
-                // Add to aggregate list
                 allEnabledModels.add(model.id);
 
-                // Create unique key: model-provider-subProvider
-                const key = `${model.id}-protochat-${subProvider.id}`;
-                if (pricingMap.has(key)) continue;
+                // ONE entry per model — merging token pricing + per-request image pricing.
+                // The DB unique constraint is on (model, provider), so we cannot have separate
+                // token and image entries for the same model.
+                const entryKey = `${model.id}-protochat-${subProvider.id}`;
+                if (pricingMap.has(entryKey)) continue;
 
-                // ProtoChat models have pricing in a separate table
-                // Fetch pricing from protochatModelPricing table
+                // --- Token pricing (from protochatModelPricing) ---
+                let costInputPrice = 0;
+                let costOutputPrice = 0;
+
                 const pricingResults = await db
                     .select()
                     .from(protochatModelPricing)
@@ -212,25 +230,51 @@ export class PricingService {
 
                 if (pricingResults.length === 0) {
                     console.warn(`[ProtoChat Sync] Model ${model.id} has no pricing in protochatModelPricing table`);
-                    continue;
+                } else {
+                    const pricing = pricingResults[0];
+                    costInputPrice = Math.ceil(parseFloat(pricing.costInputPrice) * SYNC_MULTIPLIER * 100) / 100;
+                    costOutputPrice = Math.ceil(parseFloat(pricing.costOutputPrice) * SYNC_MULTIPLIER * 100) / 100;
                 }
 
-                const pricing = pricingResults[0];
+                // --- Per-request image pricing ---
+                const capabilities = model.capabilities as any;
+                const settings = model.settings as any;
+                let perRequestPriceCredits = 0;
 
-                // ProtoChat pricing table stores USD prices, need to convert to credits
-                // $0.10/M × 500,000 = 50,000 积分/M
-                const costInputPriceUSD = parseFloat(pricing.costInputPrice);
-                const costOutputPriceUSD = parseFloat(pricing.costOutputPrice);
+                if (capabilities?.imageOutput) {
+                    // Primary: OpenRouter's pricing.image (USD per image)
+                    let imagePricePerUnit = parseFloat(settings?.extraPricing?.imagePrice || '0');
 
-                // Convert to credits
-                const costInputPrice = Math.ceil(costInputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
-                const costOutputPrice = Math.ceil(costOutputPriceUSD * SYNC_MULTIPLIER * 100) / 100;
+                    // Fallback: token-billed image models (e.g. Gemini Nano Banana) have
+                    // pricing.image = 0 from OpenRouter. Use model-bank's approximatePricePerImage.
+                    if (imagePricePerUnit === 0) {
+                        // model.id format: protochat::{alias}::{cleanModelId}
+                        const cleanModelId = model.id.split('::').slice(2).join('::');
+                        const bankEntry = (LOBE_DEFAULT_MODEL_LIST as any[]).find(
+                            (m: any) =>
+                                (m.id === cleanModelId || m.id === `${cleanModelId}:image`) &&
+                                m.pricing?.approximatePricePerImage > 0,
+                        );
+                        if (bankEntry?.pricing?.approximatePricePerImage) {
+                            imagePricePerUnit = bankEntry.pricing.approximatePricePerImage;
+                            console.log(`[ProtoChat Sync] Using model-bank approximatePricePerImage=${imagePricePerUnit} for ${model.id}`);
+                        }
+                    }
 
-                // User price = cost price × multiplier
+                    if (imagePricePerUnit > 0) {
+                        const costImagePrice = Math.ceil(imagePricePerUnit * SYNC_MULTIPLIER * 100) / 100;
+                        perRequestPriceCredits = Math.ceil(costImagePrice * multiplier * 100) / 100;
+                    }
+                }
+
+                // Skip models with no pricing at all
+                if (costInputPrice === 0 && costOutputPrice === 0 && perRequestPriceCredits === 0) continue;
+
                 const userInputPrice = Math.ceil(costInputPrice * multiplier * 100) / 100;
                 const userOutputPrice = Math.ceil(costOutputPrice * multiplier * 100) / 100;
+                const isImageModel = perRequestPriceCredits > 0;
 
-                pricingMap.set(key, {
+                pricingMap.set(entryKey, {
                     id: idGenerator('mp'),
                     model: model.id,
                     provider: 'protochat',
@@ -239,46 +283,18 @@ export class PricingService {
                     outputPrice: costOutputPrice.toFixed(2),
                     userInputPrice: userInputPrice.toFixed(2),
                     userOutputPrice: userOutputPrice.toFixed(2),
-                    perRequestPrice: '0',
-                    memo: `ProtoChat (${subProvider.name || subProvider.id})`,
+                    perRequestPrice: isImageModel ? perRequestPriceCredits.toFixed(2) : '0',
+                    // [auto-image] prefix ensures this entry is deleted on the next sync.
+                    // Non-imageOutput entries use the default token-based deletion (perRequestPrice='0').
+                    memo: isImageModel
+                        ? `[auto-image] ProtoChat (${subProvider.name || subProvider.id})`
+                        : `ProtoChat (${subProvider.name || subProvider.id})`,
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 } as any);
-
-                // For imageOutput models: also create a per-request pricing entry
-                // using extraPricing.imagePrice stored during model sync from OpenRouter.
-                const capabilities = model.capabilities as any;
-                const settings = model.settings as any;
-                const imagePricePerUnit = parseFloat(settings?.extraPricing?.imagePrice || '0');
-
-                if (capabilities?.imageOutput && imagePricePerUnit > 0) {
-                    const imageKey = `${model.id}-protochat-${subProvider.id}-image`;
-                    if (!pricingMap.has(imageKey)) {
-                        // OpenRouter imagePrice is USD per image; convert to credits
-                        const costImagePrice = Math.ceil(imagePricePerUnit * SYNC_MULTIPLIER * 100) / 100;
-                        const userImagePrice = Math.ceil(costImagePrice * multiplier * 100) / 100;
-
-                        pricingMap.set(imageKey, {
-                            id: idGenerator('mp'),
-                            model: model.id,
-                            provider: 'protochat',
-                            subProvider: subProvider.id,
-                            inputPrice: '0',
-                            outputPrice: '0',
-                            userInputPrice: '0',
-                            userOutputPrice: '0',
-                            perRequestPrice: userImagePrice.toFixed(2),
-                            memo: `[auto-image] ProtoChat (${subProvider.name || subProvider.id})`,
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                        } as any);
-                    }
-                }
             }
         }
 
-        // Note: 不再需要同步到 aiProviders 表的 settings.enabledModels
-        // 主项目直接从 protochat_models.enabled 字段查询
         console.log(`[ProtoChat Pricing] Updated pricing for ${allEnabledModels.size} enabled models`);
     }
 }
