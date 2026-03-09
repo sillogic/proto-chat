@@ -154,7 +154,7 @@ async function processImageUrlForChat(imageUrl: string): Promise<string> {
 /**
  * Generate images using chat completion API (OpenRouter Gemini, etc.)
  */
-async function generateByChatModel(
+export async function generateByChatModel(
   client: OpenAI,
   payload: CreateImagePayload,
 ): Promise<CreateImageResponse> {

@@ -1,7 +1,9 @@
+import OpenAI from 'openai';
 import { ModelProvider } from 'model-bank';
 
 import type { OpenAICompatibleFactoryOptions } from '../../core/openaiCompatibleFactory';
 import { createOpenAICompatibleRuntime } from '../../core/openaiCompatibleFactory';
+import { generateByChatModel } from '../../core/openaiCompatibleFactory/createImage';
 import { processMultiProviderModelList } from '../../utils/modelParse';
 import type { OpenRouterModelCard, OpenRouterReasoning } from './type';
 
@@ -50,6 +52,21 @@ export const params = {
       'HTTP-Referer': 'https://lobehub.com',
       'X-Title': 'LobeHub',
     },
+  },
+  // OpenRouter does not support the standard /images/generations endpoint.
+  // All image generation (including image-output chat models) uses /chat/completions
+  // with modalities: ["image", "text"]. See:
+  // https://openrouter.ai/docs/guides/overview/multimodal/image-generation
+  createImage: async (payload, options) => {
+    const client = new OpenAI({
+      apiKey: options.apiKey,
+      baseURL: options.baseURL || 'https://openrouter.ai/api/v1',
+      defaultHeaders: {
+        'HTTP-Referer': 'https://lobehub.com',
+        'X-Title': 'LobeHub',
+      },
+    });
+    return generateByChatModel(client, payload);
   },
   debug: {
     chatCompletion: () => process.env.DEBUG_OPENROUTER_CHAT_COMPLETION === '1',
