@@ -6,8 +6,8 @@ import type {
   ProviderConfig,
 } from '@lobechat/types';
 import { isEmpty } from 'es-toolkit/compat';
-import type { AIChatModelCard, AiProviderModelListItem, EnabledAiModel } from 'model-bank';
-import { AiModelSourceEnum } from 'model-bank';
+import type { AIChatModelCard, AiModelSettings, AiProviderModelListItem, EnabledAiModel } from 'model-bank';
+import { AiModelSourceEnum, LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
 import * as modelBank from 'model-bank';
 import { DEFAULT_MODEL_PROVIDER_LIST } from 'model-bank/modelProviders';
 import pMap from 'p-map';
@@ -503,18 +503,47 @@ export class AiInfraRepos {
           ),
         );
 
-      return models.map((m) => ({
-        abilities: (m.capabilities as Record<string, boolean>) || {},
-        contextWindowTokens: m.contextTokens || 0,
-        displayName: m.displayName,
-        enabled: true,
-        id: m.id,
-        maxOutput: m.maxOutput || undefined,
-        parameters: (m.parameters as Record<string, any>) || undefined,
-        settings: (m.settings as Record<string, any>) || undefined,
-        source: AiModelSourceEnum.Builtin,
-        type: m.type as 'chat' | 'image' | 'embedding',
-      })) as unknown as AiProviderModelListItem[];
+      return models.map((m) => {
+        // Extract original model ID from the protochat::<alias>::<originalId> format.
+        const originalId = m.id.startsWith('protochat::')
+          ? m.id.split('::').slice(2).join('::')
+          : m.id;
+
+        // Build lookup candidates: original ID, then strip OpenRouter provider prefix if present.
+        const candidates = [originalId];
+        if (originalId.includes('/')) {
+          candidates.push(originalId.slice(originalId.indexOf('/') + 1));
+        }
+
+        // Find the first matching model-bank entry to pull settings (extendParams, searchImpl, etc.)
+        const bankEntry = candidates
+          .map((id) => LOBE_DEFAULT_MODEL_LIST.find((b) => b.id === id))
+          .find(Boolean);
+
+        // Merge model-bank settings with our raw settings (raw settings take precedence
+        // for keys we control; model-bank fills in extendParams and similar UI-only fields).
+        const rawSettings = (m.settings as Record<string, any>) || {};
+        const bankSettings = (bankEntry as any)?.settings as AiModelSettings | undefined;
+        const mergedSettings: Record<string, any> = {
+          ...rawSettings,
+          ...(bankSettings?.extendParams && { extendParams: bankSettings.extendParams }),
+          ...(bankSettings?.searchImpl && { searchImpl: bankSettings.searchImpl }),
+          ...(bankSettings?.searchProvider && { searchProvider: bankSettings.searchProvider }),
+        };
+
+        return {
+          abilities: (m.capabilities as Record<string, boolean>) || {},
+          contextWindowTokens: m.contextTokens || 0,
+          displayName: m.displayName,
+          enabled: true,
+          id: m.id,
+          maxOutput: m.maxOutput || undefined,
+          parameters: (m.parameters as Record<string, any>) || undefined,
+          settings: mergedSettings,
+          source: AiModelSourceEnum.Builtin,
+          type: m.type as 'chat' | 'image' | 'embedding',
+        };
+      }) as unknown as AiProviderModelListItem[];
     } catch (error) {
       console.error('[ProtoChat] Failed to fetch models from database:', error);
       return [];
