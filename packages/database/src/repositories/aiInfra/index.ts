@@ -275,7 +275,12 @@ export class AiInfraRepos {
     const enabledImageAiProviders = enabledAiProviders.filter((provider) => {
       // Only allow protochat provider for image models to avoid showing other providers' builtin image models
       if (provider.id !== 'protochat') return false;
-      return allModels.some((model) => model.providerId === provider.id && model.type === 'image');
+      return allModels.some(
+        (model) =>
+          model.providerId === provider.id &&
+          // Include both dedicated image models (type=image) and chat models with image generation capability
+          (model.type === 'image' || model.abilities?.imageOutput === true),
+      );
     });
     const enabledVideoAiProviders = enabledAiProviders.filter((provider) => {
       return allModels.some(

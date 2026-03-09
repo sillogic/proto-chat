@@ -192,7 +192,20 @@ export const getChatModelList = createProviderModelCollector('chat', async (mode
   normalizeChatModel(model),
 );
 
-export const getImageModelList = createProviderModelCollector('image', normalizeImageModel);
+export const getImageModelList = async (
+  enabledAiModels: EnabledAiModel[],
+  providerId: string,
+): Promise<ProviderModelListItem[]> => {
+  // Include both dedicated image models (type=image) and chat models with image generation capability (imageOutput=true)
+  const filteredModels = enabledAiModels.filter(
+    (model) =>
+      model.providerId === providerId &&
+      (model.type === 'image' || model.abilities?.imageOutput === true),
+  );
+  if (!filteredModels.length) return [];
+  const normalized = await Promise.all(filteredModels.map((model) => normalizeImageModel(model)));
+  return dedupeById(normalized);
+};
 
 export const getVideoModelList = createProviderModelCollector('video', normalizeVideoModel);
 
