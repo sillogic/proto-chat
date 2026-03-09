@@ -42,7 +42,9 @@ export function getModelAndDefaults(model: string, provider: string) {
     );
   }
 
-  const parametersSchema = activeModel.parameters as ModelParamsSchema;
+  // Fall back to an empty schema for models (e.g. ProtoChat imageOutput chat models) that have
+  // no explicit parameters definition — extractDefaultValues requires an object, not undefined.
+  const parametersSchema = (activeModel.parameters || {}) as ModelParamsSchema;
   const defaultValues = extractDefaultValues(parametersSchema);
 
   return { defaultValues, activeModel, parametersSchema };
@@ -259,10 +261,19 @@ export class GenerationConfigActionImpl {
   };
 
   setModelAndProviderOnSelect = (model: string, provider: string): void => {
-    const { defaultValues, parametersSchema, initialActiveRatio } = prepareModelConfigState(
-      model,
-      provider,
-    );
+    let defaultValues: RuntimeImageGenParams = {} as RuntimeImageGenParams;
+    let parametersSchema: ModelParamsSchema | undefined;
+    let initialActiveRatio: string | null = null;
+
+    try {
+      ({ defaultValues, parametersSchema, initialActiveRatio } = prepareModelConfigState(
+        model,
+        provider,
+      ));
+    } catch {
+      // If schema prep fails (e.g. model not yet in the enabled list due to async loading),
+      // proceed with empty defaults so the model/provider are still committed to the store.
+    }
 
     this.#set(
       {
