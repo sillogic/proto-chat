@@ -133,11 +133,30 @@ export class OpenRouterAdapter {
         // 解析能力
         const supportedParams = apiModel.supported_parameters || [];
         const inputModalities = architecture.input_modalities || [];
+        const outputModalities = architecture.output_modalities || [];
+
+        // 处理显示名称：去除 "Provider: " 前缀，去除多词括号后缀
+        let displayName = apiModel.name || apiModel.id;
+        const colonIndex = displayName.indexOf(':');
+        if (colonIndex !== -1) {
+            const prefix = displayName.slice(0, colonIndex).trim();
+            const suffix = displayName.slice(colonIndex + 1).trim();
+            const isDeepSeekPrefix = prefix.toLowerCase() === 'deepseek';
+            const suffixHasDeepSeek = suffix.toLowerCase().includes('deepseek');
+            if (isDeepSeekPrefix && !suffixHasDeepSeek) {
+                // keep full name for DeepSeek
+            } else {
+                displayName = suffix;
+            }
+        }
+        // Strip trailing multi-word parentheticals, e.g. "Nano Banana Pro (Gemini 3 Pro Image Preview)" → "Nano Banana Pro"
+        // Single-word qualifiers like (free), (thinking) are kept.
+        displayName = displayName.replace(/\s*\([^)]*\s[^)]*\)\s*$/, '').trim();
 
         return {
             id: `protochat::${providerAlias}::${cleanId}`,
             originalId: `${providerId}::${apiModel.id}`,
-            displayName: apiModel.name || apiModel.id,
+            displayName,
             type: this.inferModelType(architecture),
             capabilities: {
                 // 模态信息
@@ -150,7 +169,10 @@ export class OpenRouterAdapter {
                 // 功能能力
                 functionCall: supportedParams.includes('tools') || supportedParams.includes('functions'),
                 vision: inputModalities.includes('image'),
-                audio: inputModalities.includes('audio'),
+                audioInput: inputModalities.includes('audio'),
+                audioOutput: outputModalities.includes('audio'),
+                imageOutput: outputModalities.includes('image'),
+                files: inputModalities.includes('file'),
                 video: inputModalities.includes('video'),
                 streaming: supportedParams.includes('stream'),
 

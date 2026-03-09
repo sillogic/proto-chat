@@ -336,15 +336,6 @@ const processReleasedAt = (model: any, knownModel?: any): string | undefined => 
  * @returns Processed display name
  */
 const processDisplayName = (displayName: string): string => {
-  if (displayName.includes('Gemini 3.1 Flash Image Preview')) {
-    return displayName.replace('Gemini 3.1 Flash Image Preview', 'Nano Banana 2');
-  }
-
-  // If it contains "Gemini 2.5 Flash Image Preview", replace the corresponding part with "Nano Banana"
-  if (displayName.includes('Gemini 2.5 Flash Image Preview')) {
-    return displayName.replace('Gemini 2.5 Flash Image Preview', 'Nano Banana');
-  }
-
   return displayName;
 };
 
@@ -554,6 +545,8 @@ const processModelCard = (
   };
 
   return {
+    audioInput: model.audioInput ?? knownModel?.abilities?.audioInput ?? false,
+    audioOutput: model.audioOutput ?? knownModel?.abilities?.audioOutput ?? false,
     contextWindowTokens: model.contextWindowTokens ?? knownModel?.contextWindowTokens ?? undefined,
     description: model.description ?? knownModel?.description ?? '',
     displayName: processDisplayName(model.displayName ?? knownModel?.displayName ?? model.id),

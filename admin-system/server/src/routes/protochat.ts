@@ -721,8 +721,11 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
                 abilities: {
                     functionCall: caps.functionCall,
                     vision: caps.vision,
+                    audioInput: caps.audioInput,
+                    audioOutput: caps.audioOutput,
+                    imageOutput: caps.imageOutput,
+                    files: caps.files,
                     video: caps.video,
-                    audio: caps.audio,
                     reasoning: caps.internalReasoning,
                     search: caps.webSearch,
                     structuredOutput: params.supported?.includes('response_format'),
@@ -1420,10 +1423,13 @@ async function syncFromAPI(
         console.log(`[${providerId}] 保存已启用模型状态并删除旧数据...`);
 
         // 先获取要删除的模型 ID 列表，并保存 enabled 状态
-        // 注意：只处理 chat 类型的模型，保留手动添加的 image/embedding 等类型模型
+        // 注意：清理 chat 和 image 类型（由 API 同步管理），保留手动添加的 embedding/tts/stt 等类型
         const oldModels = await db.select({ id: protochatModels.id, enabled: protochatModels.enabled })
             .from(protochatModels)
-            .where(and(eq(protochatModels.originalProvider, providerId), eq(protochatModels.type, 'chat')));
+            .where(and(
+                eq(protochatModels.originalProvider, providerId),
+                sql`${protochatModels.type} IN ('chat', 'image')`,
+            ));
 
         // 保存已启用的模型 ID（用于稍后恢复状态）
         const enabledModelIds = new Set(oldModels.filter(m => m.enabled).map(m => m.id));
@@ -1437,8 +1443,11 @@ async function syncFromAPI(
             }
         }
 
-        // 删除 chat 类型的模型记录（保留 image/embedding 等手动添加的模型）
-        await db.delete(protochatModels).where(and(eq(protochatModels.originalProvider, providerId), eq(protochatModels.type, 'chat')));
+        // 删除 chat 和 image 类型的模型记录（保留 embedding/tts/stt 等手动添加的模型）
+        await db.delete(protochatModels).where(and(
+            eq(protochatModels.originalProvider, providerId),
+            sql`${protochatModels.type} IN ('chat', 'image')`,
+        ));
 
         // 批量同步到数据库，传递 enabledModelIds 以恢复之前的启用状态
         let syncedCount = 0;
@@ -1498,10 +1507,13 @@ async function syncFromModelBank(
     console.log(`[${providerId}] 保存已启用模型状态并删除旧数据...`);
 
     // 先获取要删除的模型 ID 列表，并保存 enabled 状态
-    // 注意：只处理 chat 类型的模型，保留手动添加的 image/embedding 等类型模型
+    // 注意：清理 chat 和 image 类型（由 model-bank 同步管理），保留手动添加的 embedding/tts/stt 等类型
     const oldModels = await db.select({ id: protochatModels.id, enabled: protochatModels.enabled })
         .from(protochatModels)
-        .where(and(eq(protochatModels.originalProvider, providerId), eq(protochatModels.type, 'chat')));
+        .where(and(
+            eq(protochatModels.originalProvider, providerId),
+            sql`${protochatModels.type} IN ('chat', 'image')`,
+        ));
 
     // 保存已启用的模型 ID（用于稍后恢复状态）
     const enabledModelIds = new Set(oldModels.filter(m => m.enabled).map(m => m.id));
@@ -1515,8 +1527,11 @@ async function syncFromModelBank(
         }
     }
 
-    // 删除 chat 类型的模型记录（保留 image/embedding 等手动添加的模型）
-    await db.delete(protochatModels).where(and(eq(protochatModels.originalProvider, providerId), eq(protochatModels.type, 'chat')));
+    // 删除 chat 和 image 类型的模型记录（保留 embedding/tts/stt 等手动添加的模型）
+    await db.delete(protochatModels).where(and(
+        eq(protochatModels.originalProvider, providerId),
+        sql`${protochatModels.type} IN ('chat', 'image')`,
+    ));
 
     let syncedCount = 0;
     let pricingCount = 0;

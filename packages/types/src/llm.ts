@@ -22,6 +22,14 @@ export interface ChatModelCard {
    */
   enabled?: boolean;
   /**
+   * whether model supports audio input understanding (input_modalities includes "audio")
+   */
+  audioInput?: boolean;
+  /**
+   * whether model supports audio output generation (output_modalities includes "audio")
+   */
+  audioOutput?: boolean;
+  /**
    * whether model supports file upload
    */
   files?: boolean;
@@ -69,12 +77,13 @@ export interface ChatModelCard {
   type?: AiModelType;
 
   /**
-   *  whether model supports video
+   * whether model supports video input understanding (input_modalities includes "video")
+   * NOTE: video INPUT recognition only, not video generation
    */
   video?: boolean;
 
   /**
-   *  whether model supports vision
+   * whether model supports image input recognition (input_modalities includes "image")
    */
   vision?: boolean;
 }

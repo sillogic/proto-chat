@@ -27,7 +27,15 @@ export type AiModelType = z.infer<typeof AiModelTypeSchema>;
 
 export interface ModelAbilities {
   /**
-   * whether model supports file upload
+   * whether model supports audio input understanding (input_modalities includes "audio")
+   */
+  audioInput?: boolean;
+  /**
+   * whether model supports audio output generation (output_modalities includes "audio")
+   */
+  audioOutput?: boolean;
+  /**
+   * whether model supports file upload (input_modalities includes "file")
    */
   files?: boolean;
   /**
@@ -35,7 +43,7 @@ export interface ModelAbilities {
    */
   functionCall?: boolean;
   /**
-   * whether model supports image output
+   * whether model supports image output generation (output_modalities includes "image")
    */
   imageOutput?: boolean;
   /**
@@ -51,16 +59,19 @@ export interface ModelAbilities {
    */
   structuredOutput?: boolean;
   /**
-   * whether model supports video
+   * whether model supports video input understanding (input_modalities includes "video")
+   * NOTE: this is video INPUT recognition only, not video generation
    */
   video?: boolean;
   /**
-   *  whether model supports vision
+   * whether model supports image input recognition (input_modalities includes "image")
    */
   vision?: boolean;
 }
 
 const AiModelAbilitiesSchema = z.object({
+  audioInput: z.boolean().optional(),
+  audioOutput: z.boolean().optional(),
   // files: z.boolean().optional(),
   functionCall: z.boolean().optional(),
   imageOutput: z.boolean().optional(),

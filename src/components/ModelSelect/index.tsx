@@ -4,7 +4,7 @@ import { LobeHub, ModelIcon, ProviderIcon } from '@lobehub/icons';
 import { type FlexboxProps } from '@lobehub/ui';
 import { Avatar, Flexbox, Icon, Tag, Text, Tooltip } from '@lobehub/ui';
 import { createStaticStyles, useResponsive } from 'antd-style';
-import { Infinity, LucideEye, LucideImage, LucidePaperclip, Video, Wrench } from 'lucide-react';
+import { AudioLines, Infinity, LucideEye, LucideImage, LucidePaperclip, Mic, Video, Wrench } from 'lucide-react';
 import { type ModelAbilities } from 'model-bank';
 import numeral from 'numeral';
 import { type CSSProperties, type FC } from 'react';
@@ -56,7 +56,7 @@ interface ModelInfoTagsProps extends ModelAbilities {
 
 interface FeatureTagsProps extends Pick<
   ModelAbilities,
-  'files' | 'imageOutput' | 'vision' | 'video' | 'functionCall'
+  'audioInput' | 'audioOutput' | 'files' | 'imageOutput' | 'vision' | 'video' | 'functionCall'
 > {
   disableTooltip?: boolean;
   placement: 'top' | 'right';
@@ -95,6 +95,8 @@ const FeatureTagItem = memo<FeatureTagItemProps>(
 
 const FeatureTags = memo<FeatureTagsProps>(
   ({
+    audioInput,
+    audioOutput,
     disableTooltip,
     files,
     functionCall,
@@ -143,6 +145,24 @@ const FeatureTags = memo<FeatureTagsProps>(
           icon={Video}
           placement={placement}
           title={t('ModelSelect.featureTag.video')}
+        />
+        <FeatureTagItem
+          className={tagClassName}
+          color={'orange'}
+          disableTooltip={disableTooltip}
+          enabled={audioInput}
+          icon={Mic}
+          placement={placement}
+          title={t('ModelSelect.featureTag.audioInput')}
+        />
+        <FeatureTagItem
+          className={tagClassName}
+          color={'orange'}
+          disableTooltip={disableTooltip}
+          enabled={audioOutput}
+          icon={AudioLines}
+          placement={placement}
+          title={t('ModelSelect.featureTag.audioOutput')}
         />
         <FeatureTagItem
           className={tagClassName}
@@ -205,6 +225,8 @@ export const ModelInfoTags = memo<ModelInfoTagsProps>(
         width={'fit-content'}
       >
         <FeatureTags
+          audioInput={model.audioInput}
+          audioOutput={model.audioOutput}
           disableTooltip={disableTooltip}
           files={model.files}
           functionCall={model.functionCall}
@@ -237,7 +259,10 @@ export const ModelItemRender = memo<ModelItemRenderProps>(
   ({
     showInfoTag = true,
     abilities,
+    audioInput,
+    audioOutput,
     contextWindowTokens,
+    description,
     files,
     functionCall,
     imageOutput,
@@ -273,15 +298,21 @@ export const ModelItemRender = memo<ModelItemRenderProps>(
           style={{ flexShrink: 1, minWidth: 0, overflow: 'hidden' }}
         >
           <ModelIcon model={id} size={20} />
-          <Text
-            style={mobile ? { maxWidth: '60vw' } : { minWidth: 0, overflow: 'hidden' }}
-            ellipsis={{
-              tooltip: displayNameOrId,
-              tooltipWhenOverflow: true,
-            }}
+          <Tooltip
+            placement="right"
+            styles={{ content: { maxWidth: 320 } }}
+            title={description || undefined}
           >
-            {displayNameOrId}
-          </Text>
+            <Text
+              style={mobile ? { maxWidth: '60vw' } : { minWidth: 0, overflow: 'hidden' }}
+              ellipsis={{
+                tooltip: description ? false : displayNameOrId,
+                tooltipWhenOverflow: !description,
+              }}
+            >
+              {displayNameOrId}
+            </Text>
+          </Tooltip>
           {newBadgeLabel ? (
             <NewModelBadgeCore label={newBadgeLabel} releasedAt={releasedAt} />
           ) : (
@@ -290,6 +321,8 @@ export const ModelItemRender = memo<ModelItemRenderProps>(
         </Flexbox>
         {showInfoTag && (
           <ModelInfoTags
+            audioInput={audioInput ?? abilities?.audioInput}
+            audioOutput={audioOutput ?? abilities?.audioOutput}
             contextWindowTokens={contextWindowTokens}
             files={files ?? abilities?.files}
             functionCall={functionCall ?? abilities?.functionCall}

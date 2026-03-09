@@ -1,6 +1,6 @@
 import { ModelIcon } from '@lobehub/icons';
 import { Tag, Typography, Tooltip, Space, Switch } from 'antd';
-import { LucideVideo, LucideEye, ToyBrick, AtomIcon, LucideGlobe, LucideFileJson } from 'lucide-react';
+import { LucideVideo, LucideEye, ToyBrick, AtomIcon, LucideGlobe, LucideFileJson, ImageIcon, Mic, AudioLines } from 'lucide-react';
 import { LobeDefaultAiModelListItem } from 'model-bank';
 import React from 'react';
 import { Flexbox } from 'react-layout-kit';
@@ -120,8 +120,29 @@ const ModelItem: React.FC<ModelItemProps> = ({ model, enabled, onToggle }) => {
               </Tag>
             </Tooltip>
           )}
+          {abilities?.imageOutput && (
+            <Tooltip title="支持图像生成 (Image Output)">
+              <Tag color="geekblue" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
+                <ImageIcon size={14} style={{ color: '#2f54eb' }} />
+              </Tag>
+            </Tooltip>
+          )}
+          {(abilities as any)?.audioInput && (
+            <Tooltip title="支持音频输入识别 (Audio Input)">
+              <Tag color="orange" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
+                <Mic size={14} style={{ color: '#fa8c16' }} />
+              </Tag>
+            </Tooltip>
+          )}
+          {(abilities as any)?.audioOutput && (
+            <Tooltip title="支持音频输出生成 (Audio Output)">
+              <Tag color="orange" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
+                <AudioLines size={14} style={{ color: '#fa8c16' }} />
+              </Tag>
+            </Tooltip>
+          )}
           {abilities?.video && (
-            <Tooltip title="支持视频分析/生成 (Video)">
+            <Tooltip title="支持视频输入识别 (Video Input)">
               <Tag color="magenta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <LucideVideo size={14} style={{ color: '#eb2f96' }} />
               </Tag>

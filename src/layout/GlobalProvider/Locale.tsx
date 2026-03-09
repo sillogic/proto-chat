@@ -2,6 +2,10 @@
 
 import { ConfigProvider } from 'antd';
 import dayjs from 'dayjs';
+import isToday from 'dayjs/plugin/isToday';
+import isYesterday from 'dayjs/plugin/isYesterday';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import utc from 'dayjs/plugin/utc';
 import { type PropsWithChildren } from 'react';
 import { memo, useEffect, useState } from 'react';
 import { isRtlLang } from 'rtl-detect';
@@ -11,6 +15,11 @@ import { isOnServerSide } from '@/utils/env';
 import { getAntdLocale } from '@/utils/locale';
 
 import Editor from './Editor';
+
+dayjs.extend(relativeTime);
+dayjs.extend(utc);
+dayjs.extend(isToday);
+dayjs.extend(isYesterday);
 
 const dayjsLocaleAliases: Record<string, string> = {
   'en-us': 'en',

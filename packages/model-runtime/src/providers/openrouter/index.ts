@@ -73,6 +73,7 @@ export const params = {
       const { top_provider, architecture, pricing, supported_parameters } = model;
 
       const inputModalities = architecture.input_modalities || [];
+      const outputModalities = architecture.output_modalities || [];
 
       // Process the name, by default strip the colon and everything before it
       let displayName = model.name;
@@ -90,6 +91,11 @@ export const params = {
           displayName = suffix;
         }
       }
+
+      // Strip trailing parentheticals that reveal internal codenames, e.g.
+      // "Nano Banana Pro (Gemini 3 Pro Image Preview)" → "Nano Banana Pro"
+      // Single-word qualifiers like (free), (exacto), (thinking) are kept.
+      displayName = displayName.replace(/\s*\([^)]*\s[^)]*\)\s*$/, '').trim();
 
       const inputPrice = formatPrice(pricing.prompt);
       const outputPrice = formatPrice(pricing.completion);
@@ -121,8 +127,13 @@ export const params = {
           output: outputPrice,
           writeCacheInput: writeCacheInputPrice,
         },
+        audioInput: inputModalities.includes('audio'),
+        audioOutput: outputModalities.includes('audio'),
+        files: inputModalities.includes('file'),
+        imageOutput: outputModalities.includes('image'),
         reasoning: hasReasoning,
         releasedAt: new Date(model.created * 1000).toISOString().split('T')[0],
+        video: inputModalities.includes('video'),
         vision: inputModalities.includes('image'),
         // Merge all applicable extendParams for settings
         ...(() => {
