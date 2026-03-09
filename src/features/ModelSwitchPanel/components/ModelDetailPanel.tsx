@@ -279,7 +279,9 @@ const ModelDetailPanel: FC<ModelDetailPanelProps> = memo(({ model: modelId, prov
           </Text>
         </Flexbox>
         {model.description && (
-          <div className={styles.description}>{tModels(`${model.id}.description`)}</div>
+          <div className={styles.description}>
+            {tModels(`${model.id}.description`, { defaultValue: model.description })}
+          </div>
         )}
       </Flexbox>
       <Divider size="small" />

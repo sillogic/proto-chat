@@ -63,10 +63,55 @@ const createProviderModelCollector = (
 };
 
 export const normalizeChatModel = async (model: EnabledAiModel): Promise<ProviderModelListItem> => {
+  // For ProtoChat models (id: protochat::<alias>::<originalId>), extract the original model ID
+  // so we can look up description / pricing from model-bank even when the DB ID doesn't match.
+  const originalId = model.id.startsWith('protochat::')
+    ? model.id.split('::').slice(2).join('::')
+    : model.id;
+
+  // Build a list of candidate IDs to try in order (same strategy as normalizeImageModel).
+  const lookupCandidates = [model.id, originalId];
+  if (originalId.includes('/')) {
+    lookupCandidates.push(originalId.slice(originalId.indexOf('/') + 1));
+  }
+
+  // Try each candidate until we find a value in model-bank.
+  const getDescriptionFromCandidates = async () => {
+    for (const candidateId of lookupCandidates) {
+      const result = await getModelPropertyWithFallback<string | undefined>(
+        candidateId,
+        'description',
+        model.providerId,
+      );
+      if (result !== undefined) return result;
+    }
+    return undefined;
+  };
+
+  const getPricingFromCandidates = async () => {
+    for (const candidateId of lookupCandidates) {
+      const result = await getModelPropertyWithFallback<Pricing | undefined>(
+        candidateId,
+        'pricing',
+        model.providerId,
+      );
+      if (result !== undefined) return result;
+    }
+    return undefined;
+  };
+
   const [description, pricing] = await Promise.all([
-    getModelPropertyWithFallback<string | undefined>(model.id, 'description', model.providerId),
-    getModelPropertyWithFallback<Pricing | undefined>(model.id, 'pricing', model.providerId),
+    getDescriptionFromCandidates(),
+    getPricingFromCandidates(),
   ]);
+
+  // For ProtoChat models without a model-bank description, fall back to the raw description
+  // stored by the sync adapter (settings.description from OpenRouter).
+  const finalDescription =
+    description ??
+    (model.id.startsWith('protochat::')
+      ? ((model.settings as any)?.description as string | undefined)
+      : undefined);
 
   return {
     abilities: (model.abilities || {}) as ModelAbilities,
@@ -74,7 +119,7 @@ export const normalizeChatModel = async (model: EnabledAiModel): Promise<Provide
     displayName: model.displayName ?? '',
     id: model.id,
     releasedAt: model.releasedAt,
-    ...(description && { description }),
+    ...(finalDescription && { description: finalDescription }),
     ...(pricing && { pricing }),
   };
 };
