@@ -136,10 +136,19 @@ export const normalizeImageModel = async (
 
   // OpenRouter wraps model IDs as `provider/model` (e.g. `google/gemini-3-pro-image-preview:image`)
   // but our model-bank registers them without the provider prefix (`gemini-3-pro-image-preview:image`).
+  // ProtoChat imageOutput chat models are stored without the `:image` suffix (e.g.
+  // `gemini-3.1-flash-image-preview`) but model-bank registers them with `:image`.
   // Build a list of candidate IDs to try in order.
   const lookupCandidates = [originalId];
   if (originalId.includes('/')) {
     lookupCandidates.push(originalId.slice(originalId.indexOf('/') + 1));
+  }
+  // Also try with `:image` suffix for chat models whose model-bank entry uses that convention.
+  if (!originalId.endsWith(':image')) {
+    lookupCandidates.push(`${originalId}:image`);
+    if (originalId.includes('/')) {
+      lookupCandidates.push(`${originalId.slice(originalId.indexOf('/') + 1)}:image`);
+    }
   }
 
   const modelWithPricing = model as AIImageModelCard;
