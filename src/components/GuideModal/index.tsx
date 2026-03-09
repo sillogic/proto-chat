@@ -60,7 +60,7 @@ const GuideModal = memo<GuideModalProps>(
       <ConfigProvider theme={configTheme}>
         <Modal
           centered
-          maskClosable
+          mask={{ closable: true }}
           className={cx(styles.content, className)}
           closable={false}
           width={width}

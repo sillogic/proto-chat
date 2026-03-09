@@ -14,7 +14,7 @@ type UpdateStage = 'checking' | 'available' | 'latest' | 'downloading' | 'downlo
 interface ModalUpdateOptions {
   closable?: boolean;
   keyboard?: boolean;
-  maskClosable?: boolean;
+  mask?: { closable?: boolean };
   title?: React.ReactNode;
 }
 
@@ -63,7 +63,7 @@ const UpdateModalContent = memo<UpdateModalContentProps>(({ onClose, setModalPro
     setModalProps({
       closable: !isDownloading,
       keyboard: !isDownloading,
-      maskClosable: !isDownloading,
+      mask: { closable: !isDownloading },
       title: modalTitle,
     });
   }, [setModalProps, stage, t]);
@@ -288,7 +288,7 @@ export const useUpdateModal = () => {
       children: <UpdateModalContent setModalProps={setModalProps} onClose={handleClose} />,
       footer: null,
       keyboard: true,
-      maskClosable: true,
+      mask: { closable: true },
       title: '',
     });
   }, []);

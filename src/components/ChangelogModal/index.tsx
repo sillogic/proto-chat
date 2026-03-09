@@ -40,7 +40,7 @@ const ChangelogModal = memo<ChangelogModalProps>(({ open, onClose, shouldLoad })
 
   return open ? (
     <Modal
-      maskClosable
+      mask={{ closable: true }}
       footer={null}
       open={true}
       width={800}
