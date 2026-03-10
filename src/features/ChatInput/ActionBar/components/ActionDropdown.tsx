@@ -58,7 +58,7 @@ export interface ActionDropdownProps extends Omit<DropdownMenuProps, 'items'> {
   minWidth?: number | string;
   popupRender?: (menu: ReactNode) => ReactNode;
   /**
-   * 是否在挂载时预渲染弹层，避免首次触发展开时的渲染卡顿
+   * Whether to pre-render the popup layer on mount to avoid render lag on first expand
    */
   prefetch?: boolean;
   trigger?: PopoverTrigger;
