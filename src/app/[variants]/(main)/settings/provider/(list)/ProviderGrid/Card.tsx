@@ -1,3 +1,4 @@
+import { BRANDING_PROVIDER } from '@lobechat/business-const';
 import { ProviderCombine, ProviderIcon } from '@lobehub/icons';
 import { Avatar, Flexbox, Skeleton, Text } from '@lobehub/ui';
 import { Divider } from 'antd';
@@ -5,6 +6,7 @@ import { cssVar, cx } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 import { useIsDark } from '@/hooks/useIsDark';
 import { type AiProviderListItem } from '@/types/aiProvider';
 
@@ -42,7 +44,12 @@ const ProviderCard = memo<ProviderCardProps>(
           >
             <Flexbox gap={12} width={'100%'}>
               <Flexbox horizontal align={'center'} justify={'space-between'}>
-                {source === 'builtin' ? (
+                {id === BRANDING_PROVIDER ? (
+                  <Flexbox horizontal align={'center'} gap={8}>
+                    <ProductLogo size={24} type={'flat'} />
+                    <Text style={{ fontSize: 16, fontWeight: 'bold' }}>{name}</Text>
+                  </Flexbox>
+                ) : source === 'builtin' ? (
                   <ProviderCombine
                     provider={id}
                     size={24}
@@ -75,11 +82,15 @@ const ProviderCard = memo<ProviderCardProps>(
               </Text>
             </Flexbox>
           </div>
-          <Divider style={{ margin: '4px 0' }} />
-          <Flexbox horizontal justify={'space-between'}>
-            <div />
-            <EnableSwitch enabled={enabled} id={id} />
-          </Flexbox>
+          {id !== BRANDING_PROVIDER && (
+            <>
+              <Divider style={{ margin: '4px 0' }} />
+              <Flexbox horizontal justify={'space-between'}>
+                <div />
+                <EnableSwitch enabled={enabled} id={id} />
+              </Flexbox>
+            </>
+          )}
         </Flexbox>
       </Flexbox>
     );
