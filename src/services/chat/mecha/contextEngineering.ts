@@ -300,11 +300,11 @@ export const contextEngineering = async ({
       preferencesCount: topicMemories.preferences?.length ?? 0,
       globalIdentitiesCount: globalIdentities.length,
       willInject: !!(userMemoryData && (
-        userMemoryData.activities.length > 0 ||
-        userMemoryData.contexts.length > 0 ||
-        userMemoryData.experiences.length > 0 ||
-        userMemoryData.preferences.length > 0 ||
-        userMemoryData.identities.length > 0
+        (userMemoryData.activities?.length ?? 0) > 0 ||
+        (userMemoryData.contexts?.length ?? 0) > 0 ||
+        (userMemoryData.experiences?.length ?? 0) > 0 ||
+        (userMemoryData.preferences?.length ?? 0) > 0 ||
+        (userMemoryData.identities?.length ?? 0) > 0
       )),
     });
   } else {

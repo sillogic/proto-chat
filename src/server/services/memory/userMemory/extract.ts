@@ -1417,7 +1417,38 @@ export class MemoryExtractionExecutor {
             username:
               userState.fullName || `${userState.firstName} ${userState.lastName}`.trim() || 'User',
           });
+          // Persist accumulated LLM token usage to async_tasks metadata.
+          // Must be called here (before the early-return below) so gatekeeper
+          // tokens are always saved even when extraction is null.
+          const persistTokenUsage = async () => {
+            if (!job.asyncTaskId) return;
+            const totalInputTokens = Object.values(agentUsage).reduce(
+              (sum, u) => sum + (u?.inputTokens ?? 0),
+              0,
+            );
+            const totalOutputTokens = Object.values(agentUsage).reduce(
+              (sum, u) => sum + (u?.outputTokens ?? 0),
+              0,
+            );
+            if (totalInputTokens > 0 || totalOutputTokens > 0) {
+              const primaryModel =
+                Object.values(agentUsage).find(Boolean)?.model ?? this.modelConfig.gateModel;
+              try {
+                const asyncTaskModel = new AsyncTaskModel(await this.db, job.userId);
+                await asyncTaskModel.accumulateTokenUsage(
+                  job.asyncTaskId,
+                  totalInputTokens,
+                  totalOutputTokens,
+                  primaryModel,
+                );
+              } catch (e) {
+                console.error('[memory-extraction] failed to save token usage to async task:', e);
+              }
+            }
+          };
+
           if (!extraction) {
+            await persistTokenUsage();
             this.recordJobMetrics(extractionJob, 'completed', Date.now() - startTime);
             span.setStatus({ code: SpanStatusCode.OK, message: 'no_extraction' });
             topicProcessed = true;
@@ -1444,32 +1475,7 @@ export class MemoryExtractionExecutor {
             processedMemoryCount: persistedRes.createdIds.length,
           });
 
-          // Persist accumulated LLM token usage to async_tasks metadata
-          if (job.asyncTaskId) {
-            const totalInputTokens = Object.values(agentUsage).reduce(
-              (sum, u) => sum + (u?.inputTokens ?? 0),
-              0,
-            );
-            const totalOutputTokens = Object.values(agentUsage).reduce(
-              (sum, u) => sum + (u?.outputTokens ?? 0),
-              0,
-            );
-            if (totalInputTokens > 0 || totalOutputTokens > 0) {
-              const primaryModel =
-                Object.values(agentUsage).find(Boolean)?.model ?? this.modelConfig.gateModel;
-              try {
-                const asyncTaskModel = new AsyncTaskModel(await this.db, job.userId);
-                await asyncTaskModel.accumulateTokenUsage(
-                  job.asyncTaskId,
-                  totalInputTokens,
-                  totalOutputTokens,
-                  primaryModel,
-                );
-              } catch (e) {
-                console.error('[memory-extraction] failed to save token usage to async task:', e);
-              }
-            }
-          }
+          await persistTokenUsage();
 
           this.recordJobMetrics(extractionJob, 'completed', Date.now() - startTime);
           span.setStatus({ code: SpanStatusCode.OK });

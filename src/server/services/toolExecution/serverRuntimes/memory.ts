@@ -216,7 +216,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     const systemConfig = await systemEmbeddingModel.getMemoryEmbeddingConfig();
 
     let modelRuntime;
-    let embeddingModel: string;
+    let embeddingModel: string = '';
 
     if (systemConfig && systemConfig.providerId && systemConfig.modelId) {
       embeddingModel = systemConfig.modelId;
