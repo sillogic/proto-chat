@@ -34,48 +34,60 @@ const getDateRange = (dateParam: string | undefined, period: 'month' | 'year') =
 
 // 辅助函数：构建 ProtoChat 价格映射表
 const buildProtochatPriceMap = async (): Promise<Map<string, { inputPrice: number; outputPrice: number }>> => {
+  // Join protochat_models to also capture original_id (e.g. 'openrouter::google/gemini-2.0-flash-001')
+  // so that models referenced by raw name (e.g. memory extraction LLM) can be looked up too.
   const protochatPricing = await db.execute(sql`
     SELECT
-      model_id as "modelId",
-      cost_input_price as "costInputPrice",
-      cost_output_price as "costOutputPrice"
-    FROM protochat_model_pricing
+      p.model_id as "modelId",
+      m.original_id as "originalId",
+      p.cost_input_price as "costInputPrice",
+      p.cost_output_price as "costOutputPrice"
+    FROM protochat_model_pricing p
+    LEFT JOIN protochat_models m ON p.model_id = m.id
   `);
 
   const priceMap = new Map<string, { inputPrice: number; outputPrice: number }>();
   for (const p of (protochatPricing as any[])) {
-    priceMap.set(p.modelId, {
+    const price = {
       inputPrice: parseFloat(p.costInputPrice || '0'),
       outputPrice: parseFloat(p.costOutputPrice || '0'),
-    });
+    };
+    // Key by ProtoChat model ID (e.g. 'protochat::a1::qwen-embed-4b')
+    priceMap.set(p.modelId, price);
+    // Also key by the raw model name extracted from original_id
+    // original_id format: '<provider>::<model_name>' (e.g. 'openrouter::google/gemini-2.0-flash-001')
+    if (p.originalId) {
+      const colonIdx = (p.originalId as string).indexOf('::');
+      if (colonIdx !== -1) {
+        const rawModelName = (p.originalId as string).slice(colonIdx + 2);
+        if (rawModelName) priceMap.set(rawModelName, price);
+      }
+    }
   }
   return priceMap;
 };
 
-// 辅助函数：根据模型名获取价格（仅支持 protochat 供应商）
+// 辅助函数：根据模型名获取价格
+// - protochat 供应商：按模型名查找（支持 protochat:: 前缀和裸模型名）
+// - 其他供应商（如 openrouter）：按原始模型名查找（buildProtochatPriceMap 已写入）
 const getProtochatModelPrice = (
   model: string,
   provider: string | null,
   priceMap: Map<string, { inputPrice: number; outputPrice: number }>
 ): { inputPrice: number; outputPrice: number } => {
-  // 只有 protochat 供应商才计算成本
-  if (provider !== 'protochat') {
-    return { inputPrice: 0, outputPrice: 0 };
-  }
+  const ZERO = { inputPrice: 0, outputPrice: 0 };
+  if (!model) return ZERO;
 
-  // 如果是 protochat:: 前缀，去掉前缀后查找
+  // 1. 去掉 protochat:: 前缀后直接查
   if (model.startsWith('protochat::')) {
     const modelId = model.replace('protochat::', '');
-    if (priceMap.has(modelId)) {
-      return priceMap.get(modelId)!;
-    }
+    if (priceMap.has(modelId)) return priceMap.get(modelId)!;
   }
-  // 直接用模型名查找
-  if (priceMap.has(model)) {
-    return priceMap.get(model)!;
-  }
-  // 找不到，返回0
-  return { inputPrice: 0, outputPrice: 0 };
+
+  // 2. 直接用模型名查（覆盖：裸 ProtoChat ID、original_id 中提取的原始名）
+  if (priceMap.has(model)) return priceMap.get(model)!;
+
+  return ZERO;
 };
 
 // GET /api/admin/analytics/cost - 成本分析
@@ -269,7 +281,7 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
     const memoryLlmInputTokens = parseInt((memoryJobStats[0] as any)?.llmInputTokens || '0');
     const memoryLlmOutputTokens = parseInt((memoryJobStats[0] as any)?.llmOutputTokens || '0');
     const memoryLlmModel = (memoryJobStats[0] as any)?.llmModel || '';
-    const memoryLlmPrice = getProtochatModelPrice(memoryLlmModel, 'protochat', priceMap);
+    const memoryLlmPrice = getProtochatModelPrice(memoryLlmModel, null, priceMap);
     const memoryLlmCost =
       (memoryLlmInputTokens / 1_000_000) * memoryLlmPrice.inputPrice +
       (memoryLlmOutputTokens / 1_000_000) * memoryLlmPrice.outputPrice;
@@ -518,7 +530,7 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
     const revMemoryLlmInputTokens = parseInt((revenueMemoryJobStats[0] as any)?.llmInputTokens || '0');
     const revMemoryLlmOutputTokens = parseInt((revenueMemoryJobStats[0] as any)?.llmOutputTokens || '0');
     const revMemoryLlmModel = (revenueMemoryJobStats[0] as any)?.llmModel || '';
-    const revMemoryLlmPrice = getProtochatModelPrice(revMemoryLlmModel, 'protochat', priceMap);
+    const revMemoryLlmPrice = getProtochatModelPrice(revMemoryLlmModel, null, priceMap);
     const revMemoryLlmCostUSD =
       (revMemoryLlmInputTokens / 1_000_000) * revMemoryLlmPrice.inputPrice +
       (revMemoryLlmOutputTokens / 1_000_000) * revMemoryLlmPrice.outputPrice;
