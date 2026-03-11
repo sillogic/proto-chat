@@ -3,6 +3,7 @@ import {
   createModelPricing,
   deleteModelPricing,
   getModelPricings,
+  syncImageOutputPricings,
   syncModelPricings,
   updateModelPricing,
 } from '@/services/subscription';
@@ -56,6 +57,25 @@ const ModelPricingManagement: React.FC = () => {
         actionRef.current?.reload();
       } else {
         message.error(res.message || '同步失败');
+      }
+    } catch (error: any) {
+      message.error(error.message || '同步出错');
+    }
+  };
+
+  const handleSyncImageOutput = async () => {
+    try {
+      const res = await syncImageOutputPricings();
+      if (res.success) {
+        const failedCount = res.failed?.length ?? 0;
+        if (failedCount > 0) {
+          message.warning(`同步完成：更新 ${res.updated} 个模型，${failedCount} 个失败`);
+        } else {
+          message.success(`成功同步 ${res.updated} 个图片生成模型的输出定价`);
+        }
+        actionRef.current?.reload();
+      } else {
+        message.error('同步图片生成价格失败');
       }
     } catch (error: any) {
       message.error(error.message || '同步出错');
@@ -198,17 +218,31 @@ const ModelPricingManagement: React.FC = () => {
     },
   ];
 
-  // Image model columns (per-request pricing)
+  // Image model columns (token-based image output pricing)
   const imageColumns: ProColumns<ModelPricing>[] = [
     ...baseColumns,
     {
-      title: '单次成本价 (积分/次)',
-      dataIndex: 'perRequestPrice',
+      title: '图片输出成本价 (积分/1M Tokens)',
+      dataIndex: 'imageOutputPrice',
       valueType: 'digit',
       fieldProps: { precision: 2 },
       render: (_, record) => {
-        const price = parseFloat(record.perRequestPrice || '0');
+        const price = parseFloat(record.imageOutputPrice as string || '0');
         return price > 0 ? price.toFixed(2) : '-';
+      },
+    },
+    {
+      title: (
+        <Space>
+          <span>图片输出用户价 (积分/1M Tokens)</span>
+          {multiplier !== 1 && <Tag color="green">×{multiplier}</Tag>}
+        </Space>
+      ),
+      dataIndex: 'userImageOutputPrice',
+      search: false,
+      render: (_, record) => {
+        const price = parseFloat(record.userImageOutputPrice as string || '0');
+        return price > 0 ? <Tag color="green">{price.toFixed(2)}</Tag> : '-';
       },
     },
     {
@@ -260,7 +294,7 @@ const ModelPricingManagement: React.FC = () => {
         items={[
           {
             key: 'token',
-            label: '文本/Embedding模型 (Token计费)',
+            label: '全部',
             children: (
               <ProTable<ModelPricing>
                 columns={tokenColumns}
@@ -269,9 +303,6 @@ const ModelPricingManagement: React.FC = () => {
                 request={async (params) => {
                   const res = await getModelPricings();
                   let data = res.data || [];
-
-                  // Filter token-based models (perRequestPrice is 0 or null)
-                  data = data.filter(item => !item.perRequestPrice || parseFloat(item.perRequestPrice) === 0);
 
                   // Filter by model and provider if searched
                   if (params.model) {
@@ -317,7 +348,7 @@ const ModelPricingManagement: React.FC = () => {
           },
           {
             key: 'image',
-            label: '图片生成模型 (按次计费)',
+            label: '图片生成模型',
             children: (
               <ProTable<ModelPricing>
                 columns={imageColumns}
@@ -327,8 +358,12 @@ const ModelPricingManagement: React.FC = () => {
                   const res = await getModelPricings();
                   let data = res.data || [];
 
-                  // Filter image models (perRequestPrice > 0)
-                  data = data.filter(item => item.perRequestPrice && parseFloat(item.perRequestPrice) > 0);
+                  // Filter image generation models: [auto-image] memo, or non-zero image/per-request pricing
+                  data = data.filter(item =>
+                    (item.memo && item.memo.startsWith('[auto-image]')) ||
+                    (item.imageOutputPrice && parseFloat(item.imageOutputPrice) > 0) ||
+                    (item.perRequestPrice && parseFloat(item.perRequestPrice) > 0)
+                  );
 
                   // Filter by model and provider if searched
                   if (params.model) {
@@ -355,6 +390,19 @@ const ModelPricingManagement: React.FC = () => {
                   >
                     定价系数配置 (当前: ×{multiplier})
                   </Button>,
+                  <Popconfirm
+                    key="sync-image-output"
+                    title="从 OpenRouter 同步图片生成模型的 image_output 定价？"
+                    description="需要先完成「初始化/同步模型定价」，再执行此操作。"
+                    onConfirm={handleSyncImageOutput}
+                  >
+                    <Button
+                      key="button"
+                      icon={<CloudSyncOutlined />}
+                    >
+                      同步图片生成价格
+                    </Button>
+                  </Popconfirm>,
                 ]}
               />
             ),

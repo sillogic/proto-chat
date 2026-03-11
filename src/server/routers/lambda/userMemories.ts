@@ -1047,26 +1047,13 @@ export const userMemoriesRouter = router({
   retrieveMemoryForTopic: memoryProcedure
     .input(z.object({ topicId: z.string() }))
     .query(async ({ ctx, input }) => {
-      // [TEMP LOG] Server: retrieveMemoryForTopic called
-      console.log('[MEMORY:server-retrieve] retrieveMemoryForTopic', {
-        topicId: input.topicId,
-        userId: ctx.userId,
-      });
       try {
         // Get concatenated user messages for this topic
         const userMemoryTopicRepo = new UserMemoryTopicRepository(ctx.serverDB, ctx.userId);
         const query = await userMemoryTopicRepo.getUserMessagesQueryForTopic(input.topicId);
 
-        // [TEMP LOG] Server: query built from topic messages
-        console.log('[MEMORY:server-retrieve] query built', {
-          hasQuery: !!query,
-          queryLength: query?.length ?? 0,
-          queryPreview: query ? query.slice(0, 100) + (query.length > 100 ? '...' : '') : null,
-        });
-
         if (!query) {
           // No user messages available, return empty result
-          console.log('[MEMORY:server-retrieve] no user messages in topic, returning empty');
           return EMPTY_SEARCH_RESULT;
         }
 
@@ -1078,17 +1065,8 @@ export const userMemoriesRouter = router({
 
         const result = await searchUserMemories(ctx, searchParams);
 
-        // [TEMP LOG] Server: search result
-        console.log('[MEMORY:server-retrieve] search result', {
-          activitiesCount: result.activities?.length ?? 0,
-          contextsCount: result.contexts?.length ?? 0,
-          experiencesCount: result.experiences?.length ?? 0,
-          preferencesCount: result.preferences?.length ?? 0,
-        });
-
         return result;
       } catch (error) {
-        console.error('[MEMORY:server-retrieve] Failed to retrieve memory for topic:', error);
         return EMPTY_SEARCH_RESULT;
       }
     }),

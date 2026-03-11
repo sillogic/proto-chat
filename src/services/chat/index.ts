@@ -148,16 +148,6 @@ class ChatService {
     const effectiveMemoryEffort =
       chatConfig.memory?.effort ?? userMemorySettings.effort ?? 'medium';
 
-    // [TEMP LOG] Memory injection gate check
-    console.log('[MEMORY:inject-gate]', {
-      globalMemoryEnabled,
-      agentMemoryEnabled,
-      enableUserMemories,
-      effectiveMemoryEffort,
-      agentId,
-      topicId,
-    });
-
     // =================== 1.2 build agent builder context =================== //
 
     // Check if Agent Builder tool is enabled and build context for it

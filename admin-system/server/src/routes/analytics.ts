@@ -132,7 +132,10 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
         (metadata ->> 'model') as model,
         (metadata ->> 'provider') as provider,
         COUNT(*) as "requestCount",
-        ABS(SUM(amount::numeric)) as "totalCost"
+        ABS(SUM(amount::numeric)) as "totalCost",
+        COALESCE(SUM((NULLIF(metadata ->> 'totalInputTokens', ''))::bigint), 0) as "totalInputTokens",
+        COALESCE(SUM((NULLIF(metadata ->> 'totalOutputTokens', ''))::bigint), 0) as "totalOutputTokens",
+        COALESCE(SUM((NULLIF(metadata ->> 'outputImageTokens', ''))::bigint), 0) as "outputImageTokens"
       FROM user_transactions
       WHERE type = 'CONSUMPTION'
         AND created_at >= ${startStr}
@@ -288,23 +291,35 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
     const memoryCostTotal = memoryEmbeddingCost + memoryLlmCost;
 
     // 统计图片生成成本（积分，需转换为美元）
-    // 假设 1 USD = 500,000 积分（与 SYNC_MULTIPLIER 一致）
+    // 1 USD = 500,000 积分（与 SYNC_MULTIPLIER 一致）
     let totalImageCost = 0;
     let totalImageRequests = 0;
+    let totalImageInputTokens = 0;
+    let totalImageOutputTokens = 0;
+    let totalImageOutputImageTokens = 0;
     const imageModelStats: any[] = [];
 
     for (const item of (imageStats as any[])) {
       const requestCount = parseInt(item.requestCount || '0');
       const costInCredits = parseFloat(item.totalCost || '0');
-      const costInUSD = costInCredits / 500000; // 转换为美元
+      const costInUSD = costInCredits / 500000;
+      const inputTokens = parseInt(item.totalInputTokens || '0');
+      const outputTokens = parseInt(item.totalOutputTokens || '0');
+      const outputImageTokens = parseInt(item.outputImageTokens || '0');
 
       totalImageCost += costInUSD;
       totalImageRequests += requestCount;
+      totalImageInputTokens += inputTokens;
+      totalImageOutputTokens += outputTokens;
+      totalImageOutputImageTokens += outputImageTokens;
 
       imageModelStats.push({
         model: item.model || 'unknown',
         provider: item.provider || 'unknown',
         requestCount,
+        inputTokens,
+        outputTokens,
+        outputImageTokens,
         cost: costInUSD.toFixed(8),
       });
 
@@ -330,6 +345,9 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
           embeddingCost: embeddingCost.toFixed(6),
           imageRequests: totalImageRequests,
           imageCost: totalImageCost.toFixed(6),
+          imageInputTokens: totalImageInputTokens,
+          imageOutputTokens: totalImageOutputTokens,
+          imageOutputImageTokens: totalImageOutputImageTokens,
           memoryJobCount,
           memoryRecordCount,
           memoryEmbeddingTokens,

@@ -388,6 +388,7 @@ export const imageRouter = router({
 
           if (ENABLE_BUSINESS_FEATURES) {
             await chargeAfterGenerate({
+              duration,
               height: response.height,
               metrics: { latency: duration },
               metadata: {

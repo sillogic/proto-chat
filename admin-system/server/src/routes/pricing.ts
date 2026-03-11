@@ -29,6 +29,18 @@ router.post('/sync', requirePermission('plans.write'), async (req, res) => {
     }
 });
 
+// POST /api/admin/models/pricing/sync-image-output
+// Sync image output token pricing from OpenRouter /api/v1/models/{id}/endpoints
+router.post('/sync-image-output', requirePermission('plans.write'), async (req, res) => {
+    try {
+        const result = await pricingService.syncImageOutputPricing();
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Sync image output pricing error:', error);
+        res.status(500).json({ success: false, message: 'Failed to sync image output pricing' });
+    }
+});
+
 // POST /api/admin/models/pricing
 router.post('/', requirePermission('plans.write'), async (req, res) => {
     try {

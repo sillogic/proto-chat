@@ -27,14 +27,20 @@ interface ChargeParams {
 }
 
 export async function chargeAfterGenerate(params: ChargeParams): Promise<void> {
-  const { userId, provider, metadata, duration, width, height } = params;
+  const { userId, provider, metadata, duration, width, height, modelUsage } = params;
   const { modelId, asyncTaskId } = metadata;
 
   try {
     const creditService = new CreditService(serverDB, userId);
 
-    // Calculate cost for image generation (uses perRequestPrice from model_pricings)
-    const cost = await creditService.calculateCost(modelId, provider, 0, 0);
+    // Use actual token counts when available (Gemini/OpenRouter image models return usage data).
+    // outputImageTokens are billed at userImageOutputPrice (higher rate than text output).
+    // Falls back to perRequestPrice when all tokens are 0 (Replicate, ComfyUI, etc.).
+    const inputTokens = modelUsage?.totalInputTokens ?? 0;
+    const outputTextTokens = modelUsage?.outputTextTokens ?? 0;
+    const outputImageTokens = modelUsage?.outputImageTokens ?? 0;
+
+    const cost = await creditService.calculateCost(modelId, provider, inputTokens, outputTextTokens, outputImageTokens);
 
     if (cost > 0) {
       await creditService.deductCredits(
@@ -48,11 +54,21 @@ export async function chargeAfterGenerate(params: ChargeParams): Promise<void> {
           model: modelId,
           provider,
           topicId: metadata.topicId,
+          totalInputTokens: inputTokens || undefined,
+          totalOutputTokens: (outputTextTokens + outputImageTokens) || undefined,
+          outputImageTokens: outputImageTokens || undefined,
           type: 'image',
           width,
         },
       );
-      log('Credits deducted for image generation: taskId=%s, cost=%s', asyncTaskId, cost);
+      log(
+        'Credits deducted for image generation: taskId=%s, cost=%s, tokens=in:%d outText:%d outImg:%d',
+        asyncTaskId,
+        cost,
+        inputTokens,
+        outputTextTokens,
+        outputImageTokens,
+      );
     } else {
       log('No cost calculated for image generation: taskId=%s, model=%s', asyncTaskId, modelId);
     }

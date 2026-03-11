@@ -50,6 +50,7 @@ export class UsageRecordService {
       const provider = metadata.provider || m?.provider || '-';
       const inputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
       const outputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
+      const type = metadata.type || 'chat';
 
       return {
         createdAt: spend.createdAt,
@@ -61,9 +62,10 @@ export class UsageRecordService {
         totalInputTokens: inputTokens,
         totalOutputTokens: outputTokens,
         totalTokens: inputTokens + outputTokens,
+        duration: metadata.duration ?? null,
         tps: msgMetadata.tps ?? null,
         ttft: msgMetadata.ttft ?? null,
-        type: 'chat',
+        type,
         updatedAt: spend.createdAt,
         userId: spend.userId,
       } as UsageRecordItem;
@@ -113,6 +115,7 @@ export class UsageRecordService {
       const provider = metadata.provider || m?.provider || '-';
       const inputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
       const outputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
+      const type = metadata.type || 'chat';
 
       return {
         createdAt: spend.createdAt,
@@ -124,9 +127,10 @@ export class UsageRecordService {
         totalInputTokens: inputTokens,
         totalOutputTokens: outputTokens,
         totalTokens: inputTokens + outputTokens,
+        duration: metadata.duration ?? null,
         tps: msgMetadata.tps ?? null,
         ttft: msgMetadata.ttft ?? null,
-        type: 'chat',
+        type,
         updatedAt: spend.createdAt,
         userId: spend.userId,
       } as UsageRecordItem;

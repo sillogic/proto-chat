@@ -117,7 +117,9 @@ export class OpenRouterAdapter {
         const inputPrice = (rawInputPrice >= 0 ? rawInputPrice : 0) * 1_000_000;
         const outputPrice = (rawOutputPrice >= 0 ? rawOutputPrice : 0) * 1_000_000;
         const requestPrice = parseFloat(pricing.request || '0');
-        const imagePrice = parseFloat(pricing.image || '0');
+        // Note: pricing.image is the vision INPUT per-token price, NOT image generation price.
+        // Image generation pricing comes from /api/v1/models/{id}/endpoints → image_output field,
+        // which is synced separately via syncImageOutputPricing(). Do not use pricing.image here.
 
         // 上下文长度优先级：顶层 > top_provider > architecture
         const contextLength = apiModel.context_length
@@ -201,7 +203,6 @@ export class OpenRouterAdapter {
                 // 额外定价信息
                 extraPricing: {
                     requestPrice,
-                    imagePrice,
                     audioPrice: parseFloat(pricing.audio || '0'),
                     webSearchPrice: parseFloat(pricing.web_search || '0'),
                     internalReasoningPrice: parseFloat(pricing.internal_reasoning || '0'),

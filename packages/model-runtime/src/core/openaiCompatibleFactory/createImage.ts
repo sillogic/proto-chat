@@ -7,7 +7,7 @@ import type OpenAI from 'openai';
 import type { CreateImagePayload, CreateImageResponse } from '../../types/image';
 import { getModelPricing } from '../../utils/getModelPricing';
 import { convertImageUrlToFile } from '../contextBuilders/openai';
-import { convertOpenAIImageUsage } from '../usageConverters/openai';
+import { convertOpenAIImageUsage, convertOpenAIUsage } from '../usageConverters/openai';
 
 const log = createDebug('lobe-image:openai-compatible');
 
@@ -218,6 +218,12 @@ export async function generateByChatModel(
     throw new Error('No message in chat completion response');
   }
 
+  // Extract usage if available (contains outputImageTokens for billing)
+  const modelUsage = response.usage ? convertOpenAIUsage(response.usage) : undefined;
+  if (modelUsage) {
+    log('Chat image usage: %O', modelUsage);
+  }
+
   // Check if response has images in the expected format
   if ((message as any).images && Array.isArray((message as any).images)) {
     const { images } = message as any;
@@ -225,7 +231,7 @@ export async function generateByChatModel(
       const image = images[0];
       if (image.image_url?.url) {
         log('Successfully extracted image from chat response');
-        return { imageUrl: image.image_url.url };
+        return { imageUrl: image.image_url.url, ...(modelUsage ? { modelUsage } : {}) };
       }
     }
   }

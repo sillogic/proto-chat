@@ -32,6 +32,10 @@ export interface UsageRecordItem {
   totalOutputTokens?: number | null;
   totalTokens?: number | null;
   /**
+   * Generation duration in milliseconds (image generation)
+   **/
+  duration?: number | null;
+  /**
    * Performance details
    **/
   tps?: number | null;

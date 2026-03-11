@@ -213,6 +213,7 @@ export const createRuntimeExecutors = (
         tools?.length ?? 0,
       );
 
+
       // Buffer: accumulate text and reasoning, send every 50ms
       const BUFFER_INTERVAL = 50;
       let textBuffer = '';

@@ -71,26 +71,17 @@ const baseColumns: TableColumnType<any>[] = [
     dataIndex: 'totalTokens',
     key: 'totalTokens',
     render: (_, record) => {
-      if (record.usageType === 'image') {
-        const meta = (record.metadata as any) || {};
-        if (meta.width && meta.height) {
-          return (
-            <Text style={{ fontSize: '12px' }} type="secondary">
-              {meta.width}×{meta.height}px
-            </Text>
-          );
-        }
-        return (
-          <Text style={{ fontSize: '11px' }} type="secondary">
-            按次计费
-          </Text>
-        );
+      const hasTokens = (record.totalInputTokens || 0) > 0 || (record.totalOutputTokens || 0) > 0;
+
+      if (record.usageType === 'image' && !hasTokens) {
+        return <Text style={{ fontSize: '11px' }} type="secondary">-</Text>;
       }
+
       return (
         <Space size={8}>
           <Text strong>{Number(record.totalTokens || 0).toLocaleString()}</Text>
           <Text style={{ fontSize: '11px' }} type="secondary">
-            = ↓ {record.totalInputTokens || 0} + ↑ {record.totalOutputTokens || 0}
+            = ↑ {record.totalInputTokens || 0} + ↓ {record.totalOutputTokens || 0}
           </Text>
         </Space>
       );

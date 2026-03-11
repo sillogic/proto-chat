@@ -84,6 +84,13 @@ export const modelPricings = pgTable('model_pricings', {
     userInputPrice: numeric('user_input_price', { precision: 15, scale: 6 }).default('0').notNull(),
     userOutputPrice: numeric('user_output_price', { precision: 15, scale: 6 }).default('0').notNull(),
 
+    // Image output token pricing (for image generation models, e.g. Gemini Nano Banana)
+    // Sourced from OpenRouter /api/v1/models/{id}/endpoints → image_output field
+    // Cost price: USD/token × 1_000_000 × 500_000 (credits/M tokens)
+    imageOutputPrice: numeric('image_output_price', { precision: 15, scale: 6 }).default('0').notNull(),
+    // User price = imageOutputPrice × multiplier
+    userImageOutputPrice: numeric('user_image_output_price', { precision: 15, scale: 6 }).default('0').notNull(),
+
     // Memo for admin
     memo: text('memo'),
 

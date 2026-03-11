@@ -247,10 +247,33 @@ const CostAnalysis: React.FC = () => {
             <Statistic
               title={
                 <Space>
-                  <span>图片生成成本 (USD)</span>
-                  <Tag color="gold">按次</Tag>
+                  <span>图片生成输入 Tokens</span>
+                  <Tag color="orange">input</Tag>
                 </Space>
               }
+              value={data?.overview?.imageInputTokens || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>图片输出 Tokens</span>
+                  <Tag color="orange">image output</Tag>
+                </Space>
+              }
+              value={data?.overview?.imageOutputImageTokens || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title="图片生成成本 (USD)"
               value={data?.overview?.imageCost || 0}
               precision={6}
               prefix="$"

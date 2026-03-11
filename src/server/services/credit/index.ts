@@ -14,22 +14,24 @@ export class CreditService {
     }
 
     /**
-     * Calculate credits needed for a chat completion
+     * Calculate credits needed for a model call.
      *
      * 统一的计费逻辑：所有供应商（包括 ProtoChat）都从 modelPricings 表查询用户价，
      * 用户价已经预先计算好（成本价 × 系数），直接使用，无需运行时计算，提升性能
      *
      * @param model - Model ID (原始模型ID，如 'deepseek/deepseek-chat-v3.1')
      * @param provider - Provider ID (如 'openai', 'protochat' 等)
-     * @param inputTokens - Number of input tokens
-     * @param outputTokens - Number of output tokens
+     * @param inputTokens - Number of input tokens (text + vision, combined by model runtime)
+     * @param outputTextTokens - Number of text output tokens
+     * @param outputImageTokens - Number of image output tokens (for image generation models)
      * @param isUserConfig - Whether user is using their own API key (if true, no charge)
      */
     async calculateCost(
         model: string,
         provider: string,
         inputTokens: number,
-        outputTokens: number,
+        outputTextTokens: number,
+        outputImageTokens: number = 0,
         isUserConfig: boolean = false
     ) {
         // If user is using their own API key, don't charge
@@ -51,16 +53,27 @@ export class CreditService {
         // 直接使用预先计算好的用户价，无需运行时计算（性能优化）
         const userInputPrice = parseFloat(pricing.userInputPrice || '0');
         const userOutputPrice = parseFloat(pricing.userOutputPrice || '0');
+        const userImageOutputPrice = parseFloat((pricing as any).userImageOutputPrice || '0');
         const perRequestPrice = parseFloat(pricing.perRequestPrice || '0');
 
-        // Price is in credits per 1,000,000 tokens.
-        // perRequestPrice is only applied when there are no tokens (pure per-request billing,
-        // e.g. image generation). When tokens > 0 (chat window), token pricing applies instead.
-        const perCost = inputTokens === 0 && outputTokens === 0 ? perRequestPrice : 0;
-        const cost = (inputTokens / 1_000_000) * userInputPrice + (outputTokens / 1_000_000) * userOutputPrice + perCost;
+        // Image output token cost (for image generation models like Gemini Nano Banana).
+        // Uses a separate per-token rate sourced from OpenRouter /models/{id}/endpoints.
+        const imageOutputCost = outputImageTokens > 0 && userImageOutputPrice > 0
+            ? (outputImageTokens / 1_000_000) * userImageOutputPrice
+            : 0;
+
+        // Per-request fallback: only applies when ALL token counts are zero.
+        // Used for providers that don't return usage data (Replicate, ComfyUI, etc.).
+        const allTokensZero = inputTokens === 0 && outputTextTokens === 0 && outputImageTokens === 0;
+        const perCost = allTokensZero ? perRequestPrice : 0;
+
+        const cost = (inputTokens / 1_000_000) * userInputPrice
+            + (outputTextTokens / 1_000_000) * userOutputPrice
+            + imageOutputCost
+            + perCost;
 
         const subProviderInfo = pricing.subProvider ? ` (via ${pricing.subProvider})` : '';
-        console.info(`[Credit] Charging for ${provider}::${model}${subProviderInfo}, cost: ${cost.toFixed(4)} credits`);
+        console.info(`[Credit] Charging for ${provider}::${model}${subProviderInfo}, cost: ${cost.toFixed(4)} credits (in=${inputTokens} outText=${outputTextTokens} outImg=${outputImageTokens})`);
 
         return cost;
     }

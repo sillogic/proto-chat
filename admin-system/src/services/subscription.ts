@@ -27,9 +27,11 @@ export interface ModelPricing {
     subProvider?: string | null; // 子供应商（仅 ProtoChat 使用）
     inputPrice: number | string;
     outputPrice: number | string;
-    perRequestPrice?: number | string | null; // 按次计费（用于图片生成等模型）
+    perRequestPrice?: number | string | null; // 按次计费（legacy fallback for providers without token usage）
     userInputPrice?: number | string; // 提示词用户价
     userOutputPrice?: number | string; // 补全用户价
+    imageOutputPrice?: number | string | null; // 图片输出 token 成本价（credits/M tokens）
+    userImageOutputPrice?: number | string | null; // 图片输出 token 用户价
     memo?: string;
     updatedAt: string;
 }
@@ -106,4 +108,11 @@ export async function syncModelPricings() {
     return request<{ success: boolean; count?: number; message?: string }>('/api/admin/models/pricing/sync', {
         method: 'POST',
     });
+}
+
+export async function syncImageOutputPricings() {
+    return request<{ success: boolean; updated?: number; failed?: { model: string; error: string }[] }>(
+        '/api/admin/models/pricing/sync-image-output',
+        { method: 'POST' },
+    );
 }

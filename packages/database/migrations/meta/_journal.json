@@ -588,6 +588,13 @@
       "when": 1741658400000,
       "tag": "0089_memory_vectors_4096",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1741750000000,
+      "tag": "0091_add_image_output_pricing",
+      "breakpoints": true
     }
   ],
   "version": "6"
