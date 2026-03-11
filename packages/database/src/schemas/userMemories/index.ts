@@ -34,14 +34,8 @@ export const userMemories = pgTable(
     ...timestamps,
   },
   (table) => [
-    index('user_memories_summary_vector_1024_index').using(
-      'hnsw',
-      table.summaryVector1024.op('vector_cosine_ops'),
-    ),
-    index('user_memories_details_vector_1024_index').using(
-      'hnsw',
-      table.detailsVector1024.op('vector_cosine_ops'),
-    ),
+    // Note: HNSW index not created for 4096-dim vectors (pgvector HNSW limit is 2000 dims).
+    // Sequential scan is used instead, which is fine for typical user memory dataset sizes.
     index('user_memories_user_id_index').on(table.userId),
   ],
 );
@@ -83,10 +77,6 @@ export const userMemoriesContexts = pgTable(
     ...timestamps,
   },
   (table) => [
-    index('user_memories_contexts_description_vector_index').using(
-      'hnsw',
-      table.descriptionVector.op('vector_cosine_ops'),
-    ),
     index('user_memories_contexts_type_index').on(table.type),
     index('user_memories_contexts_user_id_index').on(table.userId),
   ],
@@ -120,10 +110,6 @@ export const userMemoriesPreferences = pgTable(
     ...timestamps,
   },
   (table) => [
-    index('user_memories_preferences_conclusion_directives_vector_index').using(
-      'hnsw',
-      table.conclusionDirectivesVector.op('vector_cosine_ops'),
-    ),
     index('user_memories_preferences_user_id_index').on(table.userId),
     index('user_memories_preferences_user_memory_id_index').on(table.userMemoryId),
   ],
@@ -184,14 +170,6 @@ export const userMemoriesActivities = pgTable(
     ...timestamps,
   },
   (table) => [
-    index('user_memories_activities_narrative_vector_index').using(
-      'hnsw',
-      table.narrativeVector.op('vector_cosine_ops'),
-    ),
-    index('user_memories_activities_feedback_vector_index').using(
-      'hnsw',
-      table.feedbackVector.op('vector_cosine_ops'),
-    ),
     index('user_memories_activities_type_index').on(table.type),
     index('user_memories_activities_user_id_index').on(table.userId),
     index('user_memories_activities_user_memory_id_index').on(table.userMemoryId),
@@ -226,10 +204,6 @@ export const userMemoriesIdentities = pgTable(
     ...timestamps,
   },
   (table) => [
-    index('user_memories_identities_description_vector_index').using(
-      'hnsw',
-      table.descriptionVector.op('vector_cosine_ops'),
-    ),
     index('user_memories_identities_type_index').on(table.type),
     index('user_memories_identities_user_id_index').on(table.userId),
     index('user_memories_identities_user_memory_id_index').on(table.userMemoryId),
@@ -268,18 +242,6 @@ export const userMemoriesExperiences = pgTable(
     ...timestamps,
   },
   (table) => [
-    index('user_memories_experiences_situation_vector_index').using(
-      'hnsw',
-      table.situationVector.op('vector_cosine_ops'),
-    ),
-    index('user_memories_experiences_action_vector_index').using(
-      'hnsw',
-      table.actionVector.op('vector_cosine_ops'),
-    ),
-    index('user_memories_experiences_key_learning_vector_index').using(
-      'hnsw',
-      table.keyLearningVector.op('vector_cosine_ops'),
-    ),
     index('user_memories_experiences_type_index').on(table.type),
     index('user_memories_experiences_user_id_index').on(table.userId),
     index('user_memories_experiences_user_memory_id_index').on(table.userMemoryId),
