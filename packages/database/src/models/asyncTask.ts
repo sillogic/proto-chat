@@ -65,7 +65,7 @@ export class AsyncTaskModel {
           jsonb_build_object(
             'inputTokens', COALESCE((${asyncTasks.metadata} -> 'llmUsage' ->> 'inputTokens')::int, 0) + ${inputTokens},
             'outputTokens', COALESCE((${asyncTasks.metadata} -> 'llmUsage' ->> 'outputTokens')::int, 0) + ${outputTokens},
-            'model', ${model}
+            'model', ${model}::text
           ),
           true
         )`,

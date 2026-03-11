@@ -290,6 +290,26 @@ export const contextEngineering = async ({
     const topicMemories = resolveTopicMemories();
     const globalIdentities = resolveGlobalIdentities();
     userMemoryData = combineUserMemoryData(topicMemories, globalIdentities);
+
+    // [TEMP LOG] Show what was resolved from cache and will be injected into system prompt
+    console.log('[MEMORY:cache-resolved]', {
+      topicId,
+      activitiesCount: topicMemories.activities?.length ?? 0,
+      contextsCount: topicMemories.contexts?.length ?? 0,
+      experiencesCount: topicMemories.experiences?.length ?? 0,
+      preferencesCount: topicMemories.preferences?.length ?? 0,
+      globalIdentitiesCount: globalIdentities.length,
+      willInject: !!(userMemoryData && (
+        userMemoryData.activities.length > 0 ||
+        userMemoryData.contexts.length > 0 ||
+        userMemoryData.experiences.length > 0 ||
+        userMemoryData.preferences.length > 0 ||
+        userMemoryData.identities.length > 0
+      )),
+    });
+  } else {
+    // [TEMP LOG] Memory injection skipped
+    console.log('[MEMORY:cache-resolved] skipped - enableUserMemories=false');
   }
 
   // Resolve GTD context: plan and todos

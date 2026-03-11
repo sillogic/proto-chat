@@ -24,6 +24,17 @@ const handler = (req: NextRequest) => {
       // And it has been displayed at the front end to let the user login
       if (error.code === 'UNAUTHORIZED') return;
 
+      // Filter out JSON parse errors caused by client-side request cancellation (AbortController).
+      // When the client aborts an in-flight mutation (e.g. rapid agent config changes), the server
+      // receives a truncated request body, which causes JSON.parse to throw "Unexpected end of JSON input".
+      // This is expected behavior, not a real error.
+      if (
+        error.code === 'BAD_REQUEST' &&
+        error.cause instanceof SyntaxError &&
+        error.cause.message.includes('Unexpected end of JSON input')
+      )
+        return;
+
       console.info(`Error in tRPC handler (lambda) on path: ${path}, type: ${type}`);
       console.error(error);
     },

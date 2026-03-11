@@ -49,7 +49,18 @@ const ChatList = memo<ChatListProps>(({ disableActionsBar, welcome, itemContent 
 
   // Fetch notebook documents when topic is selected (skip for share pages)
   useFetchNotebookDocuments(isSharePage ? undefined : context.topicId!);
-  useFetchTopicMemories(enableUserMemories && !isSharePage ? context.topicId : undefined);
+
+  // [TEMP LOG] Memory SWR activation check
+  const memoryFetchTopicId = enableUserMemories && !isSharePage ? context.topicId : undefined;
+  if (typeof window !== 'undefined') {
+    console.log('[MEMORY:chatlist] useFetchTopicMemories activation', {
+      enableUserMemories,
+      isSharePage,
+      topicId: context.topicId,
+      willFetch: !!memoryFetchTopicId,
+    });
+  }
+  useFetchTopicMemories(memoryFetchTopicId);
 
   // Use selectors for data
 

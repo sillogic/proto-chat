@@ -53,6 +53,7 @@ import { join } from 'pathe';
 import { z } from 'zod';
 
 import { AsyncTaskModel } from '@/database/models/asyncTask';
+import { SystemEmbeddingModel } from '@/database/models/systemEmbedding';
 import { type ListTopicsForMemoryExtractorCursor } from '@/database/models/topic';
 import { TopicModel } from '@/database/models/topic';
 import { type ListUsersForMemoryExtractorCursor } from '@/database/models/user';
@@ -66,6 +67,7 @@ import { type MemoryAgentConfig } from '@/server/globalConfig/parseMemoryExtract
 import { parseMemoryExtractionConfig } from '@/server/globalConfig/parseMemoryExtractionConfig';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { S3 } from '@/server/modules/S3';
+import { ProtoChatService } from '@/server/services/protochat';
 import { AsyncTaskError, AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
 import { type GlobalMemoryLayer } from '@/types/serverConfig';
 import { type ProviderConfig } from '@/types/user/settings';
@@ -454,6 +456,14 @@ export class MemoryExtractionExecutor {
     observabilityS3: MemoryExtractionConfig['observabilityS3'];
   };
   private readonly embeddingContextLimit?: number;
+
+  // Resolved at runtime via ProtoChat model routing (when embedding.provider === 'protochat')
+  private resolvedEmbeddingModel?: string;
+  private resolvedEmbeddingProvider?: string;
+
+  private get effectiveEmbeddingModel(): string {
+    return this.resolvedEmbeddingModel ?? this.modelConfig.embeddingsModel;
+  }
 
   private readonly runtimeCache = new Map<string, RuntimeBundle>();
   private readonly db = getServerDB();
@@ -1050,11 +1060,19 @@ export class MemoryExtractionExecutor {
       tokenLimit,
     );
 
-    const embeddings = await runtime.embeddings({
-      dimensions: DEFAULT_USER_MEMORY_EMBEDDING_DIMENSIONS,
-      input: [aggregatedContent],
-      model: embeddingModel,
-    });
+    let embeddings: Embeddings[] | undefined;
+    try {
+      embeddings = await runtime.embeddings({
+        dimensions: DEFAULT_USER_MEMORY_EMBEDDING_DIMENSIONS,
+        input: [aggregatedContent],
+        model: embeddingModel,
+      });
+    } catch (embeddingError) {
+      console.warn(
+        '[memory-extraction] embeddings failed, skipping retrieval augmentation:',
+        embeddingError instanceof Error ? embeddingError.message : embeddingError,
+      );
+    }
 
     const vector = embeddings?.[0];
     if (vector) {
@@ -1246,7 +1264,7 @@ export class MemoryExtractionExecutor {
           const retrievedMemories = await this.listRelevantUserMemories(
             extractionJob,
             runtimes.embeddings,
-            this.modelConfig.embeddingsModel,
+            this.effectiveEmbeddingModel,
             job.userId,
             embeddingConversations,
             embeddingContextLimit,
@@ -1859,7 +1877,7 @@ export class MemoryExtractionExecutor {
           messageIds,
           activityOutput.data,
           runtimes.embeddings,
-          this.modelConfig.embeddingsModel,
+          this.effectiveEmbeddingModel,
           this.embeddingContextLimit,
           db,
         ),
@@ -1877,7 +1895,7 @@ export class MemoryExtractionExecutor {
           messageIds,
           contextOutput.data,
           runtimes.embeddings,
-          this.modelConfig.embeddingsModel,
+          this.effectiveEmbeddingModel,
           this.embeddingContextLimit,
           db,
         ),
@@ -1895,7 +1913,7 @@ export class MemoryExtractionExecutor {
           messageIds,
           experienceOutput.data,
           runtimes.embeddings,
-          this.modelConfig.embeddingsModel,
+          this.effectiveEmbeddingModel,
           this.embeddingContextLimit,
           db,
         ),
@@ -1913,7 +1931,7 @@ export class MemoryExtractionExecutor {
           messageIds,
           preferenceOutput.data,
           runtimes.embeddings,
-          this.modelConfig.embeddingsModel,
+          this.effectiveEmbeddingModel,
           this.embeddingContextLimit,
           db,
         ),
@@ -1931,7 +1949,7 @@ export class MemoryExtractionExecutor {
           messageIds,
           identityOutput.data,
           runtimes.embeddings,
-          this.modelConfig.embeddingsModel,
+          this.effectiveEmbeddingModel,
           this.embeddingContextLimit,
           db,
         ),
@@ -1970,6 +1988,30 @@ export class MemoryExtractionExecutor {
 
     const keyVaults: ProviderKeyVaultMap = {};
 
+    // Helper: resolve keyVault for a provider.
+    // Priority: user's ai_providers vault → Protochat sub-provider table (protochat_providers).
+    const resolveKeyVault = async (providerId: string) => {
+      if (keyVaults[providerId]) return; // already resolved
+      const runtime = normalizedRuntimeConfig[providerId];
+      // Only use runtimeConfig keyVaults if there is an actual apiKey — an empty {} is not useful.
+      if (runtime?.keyVaults?.apiKey) {
+        keyVaults[providerId] = runtime.keyVaults;
+        return;
+      }
+      // Fallback: look up the provider in the Protochat sub-provider table (protochat_providers).
+      // This allows using OpenRouter (or any other sub-provider) whose key is stored there,
+      // without needing to enable it separately in the admin panel's AI providers.
+      try {
+        const db = await this.db;
+        const creds = await new ProtoChatService(db).getSubProviderCredentials(providerId);
+        if (creds) {
+          keyVaults[providerId] = creds;
+        }
+      } catch (e) {
+        console.warn(`[memory-extraction] getSubProviderCredentials failed for provider: ${providerId}`, e);
+      }
+    };
+
     const gatekeeperProvider = await AiInfraRepos.tryMatchingProviderFrom(runtimeState, {
       fallbackProvider: this.privateConfig.agentGateKeeper.provider,
       label: 'gatekeeper',
@@ -1977,10 +2019,15 @@ export class MemoryExtractionExecutor {
       preferredModels: this.gatekeeperPreferredModels,
       preferredProviders: this.gatekeeperPreferredProviders,
     });
-    const gatekeeperRuntime = normalizedRuntimeConfig[gatekeeperProvider];
-    if (gatekeeperRuntime?.keyVaults) {
-      keyVaults[gatekeeperProvider] = gatekeeperRuntime.keyVaults;
-    }
+    // Resolve both what tryMatchingProviderFrom selected AND the explicitly configured provider.
+    // This handles the case where tryMatchingProviderFrom matches a different provider (e.g. protochat)
+    // because it found the model in that provider's enabled list, but the actual API key is
+    // stored in protochat_providers under the configured provider (e.g. openrouter).
+    const gatekeeperConfigProvider = this.privateConfig.agentGateKeeper.provider;
+    await Promise.all([
+      resolveKeyVault(gatekeeperProvider),
+      gatekeeperConfigProvider ? resolveKeyVault(gatekeeperConfigProvider) : Promise.resolve(),
+    ]);
 
     const embeddingProvider = await AiInfraRepos.tryMatchingProviderFrom(runtimeState, {
       fallbackProvider: this.privateConfig.embedding.provider,
@@ -1989,11 +2036,47 @@ export class MemoryExtractionExecutor {
       preferredModels: this.embeddingPreferredModels,
       preferredProviders: this.embeddingPreferredProviders,
     });
-    const embeddingRuntime = normalizedRuntimeConfig[embeddingProvider];
-    if (embeddingRuntime?.keyVaults) {
-      keyVaults[embeddingProvider] = embeddingRuntime.keyVaults;
+    const embeddingConfigProvider = this.privateConfig.embedding.provider;
+    await Promise.all([
+      resolveKeyVault(embeddingProvider),
+      embeddingConfigProvider ? resolveKeyVault(embeddingConfigProvider) : Promise.resolve(),
+    ]);
+
+    // Special fallback for 'protochat' embedding provider: resolve via systemEmbeddingConfig.
+    // The memory embedding config (id='memory') or the default knowledge-base config (id='default')
+    // stores the actual provider, model ID, and encrypted API key. Using this config keeps memory
+    // and knowledge-base embedding statistics completely separate (memory never writes to
+    // embedding_usage_logs; knowledge-base always does).
+    if (embeddingConfigProvider === 'protochat' && !keyVaults[embeddingProvider] && !keyVaults[embeddingConfigProvider]) {
+      try {
+        const db = await this.db;
+        const embeddingModel = new SystemEmbeddingModel(db);
+        const embConfig = await embeddingModel.getMemoryEmbeddingConfig();
+
+        if (embConfig && embConfig.providerId && embConfig.modelId && embConfig.apiKey) {
+          const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+          const { wasAuthentic, plaintext } = await gateKeeper.decrypt(embConfig.apiKey);
+
+          if (wasAuthentic && plaintext) {
+            const resolvedProvider = normalizeProvider(embConfig.providerId);
+            keyVaults[resolvedProvider] = {
+              apiKey: plaintext,
+              baseURL: embConfig.baseUrl || undefined,
+            } as any;
+            this.resolvedEmbeddingModel = embConfig.modelId;
+            this.resolvedEmbeddingProvider = resolvedProvider;
+            } else {
+            console.warn('[memory-extraction] systemEmbeddingConfig apiKey decryption failed (wasAuthentic=false)');
+          }
+        } else {
+          console.warn('[memory-extraction] systemEmbeddingConfig not found or incomplete (no apiKey/providerId/modelId). Configure memory embedding in admin panel.');
+        }
+      } catch (e) {
+        console.warn('[memory-extraction] failed to resolve embedding via systemEmbeddingConfig:', e);
+      }
     }
 
+    const layerConfigProvider = this.privateConfig.agentLayerExtractor.provider;
     for (const model of Object.values(this.modelConfig.layerModels)) {
       if (!model) continue;
       const providerId = await AiInfraRepos.tryMatchingProviderFrom(runtimeState, {
@@ -2003,10 +2086,10 @@ export class MemoryExtractionExecutor {
         preferredModels: this.layerPreferredModels,
         preferredProviders: this.layerPreferredProviders,
       });
-      const runtime = normalizedRuntimeConfig[providerId];
-      if (runtime?.keyVaults) {
-        keyVaults[providerId] = runtime.keyVaults;
-      }
+      await Promise.all([
+        resolveKeyVault(providerId),
+        layerConfigProvider ? resolveKeyVault(layerConfigProvider) : Promise.resolve(),
+      ]);
     }
 
     return keyVaults;
@@ -2049,9 +2132,13 @@ export class MemoryExtractionExecutor {
       preferred: { providerIds: this.layerPreferredProviders },
     };
 
+    const embeddingAgentConfig = this.resolvedEmbeddingProvider
+      ? { ...this.privateConfig.embedding, model: this.resolvedEmbeddingModel!, provider: this.resolvedEmbeddingProvider }
+      : { ...this.privateConfig.embedding };
+
     const runtimes: RuntimeBundle = {
       embeddings: await resolveRuntimeAgentConfig(
-        { ...this.privateConfig.embedding },
+        embeddingAgentConfig,
         keyVaults,
         embeddingOptions,
       ),

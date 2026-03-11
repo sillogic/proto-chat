@@ -797,6 +797,11 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
           { headers: options?.headers, signal: options?.signal },
         );
 
+        if (!res.data) {
+          throw new Error(
+            `Embeddings API returned response without 'data' field (model=${payload.model}). The provider may have returned an error in the response body.`,
+          );
+        }
         log('received %d embeddings', res.data.length);
         return res.data.map((item) => item.embedding);
       } catch (error) {

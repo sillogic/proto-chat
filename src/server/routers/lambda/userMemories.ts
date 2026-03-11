@@ -168,8 +168,8 @@ const searchUserMemories = async (
   ctx: MemorySearchContext,
   input: z.infer<typeof searchMemorySchema>,
 ): Promise<SearchMemoryResult> => {
-  // Try to get system embedding configuration from database
-  const systemConfig = await ctx.systemEmbeddingModel.getConfig();
+  // Try to get memory embedding configuration (prefers id='memory', falls back to id='default')
+  const systemConfig = await ctx.systemEmbeddingModel.getMemoryEmbeddingConfig();
 
   let provider: string;
   let embeddingModel: string;
@@ -280,19 +280,38 @@ const searchUserMemories = async (
 };
 
 const getEmbeddingRuntime = async (serverDB: LobeChatDatabase, userId: string, jwtPayload: any) => {
+  // Prefer memory embedding config from DB (id='memory' → id='default' → env fallback)
+  const sysEmbedModel = new SystemEmbeddingModel(serverDB);
+  const systemConfig = await sysEmbedModel.getMemoryEmbeddingConfig();
+
+  if (systemConfig && systemConfig.providerId && systemConfig.modelId && systemConfig.apiKey) {
+    try {
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+      const result = await gateKeeper.decrypt(systemConfig.apiKey);
+      if (result.wasAuthentic && result.plaintext) {
+        const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(
+          systemConfig.providerId,
+          { apiKey: result.plaintext, baseURL: systemConfig.baseUrl || undefined },
+          { model: systemConfig.modelId },
+        );
+        return { agentRuntime, embeddingModel: actualModel || systemConfig.modelId };
+      }
+    } catch {
+      // fall through to env config
+    }
+  }
+
   const { provider, model: embeddingModel } =
     getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
 
   const effectiveProvider = ENABLE_BUSINESS_FEATURES ? BRANDING_PROVIDER : provider;
-  const payload = jwtPayload;
   const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(
     effectiveProvider,
-    payload,
+    jwtPayload,
     { model: embeddingModel },
   );
-  const modelId = actualModel || embeddingModel;
 
-  return { agentRuntime, embeddingModel: modelId };
+  return { agentRuntime, embeddingModel: actualModel || embeddingModel };
 };
 
 const createEmbedder = (agentRuntime: any, embeddingModel: string) => {
@@ -1028,13 +1047,26 @@ export const userMemoriesRouter = router({
   retrieveMemoryForTopic: memoryProcedure
     .input(z.object({ topicId: z.string() }))
     .query(async ({ ctx, input }) => {
+      // [TEMP LOG] Server: retrieveMemoryForTopic called
+      console.log('[MEMORY:server-retrieve] retrieveMemoryForTopic', {
+        topicId: input.topicId,
+        userId: ctx.userId,
+      });
       try {
         // Get concatenated user messages for this topic
         const userMemoryTopicRepo = new UserMemoryTopicRepository(ctx.serverDB, ctx.userId);
         const query = await userMemoryTopicRepo.getUserMessagesQueryForTopic(input.topicId);
 
+        // [TEMP LOG] Server: query built from topic messages
+        console.log('[MEMORY:server-retrieve] query built', {
+          hasQuery: !!query,
+          queryLength: query?.length ?? 0,
+          queryPreview: query ? query.slice(0, 100) + (query.length > 100 ? '...' : '') : null,
+        });
+
         if (!query) {
           // No user messages available, return empty result
+          console.log('[MEMORY:server-retrieve] no user messages in topic, returning empty');
           return EMPTY_SEARCH_RESULT;
         }
 
@@ -1045,9 +1077,18 @@ export const userMemoriesRouter = router({
         };
 
         const result = await searchUserMemories(ctx, searchParams);
+
+        // [TEMP LOG] Server: search result
+        console.log('[MEMORY:server-retrieve] search result', {
+          activitiesCount: result.activities?.length ?? 0,
+          contextsCount: result.contexts?.length ?? 0,
+          experiencesCount: result.experiences?.length ?? 0,
+          preferencesCount: result.preferences?.length ?? 0,
+        });
+
         return result;
       } catch (error) {
-        console.error('Failed to retrieve memory for topic:', error);
+        console.error('[MEMORY:server-retrieve] Failed to retrieve memory for topic:', error);
         return EMPTY_SEARCH_RESULT;
       }
     }),
@@ -1396,8 +1437,12 @@ export const userMemoriesRouter = router({
     }),
 
   toolSearchMemory: memoryProcedure.input(searchMemorySchema).query(async ({ input, ctx }) => {
-    const result = await searchUserMemories(ctx, input);
-    return result;
+    try {
+      return await searchUserMemories(ctx, input);
+    } catch (error) {
+      console.error('Failed to search memories (tool):', error);
+      return EMPTY_SEARCH_RESULT;
+    }
   }),
 
   toolUpdateIdentityMemory: memoryProcedure

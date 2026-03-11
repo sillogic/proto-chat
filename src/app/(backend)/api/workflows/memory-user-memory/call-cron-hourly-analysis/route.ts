@@ -1,117 +1,26 @@
-import { MemorySourceType } from '@lobechat/types';
-import { Client } from '@upstash/qstash';
-import { serve } from '@upstash/workflow/nextjs';
-import { chunk } from 'es-toolkit/compat';
+import { NextResponse } from 'next/server';
 
-import { appEnv } from '@/envs/app';
-import { parseMemoryExtractionConfig } from '@/server/globalConfig/parseMemoryExtractionConfig';
-import {
-  buildWorkflowPayloadInput,
-  MemoryExtractionExecutor,
-  type MemoryExtractionHourlyWorkflowPayload,
-  MemoryExtractionWorkflowService,
-  normalizeMemoryExtractionPayload,
-} from '@/server/services/memory/userMemory/extract';
+import { MemoryExtractionBullMQService } from '@/server/workers/memoryExtraction/service';
 
-const USER_PAGE_SIZE = 200;
-const USER_BATCH_SIZE = 20;
+/**
+ * POST /api/workflows/memory-user-memory/call-cron-hourly-analysis
+ *
+ * Triggered by the cron job. Enqueues a BullMQ hourly-analysis job that fans out
+ * process-users jobs for all eligible users (paginated internally by the worker).
+ */
+export const POST = async (req: Request) => {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { cursor, dryRun } = body as { cursor?: { createdAt: string; id: string }; dryRun?: boolean };
 
-const { webhook, upstashWorkflowExtraHeaders } = parseMemoryExtractionConfig();
+    const job = await MemoryExtractionBullMQService.enqueueHourlyAnalysis({ cursor, dryRun });
 
-const resolveBaseUrl = () => webhook.baseUrl || appEnv.INTERNAL_APP_URL || appEnv.APP_URL;
-
-export const { POST } = serve<MemoryExtractionHourlyWorkflowPayload>(
-  async (context) => {
-    const { cursor, dryRun } = context.requestPayload || {};
-
-    const baseUrl = resolveBaseUrl();
-    if (!baseUrl) {
-      throw new Error('Missing baseUrl for hourly memory extraction workflow');
-    }
-
-    const parsedCursor = cursor
-      ? { createdAt: new Date(cursor.createdAt), id: cursor.id }
-      : undefined;
-    if (parsedCursor && Number.isNaN(parsedCursor.createdAt.getTime())) {
-      throw new Error('Invalid cursor date for hourly memory extraction workflow');
-    }
-
-    const executor = await MemoryExtractionExecutor.create();
-    const userBatch = await context.run(
-      `memory:user-memory:hourly:list-users:${parsedCursor?.id || 'root'}`,
-      () => executor.getUsersForHourlyExtraction(USER_PAGE_SIZE, parsedCursor),
+    return NextResponse.json(
+      { jobId: job?.id, message: 'Hourly memory extraction scheduled via BullMQ.' },
+      { status: 202 },
     );
-
-    const userIds = userBatch.ids;
-    if (userIds.length === 0) {
-      return { message: 'No eligible users for hourly memory extraction.', processedUsers: 0 };
-    }
-
-    const nextCursor = userBatch.cursor
-      ? {
-          createdAt: userBatch.cursor.createdAt.toISOString(),
-          id: userBatch.cursor.id,
-        }
-      : undefined;
-
-    if (!dryRun) {
-      const batches = chunk(userIds, USER_BATCH_SIZE);
-      await Promise.all(
-        batches.map((batchUserIds, index) =>
-          context.run(`memory:user-memory:hourly:trigger-users:${index}`, () =>
-            MemoryExtractionWorkflowService.triggerProcessUsers(
-              buildWorkflowPayloadInput(
-                normalizeMemoryExtractionPayload({
-                  baseUrl,
-                  mode: 'workflow',
-                  sources: [MemorySourceType.ChatTopic],
-                  userIds: batchUserIds,
-                }),
-              ),
-              { extraHeaders: upstashWorkflowExtraHeaders },
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (nextCursor) {
-      await context.run('memory:user-memory:hourly:schedule-next-page', () =>
-        MemoryExtractionWorkflowService.triggerHourly(
-          {
-            baseUrl,
-            cursor: nextCursor,
-            dryRun,
-          },
-          { extraHeaders: upstashWorkflowExtraHeaders },
-        ),
-      );
-    }
-
-    return {
-      dryRun: !!dryRun,
-      hasNextPage: !!nextCursor,
-      processedUsers: userIds.length,
-      scheduledBatches: dryRun ? 0 : chunk(userIds, USER_BATCH_SIZE).length,
-    };
-  },
-  {
-    flowControl: {
-      key: 'memory-user-memory.call-cron-hourly-analysis',
-      parallelism: 1,
-      ratePerSecond: 1,
-    },
-    // NOTICE(@nekomeowww): Here as scenarios like Vercel Deployment Protection,
-    // intermediate context.run(...) won't offer customizable headers like context.trigger(...) / client.trigger(...)
-    // for passing additional headers, we have to provide a custom QStash client with the required headers here.
-    //
-    // Refer to the doc for more details:
-    // https://upstash.com/docs/workflow/troubleshooting/vercel#step-2-pass-header-when-triggering
-    qstashClient: new Client({
-      headers: {
-        ...upstashWorkflowExtraHeaders,
-      },
-      token: process.env.QSTASH_TOKEN!,
-    }),
-  },
-);
+  } catch (error) {
+    console.error('[memory-extraction:hourly] failed to enqueue job', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+};

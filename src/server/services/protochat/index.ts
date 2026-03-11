@@ -73,10 +73,9 @@ export class ProtoChatService {
         .select()
         .from(protochatModels)
         .where(
-          and(
-            like(protochatModels.id, `%::${modelId}`),
-            eq(protochatModels.enabled, true),
-          ),
+          options.ignoreModelEnabled
+            ? like(protochatModels.id, `%::${modelId}`)
+            : and(like(protochatModels.id, `%::${modelId}`), eq(protochatModels.enabled, true)),
         )
         .limit(1);
     }
@@ -161,6 +160,49 @@ export class ProtoChatService {
       originalProvider: modelData.originalProvider,
       type: modelData.type,
     };
+  }
+
+  /**
+   * 获取 Protochat 子供应商（protochat_providers）的解密凭证。
+   * 用于记忆提取等后台任务直接复用管理员在子供应商中配置的 API Key，
+   * 无需在 .env 中重复配置。
+   * @returns { apiKey, baseURL } 或 null（供应商不存在/未启用/无 key）
+   */
+  async getSubProviderCredentials(
+    providerId: string,
+  ): Promise<{ apiKey: string; baseURL: string } | null> {
+    const rows = await this.db
+      .select()
+      .from(protochatProviders)
+      .where(eq(protochatProviders.id, providerId))
+      .limit(1);
+
+    if (!rows.length) {
+      return null;
+    }
+
+    const providerData = rows[0];
+    let keyVaults: Record<string, string> = {};
+
+    if (providerData.apiKey) {
+      try {
+        const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+        const { wasAuthentic, plaintext } = await gateKeeper.decrypt(providerData.apiKey);
+        if (wasAuthentic && plaintext) keyVaults = JSON.parse(plaintext);
+      } catch (e) {
+        console.error(`[ProtoChat] getSubProviderCredentials: decryption failed for ${providerId}:`, e);
+      }
+    }
+
+    if (!keyVaults.apiKey) {
+      console.warn(`[ProtoChat] getSubProviderCredentials: no apiKey found in keyVaults for ${providerId}`);
+      return null;
+    }
+
+    const baseURL =
+      keyVaults.baseURL || keyVaults.proxyUrl || keyVaults.baseUrl || providerData.baseUrl || '';
+
+    return { apiKey: keyVaults.apiKey, baseURL };
   }
 
   /**

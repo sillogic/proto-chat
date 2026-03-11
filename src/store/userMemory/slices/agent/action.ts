@@ -34,9 +34,14 @@ export class AgentMemoryActionImpl {
   };
 
   useFetchMemoriesForTopic = (topicId?: string | null): SWRResponse<RetrieveMemoryResult> => {
+    // [TEMP LOG] SWR hook triggered - this runs when ChatList renders with a topicId
+    console.log('[MEMORY:swr-hook] useFetchMemoriesForTopic called', { topicId: topicId ?? null });
+
     return useClientDataSWRWithSync<RetrieveMemoryResult>(
       topicId ? ['useFetchMemoriesForTopic', topicId] : null,
       async () => {
+        // [TEMP LOG] SWR fetcher fired - will call retrieveMemoryForTopic API
+        console.log('[MEMORY:swr-fetch] fetching memories for topic', topicId);
         // Retrieve memories using topic's context
         // The backend will use topic info to build the query
         return await userMemoryService.retrieveMemoryForTopic(topicId!);
@@ -44,6 +49,14 @@ export class AgentMemoryActionImpl {
       {
         onData: (data) => {
           if (!topicId || !data) return;
+
+          // [TEMP LOG] SWR fetch succeeded - these results will be injected into next message
+          console.log('[MEMORY:swr-result] memories cached for topic', topicId, {
+            activitiesCount: data.activities?.length ?? 0,
+            contextsCount: data.contexts?.length ?? 0,
+            experiencesCount: data.experiences?.length ?? 0,
+            preferencesCount: data.preferences?.length ?? 0,
+          });
 
           this.#set(
             (state) => ({

@@ -16,6 +16,8 @@ import {
   Statistic,
   Modal,
   Divider,
+  Tabs,
+  Tag,
 } from 'antd';
 import { SaveOutlined, SyncOutlined, ApiOutlined, CheckCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -25,13 +27,209 @@ import {
   getSystemEmbeddingModels,
   syncSystemEmbeddingModels,
   testSystemEmbeddingConnection,
+  getMemoryEmbeddingConfig,
+  updateMemoryEmbeddingConfig,
   type SystemEmbeddingConfig,
   type SystemEmbeddingModel,
 } from '@/services/system-embedding';
 
 const { Text } = Typography;
 
-const EmbeddingConfigPage: React.FC = () => {
+// ---------------------------------------------------------------------------
+// Memory Embedding Tab (id='memory') – a simpler standalone form
+// ---------------------------------------------------------------------------
+
+const MemoryEmbeddingTab: React.FC = () => {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [config, setConfig] = useState<SystemEmbeddingConfig | null>(null);
+
+  const providerOptions = [
+    { label: 'OpenRouter', value: 'openrouter' },
+    { label: 'SiliconFlow', value: 'siliconflow' },
+    { label: 'OpenAI', value: 'openai' },
+    { label: 'Cohere', value: 'cohere' },
+    { label: 'Jina AI', value: 'jinaai' },
+  ];
+
+  const fetchConfig = async () => {
+    setLoading(true);
+    try {
+      const res = await getMemoryEmbeddingConfig();
+      if (res.success) {
+        setConfig(res.data ?? null);
+        if (res.data) {
+          form.setFieldsValue({
+            providerId: res.data.providerId,
+            baseUrl: res.data.baseUrl,
+            modelId: res.data.modelId,
+            apiKey: res.data.apiKey,
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error('Failed to load memory embedding config:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchConfig(); }, []);
+
+  const handleSave = async () => {
+    try {
+      await form.validateFields();
+      const values = form.getFieldsValue();
+      setSaving(true);
+      const res = await updateMemoryEmbeddingConfig(values);
+      if (res.success) {
+        message.success('记忆Embedding配置保存成功');
+        await fetchConfig();
+      } else {
+        message.error(res.message || '保存失败');
+      }
+    } catch (e: any) {
+      if (e.errorFields) {
+        message.error('请填写所有必填项');
+      } else {
+        message.error(e.message || '保存失败');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    try {
+      await form.validateFields(['apiKey', 'baseUrl', 'modelId']);
+      const values = form.getFieldsValue();
+      if (!values.modelId) { message.warning('请先填写模型ID'); return; }
+      setTesting(true);
+      const res = await testSystemEmbeddingConnection({
+        apiKey: values.apiKey,
+        baseUrl: values.baseUrl,
+        modelId: values.modelId,
+      });
+      if (res.success && res.data) {
+        Modal.success({
+          title: '测试成功！',
+          width: 500,
+          content: (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Alert message="连接配置正确，embedding API工作正常" type="success" showIcon icon={<CheckCircleOutlined />} />
+              <Row gutter={16} style={{ marginTop: 16 }}>
+                <Col span={8}><Statistic title="响应时间" value={res.data.duration} /></Col>
+                <Col span={8}><Statistic title="向量维度" value={res.data.embeddingDimensions} /></Col>
+                <Col span={8}><Statistic title="消耗Token" value={res.data.usage?.total_tokens || 0} /></Col>
+              </Row>
+              <Text type="secondary">模型: {res.data.model}</Text>
+            </Space>
+          ),
+        });
+      } else {
+        message.error(res.message || '测试失败');
+      }
+    } catch (e: any) {
+      if (e.errorFields) {
+        message.error('请填写API Key、Base URL和模型ID');
+      } else {
+        Modal.error({ title: '测试失败', content: e.message || '无法连接到embedding API' });
+      }
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <Spin spinning={loading}>
+      <Space direction="vertical" size="large" style={{ display: 'flex' }}>
+        <Alert
+          type="info"
+          showIcon
+          message="记忆嵌入独立配置"
+          description={
+            <Space direction="vertical" size={4}>
+              <Text>配置专用于用户记忆提取的Embedding模型。与知识库嵌入完全独立，统计数据不会混淆。</Text>
+              <Text>若未配置，系统会回落到知识库嵌入配置（id=default）。</Text>
+              <Text>记忆提取使用的模型ID需与此处填写的模型ID一致（如 <Text code>qwen/qwen3-embedding-4b</Text>）。</Text>
+            </Space>
+          }
+        />
+
+        <Card title="记忆Embedding供应商与模型配置" bordered={false}>
+          <Form form={form} layout="vertical">
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item label="供应商" name="providerId" rules={[{ required: true, message: '请选择供应商' }]}>
+                  <Select
+                    placeholder="选择供应商"
+                    options={providerOptions}
+                    onChange={(value) => {
+                      if (value === 'openrouter') {
+                        form.setFieldsValue({ baseUrl: 'https://openrouter.ai/api/v1' });
+                      } else if (value === 'siliconflow') {
+                        form.setFieldsValue({ baseUrl: 'https://api.siliconflow.cn/v1' });
+                      } else if (value === 'openai') {
+                        form.setFieldsValue({ baseUrl: 'https://api.openai.com/v1' });
+                      }
+                    }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item label="Base URL" name="baseUrl" rules={[{ required: true, message: '请输入Base URL' }]}>
+                  <Input placeholder="https://openrouter.ai/api/v1" />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item label="模型ID" name="modelId" rules={[{ required: true, message: '请输入模型ID' }]} tooltip="填写供应商侧的模型ID，如 qwen/qwen3-embedding-4b">
+                  <Input placeholder="qwen/qwen3-embedding-4b" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={16}>
+                <Form.Item label="API Key" name="apiKey" rules={[{ required: true, message: '请输入API Key' }]}>
+                  <Input.Password placeholder="输入API Key" size="large" />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item label=" ">
+                  <Button icon={<ApiOutlined />} onClick={handleTest} loading={testing} size="large" block>
+                    测试连接
+                  </Button>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item>
+              <Space size="large">
+                <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} size="large" loading={saving}>
+                  保存记忆Embedding配置
+                </Button>
+                {config && (
+                  <Text type="secondary">
+                    当前配置: {config.providerId} / {config.modelId}
+                    {config.updatedAt && ` · 更新于 ${new Date(config.updatedAt).toLocaleString()}`}
+                  </Text>
+                )}
+              </Space>
+            </Form.Item>
+          </Form>
+        </Card>
+      </Space>
+    </Spin>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Main page (wraps knowledge-base tab + memory tab in Tabs)
+// ---------------------------------------------------------------------------
+
+const KnowledgeBaseEmbeddingTab: React.FC = () => {
   const [providerForm] = Form.useForm();
   const [configForm] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -336,15 +534,8 @@ const EmbeddingConfigPage: React.FC = () => {
   ];
 
   return (
-    <PageContainer
-      header={{
-        breadcrumb: {},
-        title: 'Embedding配置',
-        subTitle: '配置全局Embedding模型，主项目将使用此配置生成向量embeddings',
-      }}
-    >
-      <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ display: 'flex' }}>
+    <Spin spinning={loading}>
+      <Space direction="vertical" size="large" style={{ display: 'flex' }}>
           {/* Step 1: 供应商配置 */}
           <Card
             title={
@@ -610,6 +801,43 @@ const EmbeddingConfigPage: React.FC = () => {
           </Card>
         </Space>
       </Spin>
+  );
+};
+
+const EmbeddingConfigPage: React.FC = () => {
+  return (
+    <PageContainer
+      header={{
+        breadcrumb: {},
+        title: 'Embedding配置',
+        subTitle: '配置全局Embedding模型，用于知识库和记忆提取',
+      }}
+    >
+      <Tabs
+        defaultActiveKey="knowledge"
+        items={[
+          {
+            key: 'knowledge',
+            label: (
+              <Space>
+                知识库嵌入
+                <Tag color="blue">id=default</Tag>
+              </Space>
+            ),
+            children: <KnowledgeBaseEmbeddingTab />,
+          },
+          {
+            key: 'memory',
+            label: (
+              <Space>
+                记忆嵌入
+                <Tag color="purple">id=memory</Tag>
+              </Space>
+            ),
+            children: <MemoryEmbeddingTab />,
+          },
+        ]}
+      />
     </PageContainer>
   );
 };

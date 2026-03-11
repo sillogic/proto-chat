@@ -327,7 +327,7 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
           memoryLlmCost: memoryLlmCost.toFixed(6),
           freeUserCost: freeUserCost.toFixed(6),
           requestCount: totalRequestCount + totalImageRequests,
-          totalCost: (totalChatCost + embeddingCost + totalImageCost).toFixed(6),
+          totalCost: (totalChatCost + embeddingCost + totalImageCost + memoryCostTotal).toFixed(6),
         },
         dailyTrend,
         modelStats: modelStats.sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
@@ -524,7 +524,7 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       (revMemoryLlmOutputTokens / 1_000_000) * revMemoryLlmPrice.outputPrice;
     const revMemoryCostUSD = memoryEmbeddingCostUSD + revMemoryLlmCostUSD;
 
-    const totalCostUSD = totalChatCostUSD + embeddingCostUSD + imageCostUSD;
+    const totalCostUSD = totalChatCostUSD + embeddingCostUSD + imageCostUSD + revMemoryCostUSD;
 
     // 获取 Embedding token 数
     const embeddingTokenStats = await db.execute(sql`

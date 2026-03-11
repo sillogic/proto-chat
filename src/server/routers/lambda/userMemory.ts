@@ -23,12 +23,11 @@ import { UserPersonaModel } from '@/database/models/userMemory/persona';
 import { appEnv } from '@/envs/app';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { parseMemoryExtractionConfig } from '@/server/globalConfig/parseMemoryExtractionConfig';
 import {
   buildWorkflowPayloadInput,
-  MemoryExtractionWorkflowService,
   normalizeMemoryExtractionPayload,
 } from '@/server/services/memory/userMemory/extract';
+import { MemoryExtractionBullMQService } from '@/server/workers/memoryExtraction/service';
 
 const userMemoryProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -263,11 +262,10 @@ export const userMemoryRouter = router({
         };
       }
 
-      const { webhook, upstashWorkflowExtraHeaders } = parseMemoryExtractionConfig();
-      const baseUrl = webhook.baseUrl || appEnv.INTERNAL_APP_URL || appEnv.APP_URL;
+      const baseUrl = appEnv.INTERNAL_APP_URL || appEnv.APP_URL || '';
 
       try {
-        await MemoryExtractionWorkflowService.triggerProcessUsers(
+        await MemoryExtractionBullMQService.enqueueProcessUsers(
           buildWorkflowPayloadInput(
             normalizeMemoryExtractionPayload({
               asyncTaskId: taskId,
@@ -282,7 +280,6 @@ export const userMemoryRouter = router({
               userInitiated: true,
             }),
           ),
-          { extraHeaders: upstashWorkflowExtraHeaders },
         );
       } catch (error) {
         await ctx.asyncTaskModel.update(taskId, {

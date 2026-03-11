@@ -34,6 +34,7 @@ import { LayersEnum } from '@lobechat/types';
 import { eq } from 'drizzle-orm';
 import type { z } from 'zod';
 
+import { SystemEmbeddingModel } from '@/database/models/systemEmbedding';
 import {
   type IdentityEntryBasePayload,
   type IdentityEntryPayload,
@@ -41,7 +42,8 @@ import {
 } from '@/database/models/userMemory';
 import { userSettings } from '@/database/schemas';
 import { getServerDefaultFilesConfig } from '@/server/globalConfig';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+import { initModelRuntimeFromDB, initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 
 import type { ServerRuntimeRegistration } from './types';
 
@@ -143,6 +145,27 @@ const mapMemorySearchResult = (
 };
 
 const getEmbeddingRuntime = async (serverDB: LobeChatDatabase, userId: string) => {
+  // Prefer memory embedding config from DB (id='memory' → id='default' → env fallback)
+  const systemEmbeddingModel = new SystemEmbeddingModel(serverDB);
+  const systemConfig = await systemEmbeddingModel.getMemoryEmbeddingConfig();
+
+  if (systemConfig && systemConfig.providerId && systemConfig.modelId && systemConfig.apiKey) {
+    try {
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+      const result = await gateKeeper.decrypt(systemConfig.apiKey);
+      if (result.wasAuthentic && result.plaintext) {
+        const { runtime: agentRuntime, actualModel } = await initModelRuntimeWithUserPayload(
+          systemConfig.providerId,
+          { apiKey: result.plaintext, baseURL: systemConfig.baseUrl || undefined },
+          { model: systemConfig.modelId },
+        );
+        return { agentRuntime, embeddingModel: actualModel || systemConfig.modelId };
+      }
+    } catch {
+      // fall through to env config
+    }
+  }
+
   const { provider, model: embeddingModel } =
     getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
 
@@ -188,10 +211,46 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
   }
 
   searchMemory = async (params: SearchMemoryParams): Promise<SearchMemoryResult> => {
-    const { provider, model: embeddingModel } =
-      getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
+    // Prefer memory embedding config from DB (id='memory' → id='default' → env fallback)
+    const systemEmbeddingModel = new SystemEmbeddingModel(this.serverDB);
+    const systemConfig = await systemEmbeddingModel.getMemoryEmbeddingConfig();
 
-    const modelRuntime = await initModelRuntimeFromDB(this.serverDB, this.userId, provider);
+    let modelRuntime;
+    let embeddingModel: string;
+
+    if (systemConfig && systemConfig.providerId && systemConfig.modelId) {
+      embeddingModel = systemConfig.modelId;
+      let decryptedApiKey: string | undefined;
+      if (systemConfig.apiKey) {
+        try {
+          const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+          const result = await gateKeeper.decrypt(systemConfig.apiKey);
+          if (result.wasAuthentic) decryptedApiKey = result.plaintext;
+        } catch {
+          // fall through to env config
+        }
+      }
+      if (decryptedApiKey) {
+        const result = await initModelRuntimeWithUserPayload(
+          systemConfig.providerId,
+          { apiKey: decryptedApiKey, baseURL: systemConfig.baseUrl || undefined },
+          { model: embeddingModel },
+        );
+        modelRuntime = result.runtime;
+        embeddingModel = result.actualModel || embeddingModel;
+      }
+    }
+
+    if (!modelRuntime) {
+      const envConfig =
+        getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
+      embeddingModel = envConfig.model;
+      modelRuntime = await initModelRuntimeFromDB(
+        this.serverDB,
+        this.userId,
+        ENABLE_BUSINESS_FEATURES ? BRANDING_PROVIDER : envConfig.provider,
+      );
+    }
 
     const queryEmbeddings = await modelRuntime.embeddings({
       dimensions: DEFAULT_USER_MEMORY_EMBEDDING_DIMENSIONS,

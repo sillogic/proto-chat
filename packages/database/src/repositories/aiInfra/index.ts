@@ -388,9 +388,6 @@ export class AiInfraRepos {
     }
 
     if (fallbackProvider) {
-      console.warn(
-        `[ai-infra] no enabled provider found for ${label || 'model'} "${modelId}" (preferred ${preferredProviders}), falling back to server-configured provider "${fallbackProvider}".`,
-      );
       return normalizeProvider(fallbackProvider);
     }
 

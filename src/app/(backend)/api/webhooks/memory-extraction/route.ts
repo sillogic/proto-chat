@@ -5,12 +5,12 @@ import {
   buildWorkflowPayloadInput,
   MemoryExtractionExecutor,
   memoryExtractionPayloadSchema,
-  MemoryExtractionWorkflowService,
   normalizeMemoryExtractionPayload,
 } from '@/server/services/memory/userMemory/extract';
+import { MemoryExtractionBullMQService } from '@/server/workers/memoryExtraction/service';
 
 export const POST = async (req: Request) => {
-  const { webhook, upstashWorkflowExtraHeaders } = parseMemoryExtractionConfig();
+  const { webhook } = parseMemoryExtractionConfig();
 
   if (webhook.headers && Object.keys(webhook.headers).length > 0) {
     for (const [key, value] of Object.entries(webhook.headers)) {
@@ -41,13 +41,12 @@ export const POST = async (req: Request) => {
 
     const params = normalizeMemoryExtractionPayload(payload, origin);
     if (params.mode === 'workflow') {
-      const { workflowRunId } = await MemoryExtractionWorkflowService.triggerProcessUsers(
+      const job = await MemoryExtractionBullMQService.enqueueProcessUsers(
         buildWorkflowPayloadInput(params),
-        { extraHeaders: upstashWorkflowExtraHeaders },
       );
 
       return NextResponse.json(
-        { message: 'Memory extraction scheduled via workflow.', workflowRunId },
+        { jobId: job.id, message: 'Memory extraction scheduled via BullMQ.' },
         { status: 202 },
       );
     }

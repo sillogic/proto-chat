@@ -18,6 +18,7 @@ import { type LobeChatDatabase } from '@/database/type';
 import { type MemoryAgentConfig } from '@/server/globalConfig/parseMemoryExtractionConfig';
 import { parseMemoryExtractionConfig } from '@/server/globalConfig/parseMemoryExtractionConfig';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+import { ProtoChatService } from '@/server/services/protochat';
 import {
   type ProviderKeyVaultMap,
   type RuntimeResolveOptions,
@@ -72,11 +73,29 @@ export class UserPersonaService {
 
     const keyVaults: ProviderKeyVaultMap = Object.entries(runtimeState.runtimeConfig || {}).reduce(
       (acc, [provider, config]) => {
-        acc[provider.toLowerCase()] = config?.keyVaults;
+        // Only include providers that have an actual API key — empty {} is not useful.
+        if (config?.keyVaults?.apiKey) acc[provider.toLowerCase()] = config.keyVaults;
         return acc;
       },
       {} as ProviderKeyVaultMap,
     );
+
+    // Fallback: if the configured provider has no key in ai_providers, try protochat_providers.
+    const configuredProvider = this.agentConfig.provider;
+    if (configuredProvider && !keyVaults[configuredProvider]) {
+      try {
+        const creds = await new ProtoChatService(this.db).getSubProviderCredentials(
+          configuredProvider,
+        );
+        if (creds) {
+          keyVaults[configuredProvider] = creds;
+        } else {
+          console.warn(`[persona-service] getSubProviderCredentials returned null for provider: ${configuredProvider}`);
+        }
+      } catch (e) {
+        console.warn(`[persona-service] getSubProviderCredentials failed for provider: ${configuredProvider}`, e);
+      }
+    }
 
     const runtime = await resolveRuntimeAgentConfig({ ...this.agentConfig }, keyVaults, {
       fallback: {

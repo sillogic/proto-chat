@@ -114,3 +114,33 @@ export async function getSystemEmbeddingUsage(params?: { limit?: number; offset?
     params,
   });
 }
+
+/**
+ * 获取记忆专用Embedding配置（id='memory'）
+ */
+export async function getMemoryEmbeddingConfig() {
+  return request<ApiResponse<SystemEmbeddingConfig | null>>('/api/admin/system-embedding/memory', {
+    method: 'GET',
+  });
+}
+
+/**
+ * 更新记忆专用Embedding配置（id='memory'）
+ */
+export async function updateMemoryEmbeddingConfig(data: {
+  apiKey?: string;
+  baseUrl?: string;
+  contextTokens?: number;
+  currency?: string;
+  dimensions?: number;
+  displayName?: string;
+  inputPrice?: number;
+  modelId: string;
+  modelsSyncUrl?: string;
+  providerId: string;
+}) {
+  return request<ApiResponse>('/api/admin/system-embedding/memory', {
+    method: 'POST',
+    data,
+  });
+}

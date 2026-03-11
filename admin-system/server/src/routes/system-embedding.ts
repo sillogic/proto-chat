@@ -375,7 +375,9 @@ router.post('/test', authenticateToken, requirePermission('system.admin'), async
       const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
       console.error('[Embedding] Test failed:', errorData);
 
-      return res.status(response.status).json({
+      // 注意：不透传外部 API 的状态码（如 401/403），否则前端会误判为 session 失效并退出登录。
+      // 统一返回 400 表示"测试失败，但管理员本身仍然已认证"。
+      return res.status(400).json({
         details: errorData,
         message: `连接测试失败: ${errorData.error?.message || response.statusText}`,
         success: false,
@@ -402,6 +404,107 @@ router.post('/test', authenticateToken, requirePermission('system.admin'), async
       message: error.message || '测试连接时发生错误',
       success: false,
     });
+  }
+});
+
+/**
+ * GET /api/admin/system-embedding/memory - 获取记忆专用embedding配置
+ * 优先返回 id='memory' 的配置；若不存在则返回 null（不回落到 'default'）。
+ */
+router.get('/memory', authenticateToken, requirePermission('system.admin'), async (req, res) => {
+  try {
+    const [config] = await db
+      .select()
+      .from(systemEmbeddingConfig)
+      .where(eq(systemEmbeddingConfig.id, 'memory'))
+      .limit(1);
+
+    if (!config) {
+      return res.json({ data: null, success: true });
+    }
+
+    let decryptedApiKey: string | undefined;
+    if (config.apiKey) {
+      try {
+        const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+        const result = await gateKeeper.decrypt(config.apiKey);
+        if (result.wasAuthentic) decryptedApiKey = result.plaintext;
+      } catch (e) {
+        console.error('Failed to decrypt memory embedding API key:', e);
+      }
+    }
+
+    return res.json({
+      data: {
+        ...config,
+        apiKey: decryptedApiKey,
+        inputPrice: config.inputPrice ? parseFloat(config.inputPrice) : null,
+      },
+      success: true,
+    });
+  } catch (error) {
+    console.error('Get memory embedding config error:', error);
+    return res.status(500).json({ message: '获取记忆Embedding配置失败', success: false });
+  }
+});
+
+/**
+ * POST /api/admin/system-embedding/memory - 更新记忆专用embedding配置（id='memory'）
+ */
+router.post('/memory', authenticateToken, requirePermission('system.admin'), async (req, res) => {
+  try {
+    const validation = updateConfigSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        errors: validation.error.errors.map((err) => `${err.path.join('.')}: ${err.message}`),
+        message: '输入数据无效',
+        success: false,
+      });
+    }
+
+    const data = validation.data;
+    const now = new Date();
+
+    let encryptedApiKey: string | undefined;
+    if (data.apiKey) {
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+      encryptedApiKey = await gateKeeper.encrypt(data.apiKey);
+    }
+
+    const values: any = {
+      baseUrl: data.baseUrl,
+      contextTokens: data.contextTokens,
+      currency: data.currency || 'USD',
+      dimensions: data.dimensions || 1024,
+      displayName: data.displayName,
+      id: 'memory',
+      inputPrice: data.inputPrice?.toFixed(4),
+      modelId: data.modelId || 'placeholder-will-be-replaced',
+      modelsSyncUrl: data.modelsSyncUrl,
+      providerId: data.providerId,
+      updatedAt: now,
+    };
+
+    if (encryptedApiKey) {
+      values.apiKey = encryptedApiKey;
+    }
+
+    const [existing] = await db
+      .select()
+      .from(systemEmbeddingConfig)
+      .where(eq(systemEmbeddingConfig.id, 'memory'))
+      .limit(1);
+
+    if (existing) {
+      await db.update(systemEmbeddingConfig).set(values).where(eq(systemEmbeddingConfig.id, 'memory'));
+    } else {
+      await db.insert(systemEmbeddingConfig).values({ ...values, createdAt: now });
+    }
+
+    return res.json({ message: '记忆Embedding配置更新成功', success: true });
+  } catch (error) {
+    console.error('Update memory embedding config error:', error);
+    return res.status(500).json({ message: '更新记忆Embedding配置失败', success: false });
   }
 });
 

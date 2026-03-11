@@ -1,5 +1,4 @@
-import { DEFAULT_MINI_PROVIDER } from '@lobechat/business-const';
-import { DEFAULT_MINI_MODEL, DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM } from '@lobechat/const';
+import { DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM } from '@lobechat/const';
 
 import {
   type GlobalMemoryExtractionConfig,
@@ -72,8 +71,8 @@ export interface MemoryExtractionPrivateConfig {
 const parseGateKeeperAgent = (): MemoryAgentConfig => {
   const apiKey = process.env.MEMORY_USER_MEMORY_GATEKEEPER_API_KEY;
   const baseURL = process.env.MEMORY_USER_MEMORY_GATEKEEPER_BASE_URL;
-  const model = process.env.MEMORY_USER_MEMORY_GATEKEEPER_MODEL || DEFAULT_MINI_MODEL;
-  const provider = process.env.MEMORY_USER_MEMORY_GATEKEEPER_PROVIDER || DEFAULT_MINI_PROVIDER;
+  const model = process.env.MEMORY_USER_MEMORY_GATEKEEPER_MODEL || 'google/gemini-2.0-flash-001';
+  const provider = process.env.MEMORY_USER_MEMORY_GATEKEEPER_PROVIDER || 'openrouter';
   const language = process.env.MEMORY_USER_MEMORY_GATEKEEPER_LANGUAGE || 'English';
 
   return {
@@ -89,7 +88,7 @@ const parseLayerExtractorAgent = (fallbackModel: string): MemoryLayerExtractorCo
   const apiKey = process.env.MEMORY_USER_MEMORY_LAYER_EXTRACTOR_API_KEY;
   const baseURL = process.env.MEMORY_USER_MEMORY_LAYER_EXTRACTOR_BASE_URL;
   const model = process.env.MEMORY_USER_MEMORY_LAYER_EXTRACTOR_MODEL || fallbackModel;
-  const provider = process.env.MEMORY_USER_MEMORY_LAYER_EXTRACTOR_PROVIDER || DEFAULT_MINI_PROVIDER;
+  const provider = process.env.MEMORY_USER_MEMORY_LAYER_EXTRACTOR_PROVIDER || 'openrouter';
   const contextLimit = parseTokenLimitEnv(
     process.env.MEMORY_USER_MEMORY_LAYER_EXTRACTOR_CONTEXT_LIMIT,
   );
@@ -126,8 +125,7 @@ const parseEmbeddingAgent = (
   const provider =
     process.env.MEMORY_USER_MEMORY_EMBEDDING_PROVIDER ||
     fallbackProvider ||
-    defaultProvider ||
-    DEFAULT_MINI_PROVIDER;
+    defaultProvider;
 
   return {
     apiKey: process.env.MEMORY_USER_MEMORY_EMBEDDING_API_KEY ?? fallbackApiKey,
@@ -147,7 +145,7 @@ const parsePersonaWriterAgent = (
   const provider =
     process.env.MEMORY_USER_MEMORY_PERSONA_WRITER_PROVIDER ||
     fallbackProvider ||
-    DEFAULT_MINI_PROVIDER;
+    'openrouter';
 
   return {
     apiKey: process.env.MEMORY_USER_MEMORY_PERSONA_WRITER_API_KEY ?? fallbackApiKey,
@@ -202,10 +200,10 @@ const parsePreferredList = (value?: string) =>
 export const parseMemoryExtractionConfig = (): MemoryExtractionPrivateConfig => {
   const agentGateKeeper = parseGateKeeperAgent();
   const agentLayerExtractor = parseLayerExtractorAgent(agentGateKeeper.model);
-  const agentPersonaWriter = parsePersonaWriterAgent(agentGateKeeper.model);
+  const agentPersonaWriter = parsePersonaWriterAgent(agentGateKeeper.model, agentGateKeeper.provider);
   const embedding = parseEmbeddingAgent(
-    agentLayerExtractor.model,
-    agentLayerExtractor.provider || DEFAULT_MINI_PROVIDER,
+    DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM.model,
+    DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM.provider,
     agentGateKeeper.apiKey || agentLayerExtractor.apiKey,
   );
   const extractorObservabilityS3 = parseExtractorAgentObservabilityS3();
