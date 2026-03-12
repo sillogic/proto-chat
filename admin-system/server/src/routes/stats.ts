@@ -215,4 +215,145 @@ router.get('/', requirePermission('stats.read'), async (req: AuthenticatedReques
     }
 });
 
+// GET /api/admin/stats/consumption - 分页+筛选消费明细
+router.get('/consumption', requirePermission('stats.read'), async (req: AuthenticatedRequest, res) => {
+    try {
+        const { userId, dateFrom, dateTo, type, model, limit = '20', offset = '0' } = req.query;
+
+        if (!userId || typeof userId !== 'string') {
+            return res.status(400).json({ message: 'userId is required', success: false });
+        }
+
+        const limitNum = Math.min(100, parseInt(limit as string) || 20);
+        const offsetNum = parseInt(offset as string) || 0;
+
+        // Build dynamic WHERE conditions
+        const conditions = [
+            sql`ut.type = 'CONSUMPTION'`,
+            sql`ut.user_id = ${userId}`,
+        ];
+        if (dateFrom) conditions.push(sql`ut.created_at >= ${dateFrom as string}`);
+        if (dateTo) conditions.push(sql`ut.created_at <= ${dateTo as string}`);
+
+        const whereClause = sql.join(conditions, sql` AND `);
+
+        // Fetch total count
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as total
+            FROM user_transactions ut
+            LEFT JOIN messages m ON ut.ref_id = m.id
+            WHERE ${whereClause}
+        `);
+        const total = parseInt((countResult as any)[0]?.total || '0');
+
+        // Fetch page data
+        const rows = await db.execute(sql`
+            SELECT
+                ut.created_at as "createdAt",
+                ut.id,
+                ut.amount,
+                ut.metadata,
+                ut.ref_id as "refId",
+                m.model as msg_model,
+                m.provider as msg_provider,
+                m.metadata as msg_metadata
+            FROM user_transactions ut
+            LEFT JOIN messages m ON ut.ref_id = m.id
+            WHERE ${whereClause}
+            ORDER BY ut.created_at DESC
+            LIMIT ${limitNum} OFFSET ${offsetNum}
+        `);
+
+        // Post-process (same logic as existing endpoint)
+        let list = (rows as any[]).map((item: any) => {
+            const metadata = (item.metadata as any) || {};
+            const msgMetadata = (item.msg_metadata as any) || {};
+            const itemModel = metadata.model || item.msg_model || '-';
+            const provider = metadata.provider || item.msg_provider || '-';
+            let usageType = 'chat';
+            if (metadata.type) {
+                usageType = metadata.type.toLowerCase();
+            } else if (item.refId && item.refId.startsWith('gen_')) {
+                usageType = 'image';
+            } else if (item.msg_model) {
+                usageType = 'chat';
+            }
+            const totalInputTokens = metadata.totalInputTokens || msgMetadata.totalInputTokens || 0;
+            const totalOutputTokens = metadata.totalOutputTokens || msgMetadata.totalOutputTokens || 0;
+            return {
+                id: item.id,
+                createdAt: item.createdAt,
+                usageType,
+                model: itemModel,
+                provider,
+                totalInputTokens,
+                totalOutputTokens,
+                totalTokens: totalInputTokens + totalOutputTokens,
+                duration: metadata.duration || msgMetadata.duration || 0,
+                credits: Math.abs(Number(item.amount || 0)),
+            };
+        });
+
+        // Apply type/model filter in JS (metadata is JSON, hard to filter in SQL reliably)
+        if (type && typeof type === 'string') {
+            list = list.filter((item: any) => item.usageType === type);
+        }
+        if (model && typeof model === 'string') {
+            const modelLower = (model as string).toLowerCase();
+            list = list.filter((item: any) => item.model?.toLowerCase().includes(modelLower));
+        }
+
+        return res.json({ data: { list, total }, success: true });
+    } catch (error) {
+        console.error('Get consumption error:', error);
+        return res.status(500).json({ message: 'Failed to fetch consumption', success: false });
+    }
+});
+
+// GET /api/admin/stats/transactions - 分页+筛选流水记录
+router.get('/transactions', requirePermission('stats.read'), async (req: AuthenticatedRequest, res) => {
+    try {
+        const { userId, dateFrom, dateTo, limit = '20', offset = '0' } = req.query;
+
+        if (!userId || typeof userId !== 'string') {
+            return res.status(400).json({ message: 'userId is required', success: false });
+        }
+
+        const limitNum = Math.min(100, parseInt(limit as string) || 20);
+        const offsetNum = parseInt(offset as string) || 0;
+
+        const conditions = [sql`user_id = ${userId}`];
+        if (dateFrom) conditions.push(sql`created_at >= ${dateFrom as string}`);
+        if (dateTo) conditions.push(sql`created_at <= ${dateTo as string}`);
+        const whereClause = sql.join(conditions, sql` AND `);
+
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as total FROM user_transactions WHERE ${whereClause}
+        `);
+        const total = parseInt((countResult as any)[0]?.total || '0');
+
+        const rows = await db.execute(sql`
+            SELECT
+                id,
+                amount,
+                balance_after as "balanceAfter",
+                category,
+                description,
+                ref_id as "refId",
+                type,
+                user_id as "userId",
+                created_at as "createdAt"
+            FROM user_transactions
+            WHERE ${whereClause}
+            ORDER BY created_at DESC
+            LIMIT ${limitNum} OFFSET ${offsetNum}
+        `);
+
+        return res.json({ data: { list: rows, total }, success: true });
+    } catch (error) {
+        console.error('Get transactions error:', error);
+        return res.status(500).json({ message: 'Failed to fetch transactions', success: false });
+    }
+});
+
 export default router;
