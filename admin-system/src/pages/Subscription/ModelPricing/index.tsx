@@ -178,6 +178,21 @@ const ModelPricingManagement: React.FC = () => {
       },
     },
     {
+      title: (
+        <Space>
+          <span>Cache 读取用户价 (积分/1M Tokens)</span>
+          {multiplier !== 1 && <Tag color="gold">×{multiplier}</Tag>}
+        </Space>
+      ),
+      dataIndex: 'userCacheReadPrice',
+      search: false,
+      render: (_, record) => {
+        const cachePrice = parseFloat((record as any).userCacheReadPrice || '0');
+        if (cachePrice <= 0) return '-';
+        return <Tag color="gold">{cachePrice.toFixed(2)}</Tag>;
+      },
+    },
+    {
       title: '备注',
       dataIndex: 'memo',
       ellipsis: true,

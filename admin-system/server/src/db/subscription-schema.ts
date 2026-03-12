@@ -91,6 +91,12 @@ export const modelPricings = pgTable('model_pricings', {
     // User price = imageOutputPrice × multiplier
     userImageOutputPrice: numeric('user_image_output_price', { precision: 15, scale: 6 }).default('0').notNull(),
 
+    // Cache read pricing (for models supporting prompt caching)
+    // NULL/0 means no cache support; a value means cached tokens are billed at this cheaper rate
+    cacheReadPrice: numeric('cache_read_price', { precision: 15, scale: 6 }).default('0').notNull(),
+    // User price = cacheReadPrice × multiplier
+    userCacheReadPrice: numeric('user_cache_read_price', { precision: 15, scale: 6 }).default('0').notNull(),
+
     // Memo for admin
     memo: text('memo'),
 

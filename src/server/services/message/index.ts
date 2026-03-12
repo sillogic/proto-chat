@@ -224,7 +224,7 @@ export class MessageService {
    * Private helper to handle credit deduction logic
    */
   private async handleCreditDeduction(id: string, incomingMetadata: any) {
-    const { totalInputTokens, totalOutputTokens } = incomingMetadata;
+    const { totalInputTokens, totalOutputTokens, inputCachedTokens } = incomingMetadata;
 
     if (totalInputTokens || totalOutputTokens) {
       try {
@@ -236,15 +236,23 @@ export class MessageService {
             // Check if user is using their own API key for this provider
             const isUserConfig = await this.isUserUsingOwnConfig(message.provider);
 
+            const cachedTokens = inputCachedTokens || 0;
+            console.info(
+              `[Credit/Cache] model=${message.model} totalInput=${totalInputTokens || 0} cached=${cachedTokens} miss=${(totalInputTokens || 0) - cachedTokens} output=${totalOutputTokens || 0}`,
+            );
+
             const cost = await this.creditService.calculateCost(
               message.model,
               message.provider,
               totalInputTokens || 0,
               totalOutputTokens || 0,
-              isUserConfig, // Pass the flag to determine if user is using own config
+              0, // outputImageTokens (not applicable for chat messages)
+              isUserConfig,
+              cachedTokens,
             );
             if (cost > 0) {
               await this.creditService.deductCredits(cost, `Chat completion: ${message.model}`, id, {
+                inputCachedTokens: cachedTokens,
                 model: message.model,
                 provider: message.provider,
                 totalInputTokens: totalInputTokens || 0,

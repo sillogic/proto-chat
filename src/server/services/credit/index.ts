@@ -19,12 +19,16 @@ export class CreditService {
      * 统一的计费逻辑：所有供应商（包括 ProtoChat）都从 modelPricings 表查询用户价，
      * 用户价已经预先计算好（成本价 × 系数），直接使用，无需运行时计算，提升性能
      *
+     * Cache billing: if the model supports cache and cachedInputTokens > 0, those tokens
+     * are billed at the cheaper cacheReadPrice instead of the regular inputPrice.
+     *
      * @param model - Model ID (原始模型ID，如 'deepseek/deepseek-chat-v3.1')
      * @param provider - Provider ID (如 'openai', 'protochat' 等)
-     * @param inputTokens - Number of input tokens (text + vision, combined by model runtime)
+     * @param inputTokens - Number of input tokens (total, including cached)
      * @param outputTextTokens - Number of text output tokens
      * @param outputImageTokens - Number of image output tokens (for image generation models)
      * @param isUserConfig - Whether user is using their own API key (if true, no charge)
+     * @param cachedInputTokens - Number of cache-hit input tokens (billed at cacheReadPrice)
      */
     async calculateCost(
         model: string,
@@ -32,7 +36,8 @@ export class CreditService {
         inputTokens: number,
         outputTextTokens: number,
         outputImageTokens: number = 0,
-        isUserConfig: boolean = false
+        isUserConfig: boolean = false,
+        cachedInputTokens: number = 0
     ) {
         // If user is using their own API key, don't charge
         if (isUserConfig) {
@@ -54,7 +59,18 @@ export class CreditService {
         const userInputPrice = parseFloat(pricing.userInputPrice || '0');
         const userOutputPrice = parseFloat(pricing.userOutputPrice || '0');
         const userImageOutputPrice = parseFloat((pricing as any).userImageOutputPrice || '0');
+        const userCacheReadPrice = parseFloat((pricing as any).userCacheReadPrice || '0');
         const perRequestPrice = parseFloat(pricing.perRequestPrice || '0');
+
+        // Cache-aware input billing:
+        // - Cache-hit tokens billed at cacheReadPrice (cheaper), fallback to inputPrice if no cache pricing
+        // - Cache-miss tokens always billed at regular inputPrice
+        const safeCachedTokens = Math.min(cachedInputTokens, inputTokens);
+        const cacheMissTokens = inputTokens - safeCachedTokens;
+        const inputCost = (cacheMissTokens / 1_000_000) * userInputPrice
+            + (userCacheReadPrice > 0
+                ? (safeCachedTokens / 1_000_000) * userCacheReadPrice
+                : (safeCachedTokens / 1_000_000) * userInputPrice);
 
         // Image output token cost (for image generation models like Gemini Nano Banana).
         // Uses a separate per-token rate sourced from OpenRouter /models/{id}/endpoints.
@@ -67,13 +83,16 @@ export class CreditService {
         const allTokensZero = inputTokens === 0 && outputTextTokens === 0 && outputImageTokens === 0;
         const perCost = allTokensZero ? perRequestPrice : 0;
 
-        const cost = (inputTokens / 1_000_000) * userInputPrice
+        const cost = inputCost
             + (outputTextTokens / 1_000_000) * userOutputPrice
             + imageOutputCost
             + perCost;
 
         const subProviderInfo = pricing.subProvider ? ` (via ${pricing.subProvider})` : '';
-        console.info(`[Credit] Charging for ${provider}::${model}${subProviderInfo}, cost: ${cost.toFixed(4)} credits (in=${inputTokens} outText=${outputTextTokens} outImg=${outputImageTokens})`);
+        const cacheInfo = safeCachedTokens > 0
+            ? ` [cache: hit=${safeCachedTokens} miss=${cacheMissTokens} cacheReadPrice=${userCacheReadPrice.toFixed(2)}]`
+            : '';
+        console.info(`[Credit] Charging for ${provider}::${model}${subProviderInfo}: cost=%s credits (in=${inputTokens} outText=${outputTextTokens} outImg=${outputImageTokens})${cacheInfo}`, cost.toFixed(4));
 
         return cost;
     }

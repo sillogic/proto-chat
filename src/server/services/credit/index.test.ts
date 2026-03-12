@@ -59,7 +59,7 @@ describe('CreditService', () => {
       const mockDb = createMockDb();
       service = new CreditService(mockDb, mockUserId);
 
-      const cost = await service.calculateCost('gpt-4', 'openai', 1000, 500, true);
+      const cost = await service.calculateCost('gpt-4', 'openai', 1000, 500, 0, true);
 
       expect(cost).toBe(0);
       expect(mockDb.query.modelPricings.findFirst).not.toHaveBeenCalled();

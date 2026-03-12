@@ -162,7 +162,7 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
             )}
             <Popconfirm
               title={`确定要同步 ${id} 的最新模型列表吗？`}
-              description="这将更新模型信息和定价"
+              description="这将更新模型信息、定价和缓存价格（支持Cache的模型将标记⚡）"
               onConfirm={onSync}
             >
               <Button icon={<CloudSyncOutlined />} size="small" type="primary" loading={syncing}>

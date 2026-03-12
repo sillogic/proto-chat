@@ -1,6 +1,6 @@
 import { ModelIcon } from '@lobehub/icons';
 import { Tag, Typography, Tooltip, Space, Switch } from 'antd';
-import { LucideVideo, LucideEye, ToyBrick, AtomIcon, LucideGlobe, LucideFileJson, ImageIcon, Mic, AudioLines } from 'lucide-react';
+import { LucideVideo, LucideEye, ToyBrick, AtomIcon, LucideGlobe, LucideFileJson, ImageIcon, Mic, AudioLines, LucideZap } from 'lucide-react';
 import { LobeDefaultAiModelListItem } from 'model-bank';
 import React from 'react';
 import { Flexbox } from 'react-layout-kit';
@@ -15,6 +15,8 @@ interface ModelItemProps {
 
 const ModelItem: React.FC<ModelItemProps> = ({ model, enabled, onToggle }) => {
   const { id, displayName, pricing, contextWindowTokens, abilities, releasedAt } = model;
+  // DB models store capabilities in `capabilities` field; model-bank models use `abilities`
+  const capabilities = (model as any).capabilities || abilities;
 
   const formatPricing = () => {
     if (!pricing || !pricing.units) return null;
@@ -85,66 +87,73 @@ const ModelItem: React.FC<ModelItemProps> = ({ model, enabled, onToggle }) => {
 
       <Space size={12} align="center">
         <Space size={4}>
-          {abilities?.vision && (
+          {capabilities?.vision && (
             <Tooltip title="支持视觉识别 (Vision)">
               <Tag color="success" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <LucideEye size={14} style={{ color: '#52c41a' }} />
               </Tag>
             </Tooltip>
           )}
-          {abilities?.functionCall && (
+          {capabilities?.functionCall && (
             <Tooltip title="支持函数调用 (Function Call)">
               <Tag color="blue" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <ToyBrick size={14} style={{ color: '#1677ff' }} />
               </Tag>
             </Tooltip>
           )}
-          {abilities?.reasoning && (
+          {(capabilities?.reasoning || capabilities?.internalReasoning) && (
             <Tooltip title="支持逻辑推理 (Reasoning)">
               <Tag color="purple" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <AtomIcon size={14} style={{ color: '#722ed1' }} />
               </Tag>
             </Tooltip>
           )}
-          {abilities?.search && (
+          {(capabilities?.search || capabilities?.webSearch) && (
             <Tooltip title="支持联网搜索 (Search)">
               <Tag color="cyan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <LucideGlobe size={14} style={{ color: '#13c2c2' }} />
               </Tag>
             </Tooltip>
           )}
-          {abilities?.structuredOutput && (
+          {capabilities?.structuredOutput && (
             <Tooltip title="支持结构化输出 (JSON Mode)">
               <Tag color="orange" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <LucideFileJson size={14} style={{ color: '#fa8c16' }} />
               </Tag>
             </Tooltip>
           )}
-          {abilities?.imageOutput && (
+          {capabilities?.imageOutput && (
             <Tooltip title="支持图像生成 (Image Output)">
               <Tag color="geekblue" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <ImageIcon size={14} style={{ color: '#2f54eb' }} />
               </Tag>
             </Tooltip>
           )}
-          {(abilities as any)?.audioInput && (
+          {capabilities?.audioInput && (
             <Tooltip title="支持音频输入识别 (Audio Input)">
               <Tag color="orange" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <Mic size={14} style={{ color: '#fa8c16' }} />
               </Tag>
             </Tooltip>
           )}
-          {(abilities as any)?.audioOutput && (
+          {capabilities?.audioOutput && (
             <Tooltip title="支持音频输出生成 (Audio Output)">
               <Tag color="orange" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <AudioLines size={14} style={{ color: '#fa8c16' }} />
               </Tag>
             </Tooltip>
           )}
-          {abilities?.video && (
+          {capabilities?.video && (
             <Tooltip title="支持视频输入识别 (Video Input)">
               <Tag color="magenta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
                 <LucideVideo size={14} style={{ color: '#eb2f96' }} />
+              </Tag>
+            </Tooltip>
+          )}
+          {capabilities?.cacheSupport && (
+            <Tooltip title="支持提示词缓存 (Cache)：重复内容命中缓存后以更低价格计费">
+              <Tag color="gold" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', padding: 0, margin: 0, border: 'none' }}>
+                <LucideZap size={14} style={{ color: '#d48806' }} />
               </Tag>
             </Tooltip>
           )}

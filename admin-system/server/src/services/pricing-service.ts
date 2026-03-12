@@ -36,12 +36,16 @@ export class PricingService {
             const costInputPrice = parseFloat(pricing.inputPrice);
             const costOutputPrice = parseFloat(pricing.outputPrice);
             const costImageOutputPrice = parseFloat((pricing as any).imageOutputPrice || '0');
+            const costCacheReadPrice = parseFloat((pricing as any).cacheReadPrice || '0');
 
             await db.update(modelPricings)
                 .set({
                     userInputPrice: (costInputPrice * newMultiplier).toFixed(6),
                     userOutputPrice: (costOutputPrice * newMultiplier).toFixed(6),
                     userImageOutputPrice: (costImageOutputPrice * newMultiplier).toFixed(6),
+                    userCacheReadPrice: costCacheReadPrice > 0
+                        ? (costCacheReadPrice * newMultiplier).toFixed(6)
+                        : '0',
                     updatedAt: new Date(),
                 } as any)
                 .where(eq(modelPricings.id, pricing.id));
@@ -179,6 +183,8 @@ export class PricingService {
                         userInputPrice: (pricing.userInputPrice || '0') as string,
                         userOutputPrice: (pricing.userOutputPrice || '0') as string,
                         perRequestPrice: (pricing.perRequestPrice || '0') as string,
+                        cacheReadPrice: ((pricing as any).cacheReadPrice || '0') as string,
+                        userCacheReadPrice: ((pricing as any).userCacheReadPrice || '0') as string,
                         subProvider: (pricing.subProvider || null) as string | null,
                         memo: pricing.memo as string,
                         updatedAt: new Date(),
@@ -230,12 +236,19 @@ export class PricingService {
                     .where(eq(protochatModelPricing.modelId, model.id))
                     .limit(1);
 
+                let costCacheReadPrice = 0;
+
                 if (pricingResults.length === 0) {
                     console.warn(`[ProtoChat Sync] Model ${model.id} has no pricing in protochatModelPricing table`);
                 } else {
                     const pricing = pricingResults[0];
                     costInputPrice = Math.ceil(parseFloat(pricing.costInputPrice) * SYNC_MULTIPLIER * 100) / 100;
                     costOutputPrice = Math.ceil(parseFloat(pricing.costOutputPrice) * SYNC_MULTIPLIER * 100) / 100;
+                    // Cache read price: convert from USD/M to credits/M (only if supported)
+                    const rawCacheReadPrice = (pricing as any).costCacheReadPrice;
+                    costCacheReadPrice = rawCacheReadPrice && parseFloat(rawCacheReadPrice) > 0
+                        ? Math.ceil(parseFloat(rawCacheReadPrice) * SYNC_MULTIPLIER * 100) / 100
+                        : 0;
                 }
 
                 // Skip models with no pricing at all
@@ -246,6 +259,9 @@ export class PricingService {
 
                 const userInputPrice = Math.ceil(costInputPrice * multiplier * 100) / 100;
                 const userOutputPrice = Math.ceil(costOutputPrice * multiplier * 100) / 100;
+                const userCacheReadPrice = costCacheReadPrice > 0
+                    ? Math.ceil(costCacheReadPrice * multiplier * 100) / 100
+                    : 0;
 
                 pricingMap.set(entryKey, {
                     id: idGenerator('mp'),
@@ -261,6 +277,8 @@ export class PricingService {
                     perRequestPrice: '0',
                     imageOutputPrice: '0',
                     userImageOutputPrice: '0',
+                    cacheReadPrice: costCacheReadPrice.toFixed(2),
+                    userCacheReadPrice: userCacheReadPrice.toFixed(2),
                     memo: isImageModel
                         ? `[auto-image] ProtoChat (${subProvider.name || subProvider.id})`
                         : `ProtoChat (${subProvider.name || subProvider.id})`,

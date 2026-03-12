@@ -103,6 +103,8 @@ export const protochatModelPricing = pgTable(
         // 成本价（USD/百万tokens）
         costInputPrice: decimal('cost_input_price', { precision: 15, scale: 4 }).notNull(),
         costOutputPrice: decimal('cost_output_price', { precision: 15, scale: 4 }).notNull(),
+        // Cache读取成本价（USD/百万tokens），NULL表示不支持cache
+        costCacheReadPrice: decimal('cost_cache_read_price', { precision: 15, scale: 6 }),
 
         // 原始货币: 'USD', 'CNY'
         currency: varchar('currency', { length: 10 }).default('USD'),

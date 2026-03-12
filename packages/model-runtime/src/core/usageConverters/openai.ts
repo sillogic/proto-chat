@@ -66,6 +66,16 @@ export const convertOpenAIUsage = (
 
   log('convertOpenAIUsage data(completion-api): %O', finalData);
 
+  if (cachedTokens) {
+    console.info(
+      '[OpenAI/Usage] cache hit: prompt_tokens=%d  cached=%d  miss=%d  (%s%% cached)',
+      totalInputTokens,
+      cachedTokens,
+      inputCacheMissTokens,
+      ((cachedTokens / totalInputTokens) * 100).toFixed(0),
+    );
+  }
+
   return withUsageCost(finalData as ModelUsage, payload?.pricing);
 };
 

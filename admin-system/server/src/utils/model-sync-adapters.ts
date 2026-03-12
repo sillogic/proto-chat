@@ -13,8 +13,9 @@ export interface UnifiedModelData {
     maxOutput: number | null;
     parameters: any;
     pricing: {
-        inputPrice: number;  // USD per million tokens
-        outputPrice: number; // USD per million tokens
+        inputPrice: number;   // USD per million tokens
+        outputPrice: number;  // USD per million tokens
+        cacheReadPrice: number; // USD per million tokens for cache-hit tokens (0 = no cache support)
         isFree: boolean;
         currency: string;
     };
@@ -117,6 +118,9 @@ export class OpenRouterAdapter {
         const inputPrice = (rawInputPrice >= 0 ? rawInputPrice : 0) * 1_000_000;
         const outputPrice = (rawOutputPrice >= 0 ? rawOutputPrice : 0) * 1_000_000;
         const requestPrice = parseFloat(pricing.request || '0');
+        // Cache read price: cost per token for cache-hit tokens (much cheaper than regular input)
+        const rawCacheReadPrice = parseFloat(pricing.input_cache_read || '0');
+        const cacheReadPrice = (rawCacheReadPrice > 0 ? rawCacheReadPrice : 0) * 1_000_000;
         // Note: pricing.image is the vision INPUT per-token price, NOT image generation price.
         // Image generation pricing comes from /api/v1/models/{id}/endpoints → image_output field,
         // which is synced separately via syncImageOutputPricing(). Do not use pricing.image here.
@@ -181,7 +185,7 @@ export class OpenRouterAdapter {
                 // 高级功能
                 webSearch: pricing.web_search !== undefined && pricing.web_search !== '0',
                 internalReasoning: this.hasReasoningAbility(apiModel, pricing),
-                cacheSupport: pricing.input_cache_read !== undefined || pricing.input_cache_write !== undefined,
+                cacheSupport: cacheReadPrice > 0,
             },
             contextTokens: contextLength,
             maxOutput: maxOutput,
@@ -192,6 +196,7 @@ export class OpenRouterAdapter {
             pricing: {
                 inputPrice,
                 outputPrice,
+                cacheReadPrice,
                 isFree: inputPrice === 0 && outputPrice === 0 && requestPrice === 0,
                 currency: 'USD',
             },
@@ -277,6 +282,7 @@ export class GenericAdapter {
             pricing: {
                 inputPrice: (apiModel.input_price || 0),
                 outputPrice: (apiModel.output_price || 0),
+                cacheReadPrice: 0,
                 isFree: false,
                 currency: apiModel.currency || 'USD',
             },

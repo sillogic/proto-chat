@@ -1360,6 +1360,10 @@ async function syncModelToDatabase(
         modelId: modelData.id,
         costInputPrice: modelData.pricing.inputPrice.toFixed(4),
         costOutputPrice: modelData.pricing.outputPrice.toFixed(4),
+        // Store cache read price if supported (null = no cache support)
+        costCacheReadPrice: modelData.pricing.cacheReadPrice > 0
+            ? modelData.pricing.cacheReadPrice.toFixed(6)
+            : null,
         currency: 'USD',
         priceSource: 'api',
         isFree: modelData.pricing.isFree,

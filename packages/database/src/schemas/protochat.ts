@@ -117,6 +117,8 @@ export const protochatModelPricing = pgTable(
     // Cost price (USD/million tokens)
     costInputPrice: decimal('cost_input_price', { precision: 15, scale: 4 }).notNull(),
     costOutputPrice: decimal('cost_output_price', { precision: 15, scale: 4 }).notNull(),
+    // Cache read price (USD/million tokens). NULL = no cache support.
+    costCacheReadPrice: decimal('cost_cache_read_price', { precision: 15, scale: 6 }),
 
     // Original currency: 'USD', 'CNY'
     currency: varchar('currency', { length: 10 }).default('USD'),
