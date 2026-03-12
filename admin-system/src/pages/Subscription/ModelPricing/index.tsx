@@ -19,7 +19,7 @@ import {
   ProFormTextArea,
   ProTable,
 } from '@ant-design/pro-components';
-import { Button, message, Popconfirm, Space, Tag, Tabs, Tooltip, Typography } from 'antd';
+import { Alert, Button, message, Popconfirm, Space, Tag, Tabs, Tooltip, Typography } from 'antd';
 import { CloudSyncOutlined, SettingOutlined } from '@ant-design/icons';
 import { useRef, useState, useEffect } from 'react';
 import MultiplierConfig from './MultiplierConfig';
@@ -393,6 +393,21 @@ const ModelPricingManagement: React.FC = () => {
 
   return (
     <PageContainer header={{ title: '模型价格配置' }}>
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message={
+          <Space size="large">
+            <span>
+              积分汇率：<Tag color="blue">1 USD = {CREDITS_PER_USD.toLocaleString()} 积分</Tag>
+            </span>
+            <span style={{ color: '#8c8c8c', fontSize: 12 }}>
+              表中「USD/1M」列由积分价格除以 {CREDITS_PER_USD.toLocaleString()} 自动换算，仅供对账参考
+            </span>
+          </Space>
+        }
+      />
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
