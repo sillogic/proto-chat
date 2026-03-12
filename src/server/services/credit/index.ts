@@ -143,6 +143,28 @@ export class CreditService {
     }
 
     /**
+     * Record usage without deducting credits.
+     * Used for system-initiated model calls (e.g. title generation) where we want
+     * admin visibility but do not charge the user.
+     */
+    async recordUsage(description: string, metadata?: Record<string, unknown>): Promise<void> {
+        const balance = await this.db.query.userBalances.findFirst({
+            where: eq(userBalances.userId, this.userId),
+        });
+        const currentBalance = parseFloat(balance?.balance || '0');
+
+        await this.db.insert(userTransactions).values({
+            amount: '0.0000',
+            balanceAfter: currentBalance.toFixed(4),
+            category: 'CONSUMPTION',
+            description,
+            metadata,
+            type: 'CONSUMPTION',
+            userId: this.userId,
+        });
+    }
+
+    /**
      * Check if user has enough credits
      */
     async hasEnoughCredits(estimatedAmount: number = 0) {

@@ -6,6 +6,7 @@ import debug from 'debug';
 import { UserModel } from '@/database/models/user';
 import { type LobeChatDatabase } from '@/database/type';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { CreditService } from '@/server/services/credit';
 
 const log = debug('lobe-server:system-agent-service');
 
@@ -65,11 +66,32 @@ export class SystemAgentService {
       const payload = chainSummaryTitle(messages, locale);
 
       const modelRuntime = await initModelRuntimeFromDB(this.db, this.userId, provider);
-      const result = await modelRuntime.generateObject({
-        messages: payload.messages as any[],
-        model,
-        schema: TOPIC_TITLE_SCHEMA,
-      });
+
+      let capturedUsage: { inputTokens: number; outputTokens: number } | null = null;
+      const result = await modelRuntime.generateObject(
+        { messages: payload.messages as any[], model, schema: TOPIC_TITLE_SCHEMA },
+        {
+          onUsage: (usage) => {
+            capturedUsage = usage;
+          },
+        },
+      );
+
+      // Record usage for admin statistics without deducting credits
+      if (capturedUsage) {
+        const creditService = new CreditService(this.db, this.userId);
+        void creditService
+          .recordUsage('Topic title generation', {
+            model,
+            provider,
+            totalInputTokens: (capturedUsage as { inputTokens: number }).inputTokens,
+            totalOutputTokens: (capturedUsage as { outputTokens: number }).outputTokens,
+            type: 'title_generation',
+          })
+          .catch((e) => {
+            console.error('SystemAgentService: failed to record title generation usage:', e);
+          });
+      }
 
       const title = (result as { title?: string })?.title?.trim();
       if (!title) {
