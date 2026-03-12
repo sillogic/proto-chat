@@ -48,7 +48,8 @@ const DefaultModelConfigPage: React.FC = () => {
       }
 
       if (modelsRes.success) {
-        setModels(modelsRes.data);
+        // 与后台系统服务商"对话" Tab 保持一致：排除带 imageOutput 能力的 chat 模型
+        setModels(modelsRes.data.filter((m: any) => !m.abilities?.imageOutput));
       }
     } catch (error: any) {
       console.error('Failed to fetch data:', error);

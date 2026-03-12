@@ -661,8 +661,6 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
     try {
         const { provider, enabled, type, search } = req.query;
 
-        let query = db.select().from(protochatModels);
-
         // 动态构建查询条件
         const conditions = [];
         if (provider) {
@@ -670,6 +668,10 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
         }
         if (enabled !== undefined) {
             conditions.push(eq(protochatModels.enabled, enabled === 'true'));
+            // 同时要求所属供应商也是启用状态
+            if (enabled === 'true') {
+                conditions.push(eq(protochatProviders.enabled, true));
+            }
         }
         if (type) {
             conditions.push(eq(protochatModels.type, type as string));
@@ -678,9 +680,14 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
             conditions.push(like(protochatModels.displayName, `%${search}%`));
         }
 
+        const baseQuery = db
+            .select({ ...protochatModels })
+            .from(protochatModels)
+            .innerJoin(protochatProviders, eq(protochatModels.originalProvider, protochatProviders.id));
+
         const models = conditions.length > 0
-            ? await db.select().from(protochatModels).where(and(...conditions)).orderBy(protochatModels.displayName)
-            : await db.select().from(protochatModels).orderBy(protochatModels.displayName);
+            ? await baseQuery.where(and(...conditions)).orderBy(protochatModels.displayName)
+            : await baseQuery.orderBy(protochatModels.displayName);
 
         // 获取所有模型的定价信息
         const modelIds = models.map(m => m.id);
