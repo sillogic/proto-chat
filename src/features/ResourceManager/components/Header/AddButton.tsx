@@ -236,29 +236,22 @@ const AddButton = () => {
         key: 'upload-folder',
         label: <label htmlFor="folder-upload-input">{t('header.actions.uploadFolder')}</label>,
       },
-      {
-        type: 'divider',
-      },
-      {
-        children: [
-          {
-            icon: <Notion />,
-            key: 'connect-notion',
-            label: 'Notion',
-            onClick: handleOpenNotionGuide,
-          },
-        ],
-        icon: <Icon icon={Link} />,
-        key: 'connect',
-        label: t('header.actions.connect'),
-      },
+      // TODO: Re-enable when Notion import is fully migrated to createResource
+      // {
+      //   type: 'divider',
+      // },
+      // {
+      //   children: [{ icon: <Notion />, key: 'connect-notion', label: 'Notion', onClick: handleOpenNotionGuide }],
+      //   icon: <Icon icon={Link} />,
+      //   key: 'connect',
+      //   label: t('header.actions.connect'),
+      // },
     ],
     [
       category,
       currentFolderId,
       handleCreateFolder,
       handleOpenPageEditor,
-      handleOpenNotionGuide,
       libraryId,
       pushDockFileList,
       t,
