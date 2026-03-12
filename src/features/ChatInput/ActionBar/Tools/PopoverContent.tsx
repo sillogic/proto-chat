@@ -6,6 +6,8 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
+import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
+
 import ToolsList, { toolsListStyles } from './ToolsList';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -26,6 +28,7 @@ interface PopoverContentProps {
 const PopoverContent = memo<PopoverContentProps>(({ items, onOpenStore }) => {
   const { t } = useTranslation('setting');
   const navigate = useNavigate();
+  const { hideSkillStore } = useServerConfigStore(featureFlagsSelectors);
 
   const { close: closePopover } = usePopoverContext();
 
@@ -40,21 +43,24 @@ const PopoverContent = memo<PopoverContentProps>(({ items, onOpenStore }) => {
         <ToolsList items={items} />
       </div>
       <div className={styles.footer}>
-        <div
-          className={toolsListStyles.item}
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            closePopover();
-            onOpenStore();
-          }}
-        >
-          <div className={toolsListStyles.itemIcon}>
-            <Icon icon={Store} size={20} />
+        {/* TODO: 技能商店入口，待自建技能集后放开；通过 FEATURE_FLAGS=+hide_skill_store 控制隐藏 */}
+        {!hideSkillStore && (
+          <div
+            className={toolsListStyles.item}
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              closePopover();
+              onOpenStore();
+            }}
+          >
+            <div className={toolsListStyles.itemIcon}>
+              <Icon icon={Store} size={20} />
+            </div>
+            <div className={toolsListStyles.itemContent}>{t('skillStore.title')}</div>
+            <Icon className={styles.trailingIcon} icon={ChevronRight} size={16} />
           </div>
-          <div className={toolsListStyles.itemContent}>{t('skillStore.title')}</div>
-          <Icon className={styles.trailingIcon} icon={ChevronRight} size={16} />
-        </div>
+        )}
         <div
           className={toolsListStyles.item}
           role="button"

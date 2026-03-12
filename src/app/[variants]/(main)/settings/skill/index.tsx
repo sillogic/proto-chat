@@ -7,11 +7,13 @@ import { useTranslation } from 'react-i18next';
 
 import SettingHeader from '@/app/[variants]/(main)/settings/features/SettingHeader';
 import { createSkillStoreModal } from '@/features/SkillStore';
+import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 
 import SkillList from './features/SkillList';
 
 const Page = () => {
   const { t } = useTranslation('setting');
+  const { hideSkillStore } = useServerConfigStore(featureFlagsSelectors);
 
   const handleOpenStore = useCallback(() => {
     createSkillStoreModal();
@@ -22,9 +24,11 @@ const Page = () => {
       <SettingHeader
         title={t('tab.skill')}
         extra={
-          <Button icon={<Icon icon={Store} />} size="large" onClick={handleOpenStore}>
-            {t('skillStore.button')}
-          </Button>
+          !hideSkillStore && (
+            <Button icon={<Icon icon={Store} />} size="large" onClick={handleOpenStore}>
+              {t('skillStore.button')}
+            </Button>
+          )
         }
       />
       <SkillList />

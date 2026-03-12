@@ -37,6 +37,9 @@ export const FeatureFlagsSchema = z.object({
   // please contact us for more information: hello@lobehub.com
   commercial_hide_github: FeatureFlagValue.optional(),
   commercial_hide_docs: FeatureFlagValue.optional(),
+
+  // ProtoChat custom flags
+  hide_skill_store: FeatureFlagValue.optional(),
 });
 
 export type IFeatureFlags = z.infer<typeof FeatureFlagsSchema>;
@@ -87,6 +90,9 @@ export const DEFAULT_FEATURE_FLAGS: IFeatureFlags = {
   // please contact us for more information: hello@lobehub.com
   commercial_hide_github: true,
   commercial_hide_docs: false,
+
+  // ProtoChat custom flags
+  hide_skill_store: false,
 };
 
 export const mapFeatureFlagsEnvToState = (config: IFeatureFlags, userId?: string) => {
@@ -115,6 +121,8 @@ export const mapFeatureFlagsEnvToState = (config: IFeatureFlags, userId?: string
 
     hideGitHub: evaluateFeatureFlag(config.commercial_hide_github, userId),
     hideDocs: evaluateFeatureFlag(config.commercial_hide_docs, userId),
+
+    hideSkillStore: evaluateFeatureFlag(config.hide_skill_store, userId),
   };
 };
 
