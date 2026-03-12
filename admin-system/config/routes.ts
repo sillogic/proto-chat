@@ -79,6 +79,7 @@ export default [
     path: '/ai-providers',
     name: 'aiProviders',
     icon: 'RobotOutlined',
+    hideInMenu: true,
     component: './AiProviders',
   },
   {

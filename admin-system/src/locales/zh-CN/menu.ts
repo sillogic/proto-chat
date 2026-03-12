@@ -60,7 +60,7 @@ export default {
   'menu.analytics.costAnalysis': '成本分析',
   'menu.analytics.revenueOverview': '收支概览',
   'menu.analytics.userInsights': '用户洞察',
-  'menu.protochat': 'ProtoChat子供应商配置',
+  'menu.protochat': 'AI服务商',
   'menu.systemConfig': '系统配置',
   'menu.systemConfig.defaultModel': '默认模型配置',
   'menu.systemConfig.videoDefaultModel': '视频默认模型',
