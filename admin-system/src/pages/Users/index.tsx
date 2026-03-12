@@ -183,7 +183,7 @@ const UsersPage: React.FC = () => {
     try {
       const res = await purgeUser(userId);
       if (res.success) {
-        message.success(`账号已注销（清理消息 ${res.data?.deletedMessages ?? 0} 条，文件 ${res.data?.deletedFiles ?? 0} 个）`);
+        message.success(`账号已注销（消息 ${res.data?.deletedMessages ?? 0} 条，文件 ${res.data?.deletedFiles ?? 0} 个，OSS 对象 ${res.data?.deletedOssObjects ?? 0} 个）`);
         actionRef.current?.reload();
       } else {
         message.error(res.message || '注销失败');

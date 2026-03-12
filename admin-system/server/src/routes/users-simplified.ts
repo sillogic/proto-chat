@@ -6,6 +6,7 @@ import { db } from '../config/database';
 import { users } from '../db/schema';
 import { userExtensions } from '../db/user-extensions-schema';
 import { eq, sql } from 'drizzle-orm';
+import { deleteS3ObjectsByUrls } from '../utils/s3-client';
 
 const router: express.Router = express.Router();
 
@@ -311,7 +312,7 @@ router.delete('/:userId', requirePermission('users.write'), async (req: Authenti
       db.execute(sql`SELECT COUNT(*) AS c FROM files WHERE user_id = ${userId}`),
     ]);
 
-    // 1. 删除 betterAuth 登录凭据（阻断登录，auth_sessions/two_factor/passkey 均 cascade 自 accounts，但显式删除更安全）
+    // 1. 删除 betterAuth 登录凭据（阻断登录）
     await db.execute(sql`DELETE FROM accounts WHERE user_id = ${userId}`);
     await db.execute(sql`DELETE FROM auth_sessions WHERE user_id = ${userId}`);
     await db.execute(sql`DELETE FROM two_factor WHERE user_id = ${userId}`);
@@ -322,20 +323,44 @@ router.delete('/:userId', requirePermission('users.write'), async (req: Authenti
     await db.execute(sql`DELETE FROM topics WHERE user_id = ${userId}`);
     await db.execute(sql`DELETE FROM messages WHERE user_id = ${userId}`);
 
-    // 3. 删除知识库/文件/向量数据（chunks/embeddings 级联）
+    // 3. 清理 OSS 对象：找出只被该用户引用的 global_files（无其他用户共享）
+    const exclusiveGlobalFiles = await db.execute(sql`
+      SELECT gf.hash_id, gf.url
+      FROM global_files gf
+      INNER JOIN files f ON f.file_hash = gf.hash_id AND f.user_id = ${userId}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM files f2
+        WHERE f2.file_hash = gf.hash_id AND f2.user_id != ${userId}
+      )
+    `);
+    const exclusiveUrls = (exclusiveGlobalFiles as any[]).map((r: any) => r.url).filter(Boolean);
+    const exclusiveHashIds = (exclusiveGlobalFiles as any[]).map((r: any) => r.hash_id).filter(Boolean);
+
+    // 先删 OSS 对象，再删 DB 记录
+    let deletedOssCount = 0;
+    if (exclusiveUrls.length > 0) {
+      deletedOssCount = await deleteS3ObjectsByUrls(exclusiveUrls);
+      if (exclusiveHashIds.length > 0) {
+        await db.execute(sql`
+          DELETE FROM global_files WHERE hash_id = ANY(${exclusiveHashIds})
+        `);
+      }
+    }
+
+    // 4. 删除用户文件/知识库/向量数据（chunks/embeddings 级联）
     await db.execute(sql`DELETE FROM files WHERE user_id = ${userId}`);
     await db.execute(sql`DELETE FROM documents WHERE user_id = ${userId}`);
     await db.execute(sql`DELETE FROM knowledge_bases WHERE user_id = ${userId}`);
 
-    // 4. 删除用户扩展信息
+    // 5. 删除用户扩展信息
     await db.delete(userExtensions).where(eq(userExtensions.userId, userId));
 
-    // 5. 清理邮箱验证记录（释放 identifier 槽位）
+    // 6. 清理邮箱验证记录（释放 identifier 槽位）
     if (oldEmail) {
       await db.execute(sql`DELETE FROM verifications WHERE identifier = ${oldEmail}`);
     }
 
-    // 6. 匿名化用户行（保留 userId 以维持 user_balances/user_transactions 外键引用）
+    // 7. 匿名化用户行（保留 userId 以维持 user_balances/user_transactions 外键引用）
     const anonymousEmail = `deleted_${userId}@deleted.invalid`;
     await db.update(users).set({
       email: anonymousEmail,
@@ -355,7 +380,7 @@ router.delete('/:userId', requirePermission('users.write'), async (req: Authenti
       data: {
         deletedMessages: Number((msgCount as any)[0]?.c ?? 0),
         deletedFiles: Number((fileCount as any)[0]?.c ?? 0),
-        note: 'S3 对象存储文件未清理，积分及交易记录已保留',
+        deletedOssObjects: deletedOssCount,
       },
     });
   } catch (error: any) {
