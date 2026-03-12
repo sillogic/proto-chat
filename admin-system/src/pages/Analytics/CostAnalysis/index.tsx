@@ -379,21 +379,7 @@ const CostAnalysis: React.FC = () => {
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={loading}>
-            <Statistic
-              title={
-                <Space>
-                  <span>标题生成请求数</span>
-                  <Tag color="geekblue">标题</Tag>
-                </Space>
-              }
-              value={data?.overview?.titleRequestCount || 0}
-              groupSeparator=","
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card loading={loading}>
             <Statistic
               title={
@@ -407,7 +393,7 @@ const CostAnalysis: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card loading={loading}>
             <Statistic
               title={
@@ -421,7 +407,7 @@ const CostAnalysis: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card loading={loading}>
             <Statistic
               title="标题生成成本 (USD)"
