@@ -66,4 +66,5 @@ export default {
   'menu.systemConfig.videoDefaultModel': '视频默认模型',
   'menu.systemConfig.embedding': 'Embedding配置',
   'menu.systemConfig.rules': '系统规则',
+  'menu.systemConfig.basicParams': '后台基础参数',
 };

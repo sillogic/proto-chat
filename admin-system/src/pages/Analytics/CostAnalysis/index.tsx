@@ -1,11 +1,12 @@
 import { PageContainer, ProCard, ProTable } from '@ant-design/pro-components';
 import { Column } from '@ant-design/plots';
 import { useRequest } from '@umijs/max';
-import { Card, Col, Row, Statistic, DatePicker, Space, Tag, Typography, InputNumber, Button, Tooltip, Segmented } from 'antd';
-import { InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Statistic, DatePicker, Space, Tag, Typography, Tooltip, Segmented } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 import dayjs, { Dayjs } from 'dayjs';
-import { getAnalyticsCost, getExchangeRate } from '../../../services/analytics';
+import { getAnalyticsCost } from '../../../services/analytics';
+import { getAdminParam } from '../../../services/system-params';
 
 const { Text } = Typography;
 
@@ -16,22 +17,16 @@ type TokenType = 'input' | 'output';
 const CostAnalysis: React.FC = () => {
   const [period, setPeriod] = useState<PeriodType>('month');
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
-  const [exchangeRate, setExchangeRate] = useState<number>(1.000000);
+  const [exchangeRate, setExchangeRate] = useState<number>(7.3);
   const [tokenType, setTokenType] = useState<TokenType>('input');
 
-  // Fetch real-time exchange rate on mount (force refresh)
-  const { loading: rateLoading, run: fetchRate } = useRequest(getExchangeRate, {
+  const { loading: rateLoading } = useRequest(() => getAdminParam('usd_cny_rate'), {
     onSuccess: (result) => {
-      const rate = result?.data?.rate || 7.3;
-      setExchangeRate(rate);
+      const value = (result as any)?.data?.value ?? (result as any)?.value;
+      const rate = parseFloat(value || '7.3');
+      if (rate > 0) setExchangeRate(rate);
     },
-    defaultParams: [true],
-    ready: true,
   });
-
-  const handleRefreshRate = () => {
-    fetchRate(true); 
-  };
 
   const handleDateChange = (date: Dayjs | null) => {
     if (date) {
@@ -137,28 +132,7 @@ const CostAnalysis: React.FC = () => {
             {rateLoading ? (
               <Text type="secondary">加载中...</Text>
             ) : (
-              <>
-                <InputNumber
-                  value={exchangeRate}
-                  onChange={(v) => {
-                    setExchangeRate(v || 7.3);
-                  }}
-                  min={1}
-                  max={20}
-                  precision={6}
-                  style={{ width: 100 }}
-                  disabled
-                />
-                <Tooltip title="刷新实时汇率">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<ReloadOutlined />}
-                    onClick={handleRefreshRate}
-                    loading={rateLoading}
-                  />
-                </Tooltip>
-              </>
+              <Text strong>{exchangeRate}</Text>
             )}
           </Space>
         </Space>

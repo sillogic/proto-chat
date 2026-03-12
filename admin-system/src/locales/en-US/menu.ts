@@ -65,4 +65,5 @@ export default {
   'menu.systemConfig.defaultModel': 'Default Model',
   'menu.systemConfig.embedding': 'Embedding Config',
   'menu.systemConfig.rules': 'System Rules',
+  'menu.systemConfig.basicParams': 'Basic Params',
 };

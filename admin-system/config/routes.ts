@@ -140,6 +140,11 @@ export default [
         component: './SystemConfig/Rules',
       },
       {
+        path: '/system-config/basic-params',
+        name: 'basicParams',
+        component: './SystemConfig/BasicParams',
+      },
+      {
         path: '/system-config',
         redirect: '/system-config/default-model',
       },

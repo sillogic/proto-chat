@@ -130,3 +130,17 @@ export const systemDefaultModelConfig = pgTable('system_default_model_config', {
 
 export type SystemDefaultModelConfig = typeof systemDefaultModelConfig.$inferSelect;
 export type NewSystemDefaultModelConfig = typeof systemDefaultModelConfig.$inferInsert;
+
+/**
+ * 后台基础参数表（通用 key-value）
+ * 存储后台系统级别的全局参数，与主项目参数分开管理
+ */
+export const systemAdminParams = pgTable('system_admin_params', {
+  key: varchar('key', { length: 100 }).primaryKey(),
+  value: text('value').notNull(),
+  description: text('description'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SystemAdminParam = typeof systemAdminParams.$inferSelect;
+export type NewSystemAdminParam = typeof systemAdminParams.$inferInsert;
