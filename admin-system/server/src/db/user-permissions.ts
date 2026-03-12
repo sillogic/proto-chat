@@ -23,6 +23,7 @@ export class UserPermissions {
           'users.read', 'users.write',
           'plans.read', 'plans.write',
           'stats.read', 'stats.write',
+          'feedbacks.read', 'feedbacks.write',
           'system.admin'
         ];
 
@@ -34,7 +35,8 @@ export class UserPermissions {
           'files.read', 'files.write',
 
           // 后台系统权限
-          'users.read', 'stats.read'
+          'users.read', 'stats.read',
+          'feedbacks.read'
         ];
 
       case 'user':

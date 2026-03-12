@@ -49,6 +49,8 @@ export const authenticateToken = async (
         'plans.read',
         'plans.write',
         'stats.read',
+        'feedbacks.read',
+        'feedbacks.write',
         'system.admin'
       ], // 管理员默认权限
       is_active: true

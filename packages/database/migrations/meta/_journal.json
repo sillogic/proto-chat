@@ -590,10 +590,31 @@
       "breakpoints": true
     },
     {
+      "idx": 90,
+      "version": "7",
+      "when": 1772300000000,
+      "tag": "0090_memory_vectors_revert_to_1024",
+      "breakpoints": true
+    },
+    {
       "idx": 91,
       "version": "7",
       "when": 1741750000000,
       "tag": "0091_add_image_output_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1772400000000,
+      "tag": "0092_add_cache_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1772500000000,
+      "tag": "0093_add_user_feedbacks",
       "breakpoints": true
     }
   ],

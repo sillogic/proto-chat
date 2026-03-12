@@ -1,5 +1,7 @@
 import { db } from '../config/database';
 import { userFeedbacks, type FeedbackStatus } from '../db/feedback-schema';
+
+export type { FeedbackStatus };
 import { desc, eq, and, like, or, SQL } from 'drizzle-orm';
 
 export interface FeedbackListQuery {
