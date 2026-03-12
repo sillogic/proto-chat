@@ -6,7 +6,7 @@ import { Typography, Tabs, Badge, Empty, message, Card, Button, Popconfirm, Inpu
 import { CloudSyncOutlined, SearchOutlined } from '@ant-design/icons';
 import type { AiProviderConfig } from '@/services/ai-provider';
 import ModelItem from './ModelItem';
-import { LucideMessageSquare, LucideImage, LucideType, LucideMic, LucideScanEye, LucideRefreshCcw } from 'lucide-react';
+import { LucideMessageSquare, LucideImage, LucideType, LucideMic } from 'lucide-react';
 
 const { Title, Text } = Typography;
 
@@ -80,13 +80,18 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
     return models.filter((m: any) => m.enabled).map((m: any) => m.id);
   }, [models]);
 
-  const filteredModels = useMemo(() => {
-    let filtered = models;
+  // 按 tab key 过滤模型（优先按 abilities，兼顾 type）
+  const filterByTab = (list: any[], tab: string) => {
+    if (tab === 'all') return list;
+    if (tab === 'chat') return list.filter((m: any) => m.type === 'chat' && !m.abilities?.imageOutput);
+    if (tab === 'image') return list.filter((m: any) => m.type === 'image' || m.abilities?.imageOutput);
+    if (tab === 'stt') return list.filter((m: any) => m.type === 'stt' || m.abilities?.audioInput);
+    if (tab === 'tts') return list.filter((m: any) => m.type === 'tts' || m.abilities?.audioOutput);
+    return list.filter((m: any) => m.type === tab);
+  };
 
-    // 按类型过滤
-    if (activeTab !== 'all') {
-      filtered = filtered.filter((m: any) => m.type === activeTab);
-    }
+  const filteredModels = useMemo(() => {
+    let filtered = filterByTab(models, activeTab);
 
     // 按搜索文本过滤
     if (searchText.trim()) {
@@ -127,14 +132,18 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
     }
   };
 
-  const tabs = [
-    { key: 'all', label: '全部', icon: null },
-    { key: 'chat', label: '对话', icon: <LucideMessageSquare size={14} /> },
-    { key: 'image', label: '图片', icon: <LucideImage size={14} /> },
-    { key: 'embedding', label: '向量化', icon: <LucideScanEye size={14} /> },
-    { key: 'stt', label: 'ASR', icon: <LucideMic size={14} /> },
-    { key: 'tts', label: 'TTS', icon: <LucideType size={14} /> },
+  const allTabs = [
+    { key: 'all', label: '全部', icon: null, alwaysShow: true },
+    { key: 'chat', label: '对话', icon: <LucideMessageSquare size={14} />, alwaysShow: true },
+    { key: 'image', label: '图片生成', icon: <LucideImage size={14} />, alwaysShow: false },
+    { key: 'stt', label: 'ASR', icon: <LucideMic size={14} />, alwaysShow: false },
+    { key: 'tts', label: 'TTS', icon: <LucideType size={14} />, alwaysShow: false },
   ];
+
+  // 只显示有模型的 tab（全部和对话始终显示）
+  const tabs = allTabs.filter(
+    (tab) => tab.alwaysShow || filterByTab(models, tab.key).length > 0,
+  );
 
   const title = (
     <Flexbox horizontal align="center" justify="space-between" style={{ width: '100%' }}>
