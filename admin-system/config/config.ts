@@ -167,15 +167,13 @@ export default defineConfig({
   //     projectName: 'swagger',
   //   },
   // ],
-  mock: {
-    include: ['mock/**/*', 'src/pages/**/_mock.ts'],
-  },
+  mock: false,
   /**
    * @name 是否开启 mako
    * @description 使用 mako 极速研发
    * @doc https://umijs.org/docs/api/config#mako
    */
-  mako: {},
+  // mako: {}, // 暂时禁用：mako 在部分环境下会导致 build 卡死
   esbuildMinifyIIFE: true,
   requestRecord: {},
   exportStatic: {},
