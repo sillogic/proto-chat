@@ -16,6 +16,7 @@ const prefixes = {
   evalDatasets: 'ds',
   evalRuns: 'run',
   evalTestCases: 'case',
+  feedbacks: 'fb',
   files: 'file',
   generationBatches: 'gb',
   generationTopics: 'gt',

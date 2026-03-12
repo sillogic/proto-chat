@@ -24,6 +24,7 @@ import systemEmbeddingRoutes from './routes/system-embedding';
 import analyticsRoutes from './routes/analytics';
 import paymentsRoutes from './routes/payments';
 import systemAdminParamsRoutes from './routes/system-admin-params';
+import feedbackRoutes from './routes/feedbacks';
 import process from 'node:process';
 // 加载环境变量 - 必须在其他 import 之前
 dotenv.config({ override: true });
@@ -86,6 +87,7 @@ app.use('/api/admin/system-config/video-default-model', systemVideoModelRoutes);
 app.use('/api/admin/system-embedding', systemEmbeddingRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/admin/system-config/params', systemAdminParamsRoutes);
+app.use('/api/admin/feedbacks', feedbackRoutes);
 
 // 托管前端静态文件
 const distPath = path.join(__dirname, '../../dist');

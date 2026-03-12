@@ -1,6 +1,5 @@
 'use client';
 
-import { MarketSDK } from '@lobehub/market-sdk';
 import { Button, Flexbox, Icon, Modal } from '@lobehub/ui';
 import { App, Form, Input, Upload } from 'antd';
 import { ImagePlus, Send } from 'lucide-react';
@@ -8,6 +7,7 @@ import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import TextArea from '@/components/TextArea';
+import { lambdaClient } from '@/libs/trpc/client';
 import { useFileStore } from '@/store/file';
 import { userProfileSelectors } from '@/store/user/selectors';
 import { useUserStore } from '@/store/user/store';
@@ -74,35 +74,23 @@ const FeedbackModal = memo<FeedbackModalProps>(({ initialValues, onClose, open }
       const values = await form.validateFields();
       setLoading(true);
 
-      const sdk = new MarketSDK();
-
-      // Build message with screenshot if available
-      let feedbackMessage = values.message;
-      if (screenshotUrl) {
-        feedbackMessage += `\n\n**Screenshot**: ${screenshotUrl}`;
-      }
-
-      const response = await sdk.feedback.submitFeedback({
+      await lambdaClient.feedback.submit.mutate({
         clientInfo: {
           language: navigator.language,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           url: window.location.href,
           userAgent: navigator.userAgent,
         },
-        email: userEmail,
-        message: feedbackMessage,
+        message: values.message,
+        screenshotUrl: screenshotUrl ?? null,
         title: values.title,
+        userEmail: userEmail ?? null,
       });
 
       message.success(t('feedback.success'));
       form.resetFields();
       setScreenshotUrl(null);
       onClose();
-
-      // Optionally show the issue URL to the user
-      if (response.issueUrl) {
-        console.info('Feedback submitted:', response.issueUrl);
-      }
     } catch (error: any) {
       console.error('[FeedbackModal] Submission failed:', error);
       message.error(t('feedback.errors.submitFailed'));

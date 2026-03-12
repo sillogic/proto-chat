@@ -115,6 +115,12 @@ export default [
     component: './ProtoChat/Providers',
   },
   {
+    path: '/feedbacks',
+    name: 'feedbacks',
+    icon: 'MessageOutlined',
+    component: './Feedbacks',
+  },
+  {
     path: '/system-config',
     name: 'systemConfig',
     icon: 'SettingOutlined',
