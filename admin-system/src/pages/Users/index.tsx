@@ -1,9 +1,17 @@
 import { ActionType, PageContainer, ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd';
+import { Button, Form, Input, Modal, Popconfirm, Select, Space, Tabs, Tag, Typography, message } from 'antd';
 import { Drawer } from 'antd';
 import { useRef, useState } from 'react';
 
 const { Text } = Typography;
+
+const TABS = [
+  { key: 'all',    label: '全部' },
+  { key: 'active', label: '正常' },
+  { key: 'paid',   label: '付费用户' },
+  { key: 'free',   label: '免费用户' },
+  { key: 'purged', label: '已注销' },
+];
 
 import { getUserList, updateUserPlan, updateUserStatus, purgeUser } from '@/services/admin';
 import type { User, UserListParams } from '@/services/api.d';
@@ -14,6 +22,7 @@ const { Option } = Select;
 
 const UsersPage: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
+  const [activeTab, setActiveTab] = useState('all');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [usageDrawerVisible, setUsageDrawerVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -77,7 +86,10 @@ const UsersPage: React.FC = () => {
       title: '状态',
       dataIndex: 'banned',
       width: 80,
-      render: (banned) => {
+      render: (banned, record) => {
+        if (record.email?.endsWith('@deleted.invalid')) {
+          return <Tag color="default">已注销</Tag>;
+        }
         const isBanned = banned === true || banned === 't' || banned === 1;
         return <Tag color={isBanned ? 'red' : 'green'}>{isBanned ? '已封禁' : '正常'}</Tag>;
       },
@@ -117,11 +129,15 @@ const UsersPage: React.FC = () => {
       title: '操作',
       width: 200,
       search: false,
-      render: (_, record) => (
+      render: (_, record) => {
+        const isPurged = record.email?.endsWith('@deleted.invalid');
+        return (
         <Space>
+          {!isPurged && (
           <Button size="small" type="link" onClick={() => handleEditUser(record)}>
             编辑
           </Button>
+          )}
           <Button
             size="small"
             type="link"
@@ -132,25 +148,16 @@ const UsersPage: React.FC = () => {
           >
             用量
           </Button>
-          {record.banned ? (
-            <Button
-              size="small"
-              type="link"
-              onClick={() => handleUpdateUserStatus(record.id, false)}
-            >
+          {!isPurged && (record.banned ? (
+            <Button size="small" type="link" onClick={() => handleUpdateUserStatus(record.id, false)}>
               解封
             </Button>
           ) : (
-            <Button
-              size="small"
-              type="link"
-              danger
-              onClick={() => handleUpdateUserStatus(record.id, true)}
-            >
+            <Button size="small" type="link" danger onClick={() => handleUpdateUserStatus(record.id, true)}>
               封禁
             </Button>
-          )}
-          <Popconfirm
+          ))}
+          {!isPurged && <Popconfirm
             title="注销账号"
             description={
               <div style={{ maxWidth: 260 }}>
@@ -171,9 +178,10 @@ const UsersPage: React.FC = () => {
             >
               注销
             </Button>
-          </Popconfirm>
+          </Popconfirm>}
         </Space>
-      ),
+        );
+      },
     },
   ];
 
@@ -217,12 +225,21 @@ const UsersPage: React.FC = () => {
   return (
     <PageContainer>
       <ProTable<User, UserListParams>
-        headerTitle="用户管理"
+        headerTitle={
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => {
+              setActiveTab(key);
+              actionRef.current?.reload();
+            }}
+            items={TABS.map((t) => ({ key: t.key, label: t.label }))}
+            style={{ marginBottom: -12 }}
+          />
+        }
         actionRef={actionRef}
         rowKey="id"
-        search={{
-          labelWidth: 120,
-        }}
+        params={{ accountStatus: activeTab }}
+        search={{ labelWidth: 120 }}
         toolBarRender={() => [
           <Button key="refresh" onClick={() => actionRef.current?.reload()}>
             刷新

@@ -18,19 +18,17 @@ router.get('/', requirePermission('users.read'), async (req: AuthenticatedReques
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
-    // 前端参数
-    const keyword = req.query.keyword as string || '';  // 邮箱搜索
-    const planType = req.query.planType as string || '';  // 方案类型筛选
-
-    console.log('查询参数:', { keyword, planType, page, limit });
+    const keyword = req.query.keyword as string || '';
+    const planType = req.query.planType as string || '';
+    // all | active | paid | free | purged
+    const accountStatus = req.query.accountStatus as string || 'all';
 
     const offset = (page - 1) * limit;
 
-    // 使用简化的用量服务获取用户列表和统计
     const result = await usageService.getAllUsersUsage(limit, offset);
     let filteredUsers = result.users;
 
-    // 按邮箱筛选
+    // 按邮箱搜索
     if (keyword) {
       filteredUsers = filteredUsers.filter(user =>
         user.email?.toLowerCase().includes(keyword.toLowerCase())
@@ -42,6 +40,18 @@ router.get('/', requirePermission('users.read'), async (req: AuthenticatedReques
       filteredUsers = filteredUsers.filter(user =>
         (user.planType || '').toLowerCase() === planType.toLowerCase()
       );
+    }
+
+    // 按账号状态 Tab 筛选
+    const isPurged = (u: any) => u.email?.endsWith('@deleted.invalid');
+    if (accountStatus === 'active') {
+      filteredUsers = filteredUsers.filter(u => !isPurged(u));
+    } else if (accountStatus === 'paid') {
+      filteredUsers = filteredUsers.filter(u => !isPurged(u) && (u.planType || 'free') !== 'free');
+    } else if (accountStatus === 'free') {
+      filteredUsers = filteredUsers.filter(u => !isPurged(u) && (u.planType || 'free') === 'free');
+    } else if (accountStatus === 'purged') {
+      filteredUsers = filteredUsers.filter(u => isPurged(u));
     }
 
     return res.json({
