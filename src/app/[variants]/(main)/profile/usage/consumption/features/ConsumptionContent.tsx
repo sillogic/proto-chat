@@ -3,12 +3,11 @@
 import { Flexbox, Tag } from '@lobehub/ui';
 import { Button, DatePicker, Empty, Input, Pagination, Select, Space, Table, Typography } from 'antd';
 import { createStyles } from 'antd-style';
-import type dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { memo, useState } from 'react';
 
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';
-import { formatDate } from '@/utils/format';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -91,7 +90,7 @@ const ConsumptionContent = memo(() => {
       key: 'createdAt',
       render: (value: any) => (
         <Text style={{ fontSize: '12px' }} type="secondary">
-          {formatDate(new Date(value))}
+          {dayjs(value).format('YYYY-MM-DD HH:mm:ss')}
         </Text>
       ),
       title: '使用时间',

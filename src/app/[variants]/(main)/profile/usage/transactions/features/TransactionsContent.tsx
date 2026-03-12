@@ -3,12 +3,12 @@
 import { Flexbox, Tag } from '@lobehub/ui';
 import { Button, DatePicker, Empty, Pagination, Table, Typography } from 'antd';
 import { createStyles } from 'antd-style';
-import type dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { memo, useState } from 'react';
 
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';
-import { formatDate, formatNumber } from '@/utils/format';
+import { formatNumber } from '@/utils/format';
 
 const { RangePicker } = DatePicker;
 
@@ -137,7 +137,7 @@ const TransactionsContent = memo(() => {
     {
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (value: any) => formatDate(new Date(value)),
+      render: (value: any) => dayjs(value).format('YYYY-MM-DD HH:mm:ss'),
       title: '时间',
       width: 180,
     },

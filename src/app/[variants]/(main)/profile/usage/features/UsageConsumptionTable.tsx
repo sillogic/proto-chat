@@ -8,7 +8,7 @@ import { LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
 
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';
-import { formatDate } from '@/utils/format';
+import dayjs from 'dayjs';
 
 // Resolve internal model IDs to user-friendly display names.
 // ProtoChat IDs have the format: protochat::{alias}::{cleanModelId}
@@ -28,7 +28,7 @@ const baseColumns: TableColumnType<any>[] = [
     key: 'createdAt',
     render: (value) => (
       <Text style={{ fontSize: '12px' }} type="secondary">
-        {formatDate(new Date(value))}
+        {dayjs(value).format('YYYY-MM-DD HH:mm:ss')}
       </Text>
     ),
     title: '使用时间',

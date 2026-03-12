@@ -5,7 +5,9 @@ import { memo } from 'react';
 
 import { useClientDataSWR } from '@/libs/swr';
 import { usageService } from '@/services/usage';
-import { formatDate, formatNumber } from '@/utils/format';
+import dayjs from 'dayjs';
+
+import { formatNumber } from '@/utils/format';
 
 const UsageTable = memo(() => {
   const { data, isLoading } = useClientDataSWR('transactions-preview', async () =>
@@ -74,7 +76,7 @@ const UsageTable = memo(() => {
     {
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (value) => formatDate(new Date(value)),
+      render: (value) => dayjs(value).format('YYYY-MM-DD HH:mm:ss'),
       title: '时间',
     },
   ];
