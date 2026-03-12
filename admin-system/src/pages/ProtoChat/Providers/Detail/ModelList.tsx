@@ -2,7 +2,7 @@ import { LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { request } from '@umijs/max';
 import { Flexbox } from 'react-layout-kit';
-import { Typography, Tabs, Badge, Empty, message, Card, Button, Popconfirm, Input, Skeleton } from 'antd';
+import { Typography, Tabs, Badge, Empty, message, Card, Button, Popconfirm, Input, Skeleton, Pagination } from 'antd';
 import { CloudSyncOutlined, SearchOutlined } from '@ant-design/icons';
 import type { AiProviderConfig } from '@/services/ai-provider';
 import ModelItem from './ModelItem';
@@ -45,6 +45,8 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState<string>('');
   const [isPending, startTransition] = useTransition();
+  const [disabledPage, setDisabledPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -96,6 +98,7 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
   );
 
   const filteredModels = useMemo(() => {
+    setDisabledPage(1);
     let list = filterByTab(models, activeTab);
     if (searchText.trim()) {
       const lower = searchText.toLowerCase().trim();
@@ -108,10 +111,13 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
     return list;
   }, [models, activeTab, searchText]);
 
-  const groups = useMemo(() => ({
-    enabled:  filteredModels.filter((m: any) => enabledSet.has(m.id)),
-    disabled: filteredModels.filter((m: any) => !enabledSet.has(m.id)),
-  }), [filteredModels, enabledSet]);
+  const groups = useMemo(() => {
+    const enabled = filteredModels.filter((m: any) => enabledSet.has(m.id));
+    const allDisabled = filteredModels.filter((m: any) => !enabledSet.has(m.id));
+    const disabledTotal = allDisabled.length;
+    const disabledSlice = allDisabled.slice((disabledPage - 1) * PAGE_SIZE, disabledPage * PAGE_SIZE);
+    return { enabled, disabled: disabledSlice, disabledTotal };
+  }, [filteredModels, enabledSet, disabledPage]);
 
   const handleTabChange = (key: string) => {
     startTransition(() => setActiveTab(key));
@@ -213,9 +219,9 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
                 </Flexbox>
               </Flexbox>
             )}
-            {groups.disabled.length > 0 && (
+            {groups.disabledTotal > 0 && (
               <Flexbox gap={8}>
-                <Text type="secondary" strong>未启用</Text>
+                <Text type="secondary" strong>未启用（{groups.disabledTotal} 个）</Text>
                 <Flexbox>
                   {groups.disabled.map((model: any) => (
                     <ModelItem
@@ -226,6 +232,19 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
                     />
                   ))}
                 </Flexbox>
+                {groups.disabledTotal > PAGE_SIZE && (
+                  <Flexbox horizontal justify="flex-end" style={{ paddingTop: 8 }}>
+                    <Pagination
+                      current={disabledPage}
+                      pageSize={PAGE_SIZE}
+                      total={groups.disabledTotal}
+                      onChange={setDisabledPage}
+                      showSizeChanger={false}
+                      showTotal={(total) => `共 ${total} 个未启用模型`}
+                      size="small"
+                    />
+                  </Flexbox>
+                )}
               </Flexbox>
             )}
             {filteredModels.length === 0 && <Empty description="暂无模型" style={{ marginBlock: 32 }} />}

@@ -2,7 +2,7 @@ import { LOBE_DEFAULT_MODEL_LIST, AiModelType } from 'model-bank';
 import React, { useState, useMemo, useEffect } from 'react';
 import { request } from '@umijs/max';
 import { Flexbox } from 'react-layout-kit';
-import { Typography, Tabs, Badge, Empty, message, Card, Button, Popconfirm, Input } from 'antd';
+import { Typography, Tabs, Badge, Empty, message, Card, Button, Popconfirm, Input, Pagination } from 'antd';
 import { CloudSyncOutlined, SearchOutlined } from '@ant-design/icons';
 import { AiProviderConfig, upsertGlobalAiProvider } from '@/services/ai-provider';
 import ModelItem from './ModelItem';
@@ -25,6 +25,8 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
   const [dbModels, setDbModels] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState<string>('');
+  const [disabledPage, setDisabledPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   // 从数据库获取模型列表
   useEffect(() => {
@@ -81,6 +83,7 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
   }, [models]);
 
   const filteredModels = useMemo(() => {
+    setDisabledPage(1);
     let filtered = models;
 
     // 按类型过滤
@@ -103,9 +106,11 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
 
   const groups = useMemo(() => {
     const enabled = filteredModels.filter((m: any) => enabledModels.includes(m.id));
-    const disabled = filteredModels.filter((m: any) => !enabledModels.includes(m.id));
-    return { enabled, disabled };
-  }, [filteredModels, enabledModels]);
+    const allDisabled = filteredModels.filter((m: any) => !enabledModels.includes(m.id));
+    const disabledTotal = allDisabled.length;
+    const disabledSlice = allDisabled.slice((disabledPage - 1) * PAGE_SIZE, disabledPage * PAGE_SIZE);
+    return { enabled, disabled: disabledSlice, disabledTotal };
+  }, [filteredModels, enabledModels, disabledPage]);
 
   const handleToggle = async (modelId: string, enabled: boolean) => {
     try {
@@ -237,19 +242,32 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, onSync, sy
             </Flexbox>
           )}
 
-          {groups.disabled.length > 0 && (
+          {groups.disabledTotal > 0 && (
             <Flexbox gap={8}>
-              <Text type="secondary" strong>未启用</Text>
+              <Text type="secondary" strong>未启用（{groups.disabledTotal} 个）</Text>
               <Flexbox>
                 {groups.disabled.map((model: any) => (
-                  <ModelItem 
-                    key={model.id} 
-                    model={model} 
-                    enabled={false} 
-                    onToggle={async (checked: boolean) => handleToggle(model.id, checked)} 
+                  <ModelItem
+                    key={model.id}
+                    model={model}
+                    enabled={false}
+                    onToggle={async (checked: boolean) => handleToggle(model.id, checked)}
                   />
                 ))}
               </Flexbox>
+              {groups.disabledTotal > PAGE_SIZE && (
+                <Flexbox horizontal justify="flex-end" style={{ paddingTop: 8 }}>
+                  <Pagination
+                    current={disabledPage}
+                    pageSize={PAGE_SIZE}
+                    total={groups.disabledTotal}
+                    onChange={setDisabledPage}
+                    showSizeChanger={false}
+                    showTotal={(total) => `共 ${total} 个未启用模型`}
+                    size="small"
+                  />
+                </Flexbox>
+              )}
             </Flexbox>
           )}
 
