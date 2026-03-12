@@ -15,6 +15,8 @@ const { RangePicker } = DatePicker;
 const useStyles = createStyles(({ css, token }) => ({
   container: css`
     max-width: 1400px;
+    height: 100dvh;
+    overflow-y: auto;
     margin-block: 0;
     margin-inline: auto;
     padding: 24px;
