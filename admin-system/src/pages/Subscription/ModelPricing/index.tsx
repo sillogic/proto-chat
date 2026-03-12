@@ -252,6 +252,28 @@ const ModelPricingManagement: React.FC = () => {
       ),
     },
     {
+      title: 'Cache 读取成本价 (积分/1M)',
+      dataIndex: 'cacheReadPrice',
+      key: 'cacheReadPrice',
+      width: 210,
+      search: false,
+      render: (_, record) => {
+        const price = parseFloat((record as any).cacheReadPrice || '0');
+        return price > 0 ? price.toFixed(2) : '-';
+      },
+    },
+    {
+      title: 'Cache 读取成本价 (USD/1M)',
+      dataIndex: 'cacheReadPrice',
+      key: 'cacheReadPriceUSD',
+      width: 210,
+      search: false,
+      render: (_, record) => {
+        const usd = creditsToUSD((record as any).cacheReadPrice);
+        return usd > 0 ? <Text type="secondary">{formatUSD(usd)}</Text> : '-';
+      },
+    },
+    {
       title: (
         <Space>
           <span>提示词用户价 (积分/1M)</span>
