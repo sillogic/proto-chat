@@ -1,6 +1,7 @@
 import { ActionType, PageContainer, ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Form, Input, Modal, Popconfirm, Select, Space, Tabs, Tag, Typography, message } from 'antd';
+import { Alert, Button, DatePicker, Descriptions, Divider, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Tabs, Tag, Typography, message } from 'antd';
 import { Drawer } from 'antd';
+import dayjs from 'dayjs';
 import { useRef, useState } from 'react';
 
 const { Text } = Typography;
@@ -13,7 +14,7 @@ const TABS = [
   { key: 'purged', label: '已注销' },
 ];
 
-import { getUserList, updateUserPlan, updateUserStatus, purgeUser } from '@/services/admin';
+import { adminForceEdit, getUserList, updateUserPlan, updateUserStatus, purgeUser } from '@/services/admin';
 import type { User, UserListParams } from '@/services/api.d';
 
 import { UsageStatsView } from '../UsageStatistics';
@@ -27,7 +28,9 @@ const UsersPage: React.FC = () => {
   const [usageDrawerVisible, setUsageDrawerVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [purgingUserId, setPurgingUserId] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
   const [form] = Form.useForm();
+  const [creditForm] = Form.useForm();
 
   // 编辑用户
   const handleEditUser = (user: User) => {
@@ -215,11 +218,22 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  // 提交编辑表单
-  const handleEditSubmit = async (values: any) => {
+  const forceAction = async (action: Parameters<typeof adminForceEdit>[1]) => {
     if (!currentUser) return;
-    message.info('编辑功能暂未实现');
-    setEditModalVisible(false);
+    setEditLoading(true);
+    try {
+      const res = await adminForceEdit(currentUser.id, action);
+      if (res.success) {
+        message.success(res.message || '操作成功');
+        actionRef.current?.reload();
+      } else {
+        message.error(res.message || '操作失败');
+      }
+    } catch {
+      message.error('请求失败');
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   return (
@@ -259,29 +273,104 @@ const UsersPage: React.FC = () => {
       />
 
       <Modal
-        title="编辑用户方案"
+        title="用户编辑（测试工具）"
         open={editModalVisible}
-        onCancel={() => setEditModalVisible(false)}
-        onOk={() => form.submit()}
-        width={500}
+        onCancel={() => { setEditModalVisible(false); form.resetFields(); creditForm.resetFields(); }}
+        footer={null}
+        width={520}
       >
-        <Form form={form} layout="vertical" onFinish={handleEditSubmit}>
-          <Form.Item label="用户邮箱">
-            <Input disabled value={currentUser?.email} />
-          </Form.Item>
-          <Form.Item
-            label="当前方案类型"
-            name="planType"
-            rules={[{ required: true, message: '请选择方案类型' }]}
-          >
-            <Select>
+        <Alert
+          message="以下操作直接修改数据库，绕过支付/订阅业务流程，不会产生支付记录或订阅历史。"
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Descriptions size="small" column={1} style={{ marginBottom: 16 }}>
+          <Descriptions.Item label="邮箱">{currentUser?.email}</Descriptions.Item>
+          <Descriptions.Item label="当前方案">{currentUser?.planType || 'free'}</Descriptions.Item>
+          <Descriptions.Item label="待定变更">{(currentUser as any)?.nextPlanId || '无'}</Descriptions.Item>
+          <Descriptions.Item label="积分余额">{(currentUser as any)?.credit_balance ?? '-'}</Descriptions.Item>
+        </Descriptions>
+
+        <Divider orientation="left" plain>强制切换方案</Divider>
+        <Form form={form} layout="inline" style={{ marginBottom: 12 }}>
+          <Form.Item name="planType" initialValue={currentUser?.planType || 'free'}>
+            <Select style={{ width: 110 }}>
               <Option value="free">Free</Option>
               <Option value="lite">Lite</Option>
               <Option value="pro">Pro</Option>
               <Option value="ultra">Ultra</Option>
             </Select>
           </Form.Item>
+          <Form.Item name="planExpiresAt" label="到期时间">
+            <DatePicker
+              showTime
+              placeholder="不填则不限期"
+              style={{ width: 180 }}
+              value={form.getFieldValue('planExpiresAt') ? dayjs(form.getFieldValue('planExpiresAt')) : null}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              type="primary"
+              loading={editLoading}
+              onClick={() => {
+                const vals = form.getFieldsValue();
+                forceAction({
+                  action: 'forcePlan',
+                  planType: vals.planType,
+                  planExpiresAt: vals.planExpiresAt ? dayjs(vals.planExpiresAt).toISOString() : undefined,
+                });
+              }}
+            >
+              执行
+            </Button>
+          </Form.Item>
         </Form>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          切换到 free 会同时清除到期时间和待定变更。
+        </Text>
+
+        <Divider orientation="left" plain>积分调整</Divider>
+        <Form form={creditForm} layout="inline" style={{ marginBottom: 4 }}>
+          <Form.Item name="creditDelta" label="调整量">
+            <InputNumber style={{ width: 140 }} placeholder="+100 或 -50" />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              loading={editLoading}
+              onClick={() => {
+                const delta = creditForm.getFieldValue('creditDelta');
+                if (!delta) return message.warning('请填写调整量');
+                forceAction({ action: 'adjustCredits', creditDelta: delta });
+                creditForm.resetFields();
+              }}
+            >
+              执行
+            </Button>
+          </Form.Item>
+        </Form>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          调整记录会标注"管理员测试调整"，余额不会低于 0。
+        </Text>
+
+        <Divider orientation="left" plain>其他操作</Divider>
+        <Space>
+          <Popconfirm
+            title="清除待定方案变更"
+            description="将清除 nextPlanId，下次升级不会受之前排队的降级影响。"
+            onConfirm={() => forceAction({ action: 'clearPendingPlan' })}
+          >
+            <Button size="small" loading={editLoading}>清除待定变更</Button>
+          </Popconfirm>
+          <Popconfirm
+            title="重置月度用量"
+            description="将 lastUsageReset 设为当前时间，月度计数器从零开始。"
+            onConfirm={() => forceAction({ action: 'resetUsage' })}
+          >
+            <Button size="small" loading={editLoading}>重置月度用量</Button>
+          </Popconfirm>
+        </Space>
       </Modal>
       <Drawer
         title={`用户用量统计 - ${currentUser?.email || currentUser?.username}`}

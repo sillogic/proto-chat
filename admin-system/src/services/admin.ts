@@ -174,6 +174,19 @@ export async function updateUserStatus(userId: string, params: { banned: boolean
   });
 }
 
+// 管理员强制编辑（测试工具，绕过业务流程）
+export async function adminForceEdit(userId: string, payload: {
+  action: 'forcePlan' | 'adjustCredits' | 'clearPendingPlan' | 'resetUsage';
+  planType?: string;
+  planExpiresAt?: string;
+  creditDelta?: number;
+}): Promise<{ success: boolean; message?: string }> {
+  return request(`/api/users/${userId}/admin-force`, {
+    method: 'PUT',
+    data: payload,
+  });
+}
+
 // 注销用户（软删除：匿名化 + 清理数据，保留成本记录）
 export async function purgeUser(userId: string): Promise<{ success: boolean; message?: string; data?: { deletedMessages: number; deletedFiles: number; deletedOssObjects: number } }> {
   return request(`/api/users/${userId}`, {

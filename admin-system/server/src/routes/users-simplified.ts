@@ -5,8 +5,10 @@ import { usageService } from '../services/usage-service';
 import { db } from '../config/database';
 import { users } from '../db/schema';
 import { userExtensions } from '../db/user-extensions-schema';
+import { userBalances, userTransactions } from '../db/credit-schema';
 import { eq, sql } from 'drizzle-orm';
 import { deleteS3ObjectsByUrls } from '../utils/s3-client';
+import crypto from 'node:crypto';
 
 const router: express.Router = express.Router();
 
@@ -300,6 +302,88 @@ router.put('/:userId/status', requirePermission('users.write'), async (req: Auth
       success: false,
       message: '更新用户状态失败',
     });
+  }
+});
+
+// PUT /api/users/:userId/admin-force - 管理员强制编辑（测试用，绕过业务流程，不写支付/订阅历史）
+router.put('/:userId/admin-force', requirePermission('users.write'), async (req: AuthenticatedRequest, res) => {
+  const { userId } = req.params;
+  const { action, planType, planExpiresAt, creditDelta } = req.body;
+
+  // 确认用户存在
+  const ext = await db.select().from(userExtensions).where(eq(userExtensions.userId, userId)).limit(1);
+
+  try {
+    if (action === 'forcePlan') {
+      // 直接写 user_extensions，不走 executeUpgrade，不产生支付/订阅历史
+      const isFree = !planType || planType === 'free';
+      await db.update(userExtensions).set({
+        currentPlan: isFree ? 'free' : planType,
+        planId: isFree ? null : undefined,          // free 时清空 planId
+        planExpiresAt: isFree ? null : (planExpiresAt ? new Date(planExpiresAt) : null),
+        nextPlanId: null,                            // 始终清除待定变更，避免下次升级残留
+        billingInterval: isFree ? null : undefined,
+        updatedAt: new Date(),
+      }).where(eq(userExtensions.userId, userId));
+
+      return res.json({ success: true, message: `方案已强制切换为 ${planType || 'free'}` });
+    }
+
+    if (action === 'adjustCredits') {
+      const delta = parseFloat(String(creditDelta));
+      if (isNaN(delta) || delta === 0) {
+        return res.status(400).json({ success: false, message: 'creditDelta 不能为 0' });
+      }
+
+      // 读当前余额
+      const balRow = await db.select().from(userBalances).where(eq(userBalances.userId, userId)).limit(1);
+      const currentBalance = parseFloat(String(balRow[0]?.balance ?? '0'));
+      const newBalance = Math.max(0, currentBalance + delta); // 不允许余额为负
+
+      // 更新余额
+      if (balRow.length > 0) {
+        await db.update(userBalances).set({
+          balance: String(newBalance),
+          updatedAt: new Date(),
+        }).where(eq(userBalances.userId, userId));
+      } else {
+        await db.insert(userBalances).values({
+          userId,
+          balance: String(newBalance),
+          totalPurchased: delta > 0 ? String(delta) : '0',
+        });
+      }
+
+      // 写一条有标识的 ADJUSTMENT 记录，方便与真实交易区分
+      await db.insert(userTransactions).values({
+        id: crypto.randomUUID(),
+        userId,
+        type: 'ADJUSTMENT',
+        amount: String(delta),
+        balanceAfter: String(newBalance),
+        description: `[管理员测试调整] ${delta > 0 ? '+' : ''}${delta}`,
+        category: 'admin_test',
+      });
+
+      return res.json({ success: true, message: `积分已调整 ${delta > 0 ? '+' : ''}${delta}，当前余额 ${newBalance}` });
+    }
+
+    if (action === 'clearPendingPlan') {
+      await db.update(userExtensions).set({ nextPlanId: null, updatedAt: new Date() })
+        .where(eq(userExtensions.userId, userId));
+      return res.json({ success: true, message: '待定方案变更已清除' });
+    }
+
+    if (action === 'resetUsage') {
+      await db.update(userExtensions).set({ lastUsageReset: new Date(), updatedAt: new Date() })
+        .where(eq(userExtensions.userId, userId));
+      return res.json({ success: true, message: '月度用量已重置' });
+    }
+
+    return res.status(400).json({ success: false, message: '未知 action' });
+  } catch (error: any) {
+    console.error('Admin force edit error:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
