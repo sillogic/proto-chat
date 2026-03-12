@@ -456,6 +456,11 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
               </Flexbox>
               <div className={styles.planDescription}>
                 {getPlanDescription(currentPlan?.planSlug || 'free')}
+                {currentPlan?.planStartedAt && currentPlan?.planSlug !== 'free' && (
+                  <span style={{ marginLeft: 8 }}>
+                    · 订阅时间：{new Date(currentPlan.planStartedAt).toLocaleDateString('zh-CN')}
+                  </span>
+                )}
                 {currentPlan?.planExpiresAt && currentPlan?.planSlug !== 'free' && (
                   <span style={{ marginLeft: 8 }}>
                     · 到期时间：{new Date(currentPlan.planExpiresAt).toLocaleDateString('zh-CN')}

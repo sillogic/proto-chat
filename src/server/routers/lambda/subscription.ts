@@ -1,4 +1,4 @@
-import { paymentOrders, subscriptionPlans, userExtensions } from '@lobechat/database';
+import { paymentOrders, subscriptionPlans, userExtensions, userSubscriptionHistory } from '@lobechat/database';
 import { and, asc, desc, eq } from 'drizzle-orm';
 
 import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
@@ -100,6 +100,21 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
         const paidAmount = recentOrder.length > 0 ? recentOrder[0].amount : 0;
         const planValue = recentOrder.length > 0 ? recentOrder[0].planValue : undefined;
 
+        // Query active subscription history for start date
+        const activeHistory = await ctx.serverDB
+          .select({ startedAt: userSubscriptionHistory.startedAt })
+          .from(userSubscriptionHistory)
+          .where(
+            and(
+              eq(userSubscriptionHistory.userId, ctx.userId),
+              eq(userSubscriptionHistory.isActive, true),
+            ),
+          )
+          .orderBy(desc(userSubscriptionHistory.startedAt))
+          .limit(1);
+
+        const planStartedAt = activeHistory.length > 0 ? activeHistory[0].startedAt : null;
+
         return {
           autoRenew: user.autoRenew ?? false,
           billingInterval: user.billingInterval,
@@ -111,6 +126,7 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
           nextCreditGrantAt: user.nextCreditGrantAt,
           paidAmount, // 实付金额（分）- 仅用于显示
           planExpiresAt: user.planExpiresAt,
+          planStartedAt,
           planId: user.planId,
           planName: plan[0].name,
           planSlug: user.currentPlan,
@@ -136,6 +152,7 @@ getCurrentPlan: authedSubscriptionProcedure.query(async ({ ctx }) => {
       paidAmount: 0,
       planExpiresAt: user.planExpiresAt,
       planId: null,
+      planStartedAt: null,
       planName: 'Free',
       planSlug: user.currentPlan || 'free',
       planType: 'individual',
