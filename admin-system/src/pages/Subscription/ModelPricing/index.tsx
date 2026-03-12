@@ -106,41 +106,6 @@ const ModelPricingManagement: React.FC = () => {
     }
   };
 
-  // 操作列（两个 tab 共用，冻结在右侧）
-  const actionColumn: ProColumns<ModelPricing> = {
-    title: '操作',
-    valueType: 'option',
-    width: 100,
-    fixed: 'right',
-    render: (_, record) => (
-      <Space>
-        <a
-          key="edit"
-          onClick={() => {
-            setCurrentRow(record);
-            setModalVisible(true);
-          }}
-        >
-          编辑
-        </a>
-        <Popconfirm
-          key="delete"
-          title="确定删除此计费配置吗？"
-          onConfirm={async () => {
-            const res = await deleteModelPricing(record.id);
-            if (res.success) {
-              message.success('删除成功');
-              actionRef.current?.reload();
-            } else {
-              message.error('删除失败');
-            }
-          }}
-        >
-          <a style={{ color: 'red' }}>删除</a>
-        </Popconfirm>
-      </Space>
-    ),
-  };
 
   // 前两列：模型名（冻结）+ 模型标识
   const modelColumns: ProColumns<ModelPricing>[] = [
@@ -326,7 +291,6 @@ const ModelPricingManagement: React.FC = () => {
       ellipsis: true,
       search: false,
     },
-    actionColumn,
   ];
 
   // 图片模型列
@@ -376,7 +340,6 @@ const ModelPricingManagement: React.FC = () => {
       ellipsis: true,
       search: false,
     },
-    actionColumn,
   ];
 
   const toolBarRenderToken = () => [
