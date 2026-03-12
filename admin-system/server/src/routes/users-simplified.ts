@@ -321,7 +321,6 @@ router.put('/:userId/admin-force', requirePermission('users.write'), async (req:
         currentPlan: isFree ? 'free' : planType,
         planId: isFree ? null : undefined,          // free 时清空 planId
         planExpiresAt: isFree ? null : (planExpiresAt ? new Date(planExpiresAt) : null),
-        nextPlanId: null,                            // 始终清除待定变更，避免下次升级残留
         billingInterval: isFree ? null : undefined,
         updatedAt: new Date(),
       }).where(eq(userExtensions.userId, userId));
@@ -366,12 +365,6 @@ router.put('/:userId/admin-force', requirePermission('users.write'), async (req:
       });
 
       return res.json({ success: true, message: `积分已调整 ${delta > 0 ? '+' : ''}${delta}，当前余额 ${newBalance}` });
-    }
-
-    if (action === 'clearPendingPlan') {
-      await db.update(userExtensions).set({ nextPlanId: null, updatedAt: new Date() })
-        .where(eq(userExtensions.userId, userId));
-      return res.json({ success: true, message: '待定方案变更已清除' });
     }
 
     if (action === 'resetUsage') {

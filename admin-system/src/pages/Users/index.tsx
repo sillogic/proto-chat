@@ -355,22 +355,13 @@ const UsersPage: React.FC = () => {
         </Text>
 
         <Divider orientation="left" plain>其他操作</Divider>
-        <Space>
-          <Popconfirm
-            title="清除待定方案变更"
-            description="将清除 nextPlanId，下次升级不会受之前排队的降级影响。"
-            onConfirm={() => forceAction({ action: 'clearPendingPlan' })}
-          >
-            <Button size="small" loading={editLoading}>清除待定变更</Button>
-          </Popconfirm>
-          <Popconfirm
-            title="重置月度用量"
-            description="将 lastUsageReset 设为当前时间，月度计数器从零开始。"
-            onConfirm={() => forceAction({ action: 'resetUsage' })}
-          >
-            <Button size="small" loading={editLoading}>重置月度用量</Button>
-          </Popconfirm>
-        </Space>
+        <Popconfirm
+          title="重置月度用量"
+          description="将 lastUsageReset 设为当前时间，月度计数器从零开始。"
+          onConfirm={() => forceAction({ action: 'resetUsage' })}
+        >
+          <Button size="small" loading={editLoading}>重置月度用量</Button>
+        </Popconfirm>
       </Modal>
       <Drawer
         title={`用户用量统计 - ${currentUser?.email || currentUser?.username}`}

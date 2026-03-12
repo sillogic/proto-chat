@@ -176,7 +176,7 @@ export async function updateUserStatus(userId: string, params: { banned: boolean
 
 // 管理员强制编辑（测试工具，绕过业务流程）
 export async function adminForceEdit(userId: string, payload: {
-  action: 'forcePlan' | 'adjustCredits' | 'clearPendingPlan' | 'resetUsage';
+  action: 'forcePlan' | 'adjustCredits' | 'resetUsage';
   planType?: string;
   planExpiresAt?: string;
   creditDelta?: number;
