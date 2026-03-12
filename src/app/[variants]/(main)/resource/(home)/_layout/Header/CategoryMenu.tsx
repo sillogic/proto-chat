@@ -1,7 +1,7 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { FileText, ImageIcon, LayoutPanelTopIcon, Mic2, SquarePlay } from 'lucide-react';
+import { FileText, ImageIcon, LayoutPanelTopIcon } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -35,18 +35,6 @@ const CategoryMenu = memo(() => {
         key: FilesTabs.Images,
         title: t('tab.images'),
         url: '/resource?category=images',
-      },
-      {
-        icon: Mic2,
-        key: FilesTabs.Audios,
-        title: t('tab.audios'),
-        url: '/resource?category=audios',
-      },
-      {
-        icon: SquarePlay,
-        key: FilesTabs.Videos,
-        title: t('tab.videos'),
-        url: '/resource?category=videos',
       },
     ],
     [t],

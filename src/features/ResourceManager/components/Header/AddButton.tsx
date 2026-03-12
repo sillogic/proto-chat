@@ -22,12 +22,6 @@ import useUploadFolder from './hooks/useUploadFolder';
 
 const getAcceptedFileTypes = (category: FilesTabs): string | undefined => {
   switch (category) {
-    case FilesTabs.Videos: {
-      return 'video/*';
-    }
-    case FilesTabs.Audios: {
-      return 'audio/*';
-    }
     case FilesTabs.Documents: {
       return '.pdf,.doc,.docx,.md,.markdown,.xls,.xlsx';
     }
@@ -39,6 +33,9 @@ const getAcceptedFileTypes = (category: FilesTabs): string | undefined => {
     }
   }
 };
+
+const isAudioOrVideo = (file: File) =>
+  file.type.startsWith('audio/') || file.type.startsWith('video/');
 
 const AddButton = () => {
   const { t } = useTranslation('file');
@@ -219,6 +216,10 @@ const AddButton = () => {
             multiple={true}
             showUploadList={false}
             beforeUpload={async (file) => {
+              if (isAudioOrVideo(file)) {
+                message.error('不支持上传音频或视频文件，请上传文档或图片');
+                return false;
+              }
               setMenuOpen(false);
               await pushDockFileList([file], libraryId, currentFolderId ?? undefined);
 

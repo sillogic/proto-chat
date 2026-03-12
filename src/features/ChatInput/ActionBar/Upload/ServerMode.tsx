@@ -1,4 +1,3 @@
-import { validateVideoFileSize } from '@lobechat/utils/client';
 import { type ItemType } from '@lobehub/ui';
 import { Icon, Tooltip } from '@lobehub/ui';
 import { Upload } from 'antd';
@@ -99,19 +98,12 @@ const FileUpload = memo(() => {
           multiple
           showUploadList={false}
           beforeUpload={async (file) => {
-            if (!canUploadImage && (file.type.startsWith('image') || file.type.startsWith('video')))
-              return false;
-
-            // Validate video file size
-            const validation = validateVideoFileSize(file);
-            if (!validation.isValid) {
-              message.error(
-                t('upload.validation.videoSizeExceeded', {
-                  actualSize: validation.actualSize,
-                }),
-              );
+            if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+              message.error('不支持上传音频或视频文件，请上传图片或文档');
               return false;
             }
+
+            if (!canUploadImage && file.type.startsWith('image')) return false;
 
             setDropdownOpen(false);
             await upload([file]);
@@ -133,19 +125,12 @@ const FileUpload = memo(() => {
           multiple={true}
           showUploadList={false}
           beforeUpload={async (file) => {
-            if (!canUploadImage && (file.type.startsWith('image') || file.type.startsWith('video')))
-              return false;
-
-            // Validate video file size
-            const validation = validateVideoFileSize(file);
-            if (!validation.isValid) {
-              message.error(
-                t('upload.validation.videoSizeExceeded', {
-                  actualSize: validation.actualSize,
-                }),
-              );
+            if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+              message.error('不支持上传音频或视频文件，请上传图片或文档');
               return false;
             }
+
+            if (!canUploadImage && file.type.startsWith('image')) return false;
 
             setDropdownOpen(false);
             await upload([file]);

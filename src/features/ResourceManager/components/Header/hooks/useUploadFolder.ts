@@ -33,6 +33,20 @@ const useUploadFolder = ({
       const upload = async (fileList: File[]) =>
         uploadFolderWithStructure(fileList, targetLibraryId, targetFolderId);
 
+      // Filter out audio and video files
+      const audioVideoCount = files.filter(
+        (f) => f.type.startsWith('audio/') || f.type.startsWith('video/'),
+      ).length;
+      if (audioVideoCount > 0) {
+        files = files.filter(
+          (f) => !f.type.startsWith('audio/') && !f.type.startsWith('video/'),
+        );
+        const { message } = await import('antd');
+        message.warning(`已跳过 ${audioVideoCount} 个不支持的音频或视频文件`);
+      }
+
+      if (files.length === 0) return;
+
       // Apply built-in block list first
       const originalCount = files.length;
       files = filterFilesByBuiltInBlockList(files);
