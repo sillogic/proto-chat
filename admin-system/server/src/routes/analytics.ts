@@ -144,6 +144,22 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       GROUP BY metadata ->> 'model', metadata ->> 'provider'
     `);
 
+    // 4b. 获取标题生成统计（从 user_transactions 查询，type='title_generation'）
+    const titleGenStats = await db.execute(sql`
+      SELECT
+        (metadata ->> 'model') as model,
+        (metadata ->> 'provider') as provider,
+        COUNT(*) as "requestCount",
+        COALESCE(SUM((NULLIF(metadata ->> 'totalInputTokens', ''))::bigint), 0) as "totalInputTokens",
+        COALESCE(SUM((NULLIF(metadata ->> 'totalOutputTokens', ''))::bigint), 0) as "totalOutputTokens"
+      FROM user_transactions
+      WHERE type = 'CONSUMPTION'
+        AND created_at >= ${startStr}
+        AND created_at < ${endStr}
+        AND metadata ->> 'type' = 'title_generation'
+      GROUP BY metadata ->> 'model', metadata ->> 'provider'
+    `);
+
     // 5. 获取记忆统计
     const memoryJobStats = await db.execute(sql`
       SELECT
@@ -335,6 +351,52 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
     // 合并图片模型到总模型统计
     modelStats.push(...imageModelStats);
 
+    // 标题生成成本
+    let totalTitleCost = 0;
+    let totalTitleRequests = 0;
+    let totalTitleInputTokens = 0;
+    let totalTitleOutputTokens = 0;
+
+    for (const item of (titleGenStats as any[])) {
+      const { inputPrice, outputPrice } = getProtochatModelPrice(item.model, item.provider, priceMap);
+      const inputTokens = parseInt(item.totalInputTokens || '0');
+      const outputTokens = parseInt(item.totalOutputTokens || '0');
+      const requestCount = parseInt(item.requestCount || '0');
+      const cost = (inputTokens / 1_000_000) * inputPrice +
+        (outputTokens / 1_000_000) * outputPrice;
+
+      totalTitleCost += cost;
+      totalTitleRequests += requestCount;
+      totalTitleInputTokens += inputTokens;
+      totalTitleOutputTokens += outputTokens;
+
+      // 合并到模型统计（title gen 通常用同一个模型，若已存在则累加）
+      const existing = modelStats.find(m => m.model === item.model && m.provider === item.provider);
+      if (existing) {
+        existing.inputTokens += inputTokens;
+        existing.outputTokens += outputTokens;
+        existing.requestCount += requestCount;
+        existing.cost = (parseFloat(existing.cost) + cost).toFixed(8);
+      } else {
+        modelStats.push({
+          model: item.model || 'unknown',
+          provider: item.provider || 'unknown',
+          inputTokens,
+          outputTokens,
+          requestCount,
+          cost: cost.toFixed(8),
+        });
+      }
+
+      const provider = item.provider || 'unknown';
+      if (!providerMap.has(provider)) {
+        providerMap.set(provider, { provider, totalTokens: 0, cost: 0 });
+      }
+      const p = providerMap.get(provider);
+      p.totalTokens += inputTokens + outputTokens;
+      p.cost += cost;
+    }
+
     return res.json({
       data: {
         overview: {
@@ -355,9 +417,13 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
           memoryLlmInputTokens,
           memoryLlmOutputTokens,
           memoryLlmCost: memoryLlmCost.toFixed(6),
+          titleRequestCount: totalTitleRequests,
+          titleInputTokens: totalTitleInputTokens,
+          titleOutputTokens: totalTitleOutputTokens,
+          titleCost: totalTitleCost.toFixed(6),
           freeUserCost: freeUserCost.toFixed(6),
-          requestCount: totalRequestCount + totalImageRequests,
-          totalCost: (totalChatCost + embeddingCost + totalImageCost + memoryCostTotal).toFixed(6),
+          requestCount: totalRequestCount + totalImageRequests + totalTitleRequests,
+          totalCost: (totalChatCost + embeddingCost + totalImageCost + memoryCostTotal + totalTitleCost).toFixed(6),
         },
         dailyTrend,
         modelStats: modelStats.sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
@@ -431,7 +497,24 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
         AND metadata ->> 'type' = 'image'
     `);
 
-    // 4b. 记忆相关 Embedding 成本（memory_search + memory_extraction）
+    // 4b. 标题生成成本（从 user_transactions）
+    const revTitleGenStats = await db.execute(sql`
+      SELECT
+        TO_CHAR(created_at, ${sql.raw(`'${dateFormat}'`)}) as date,
+        (metadata ->> 'model') as model,
+        (metadata ->> 'provider') as provider,
+        COALESCE(SUM((NULLIF(metadata ->> 'totalInputTokens', ''))::bigint), 0) as "totalInputTokens",
+        COALESCE(SUM((NULLIF(metadata ->> 'totalOutputTokens', ''))::bigint), 0) as "totalOutputTokens",
+        COUNT(*) as "requestCount"
+      FROM user_transactions
+      WHERE type = 'CONSUMPTION'
+        AND created_at >= ${startStr}
+        AND created_at < ${endStr}
+        AND metadata ->> 'type' = 'title_generation'
+      GROUP BY TO_CHAR(created_at, ${sql.raw(`'${dateFormat}'`)}), metadata ->> 'model', metadata ->> 'provider'
+    `);
+
+    // 4c. 记忆相关 Embedding 成本（memory_search + memory_extraction）
     const memoryEmbeddingCostStats = await db.execute(sql`
       SELECT
         COALESCE(SUM(input_tokens), 0) as "totalTokens",
@@ -554,7 +637,22 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       (revMemoryLlmOutputTokens / 1_000_000) * revMemoryLlmPrice.outputPrice;
     const revMemoryCostUSD = memoryEmbeddingCostUSD + revMemoryLlmCostUSD;
 
-    const totalCostUSD = totalChatCostUSD + embeddingCostUSD + imageCostUSD + revMemoryCostUSD;
+    // 计算标题生成成本
+    let titleGenCostUSD = 0;
+    let titleGenRequestCount = 0;
+    for (const item of (revTitleGenStats as any[])) {
+      const { inputPrice, outputPrice } = getProtochatModelPrice(item.model, item.provider, priceMap);
+      const inputTokens = parseInt(item.totalInputTokens || '0');
+      const outputTokens = parseInt(item.totalOutputTokens || '0');
+      titleGenCostUSD += (inputTokens / 1_000_000) * inputPrice + (outputTokens / 1_000_000) * outputPrice;
+      titleGenRequestCount += parseInt(item.requestCount || '0');
+      // 加入每日成本趋势
+      const date = item.date;
+      const cost = (inputTokens / 1_000_000) * inputPrice + (outputTokens / 1_000_000) * outputPrice;
+      dailyCostMap.set(date, (dailyCostMap.get(date) || 0) + cost);
+    }
+
+    const totalCostUSD = totalChatCostUSD + embeddingCostUSD + imageCostUSD + revMemoryCostUSD + titleGenCostUSD;
 
     // 获取 Embedding token 数
     const embeddingTokenStats = await db.execute(sql`
@@ -614,6 +712,13 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       recordCount: memoryRecordCount,
       costUSD: revMemoryCostUSD.toFixed(6),
       percentage: totalCostUSD > 0 ? ((revMemoryCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
+    });
+
+    costBreakdown.push({
+      category: '标题生成',
+      requestCount: titleGenRequestCount,
+      costUSD: titleGenCostUSD.toFixed(6),
+      percentage: totalCostUSD > 0 ? ((titleGenCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
     });
 
     // 计算每日成本（只统计 protochat 供应商）

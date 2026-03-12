@@ -378,6 +378,62 @@ const CostAnalysis: React.FC = () => {
         </Col>
       </Row>
 
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>标题生成请求数</span>
+                  <Tag color="geekblue">标题</Tag>
+                </Space>
+              }
+              value={data?.overview?.titleRequestCount || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>标题生成输入 Tokens</span>
+                  <Tag color="geekblue">input</Tag>
+                </Space>
+              }
+              value={data?.overview?.titleInputTokens || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title={
+                <Space>
+                  <span>标题生成输出 Tokens</span>
+                  <Tag color="geekblue">output</Tag>
+                </Space>
+              }
+              value={data?.overview?.titleOutputTokens || 0}
+              groupSeparator=","
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title="标题生成成本 (USD)"
+              value={data?.overview?.titleCost || 0}
+              precision={6}
+              prefix="$"
+              valueStyle={{ color: '#2f54eb' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       {/* Token Trend Chart */}
       <ProCard
         title={period === 'year' ? '每月 Token 用量趋势 (按模型)' : '每日 Token 用量趋势 (按模型)'}
