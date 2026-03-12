@@ -34,8 +34,6 @@ const getDateRange = (dateParam: string | undefined, period: 'month' | 'year') =
 
 // 辅助函数：构建 ProtoChat 价格映射表
 const buildProtochatPriceMap = async (): Promise<Map<string, { inputPrice: number; outputPrice: number }>> => {
-  // Join protochat_models to also capture original_id (e.g. 'openrouter::google/gemini-2.0-flash-001')
-  // so that models referenced by raw name (e.g. memory extraction LLM) can be looked up too.
   const protochatPricing = await db.execute(sql`
     SELECT
       p.model_id as "modelId",
@@ -52,10 +50,7 @@ const buildProtochatPriceMap = async (): Promise<Map<string, { inputPrice: numbe
       inputPrice: parseFloat(p.costInputPrice || '0'),
       outputPrice: parseFloat(p.costOutputPrice || '0'),
     };
-    // Key by ProtoChat model ID (e.g. 'protochat::a1::qwen-embed-4b')
     priceMap.set(p.modelId, price);
-    // Also key by the raw model name extracted from original_id
-    // original_id format: '<provider>::<model_name>' (e.g. 'openrouter::google/gemini-2.0-flash-001')
     if (p.originalId) {
       const colonIdx = (p.originalId as string).indexOf('::');
       if (colonIdx !== -1) {
@@ -65,6 +60,24 @@ const buildProtochatPriceMap = async (): Promise<Map<string, { inputPrice: numbe
     }
   }
   return priceMap;
+};
+
+// 辅助函数：从 protochat_providers 加载 alias → name 映射
+const buildAliasNameMap = async (): Promise<Map<string, string>> => {
+  const rows = await db.execute(sql`
+    SELECT alias, name FROM protochat_providers WHERE alias IS NOT NULL
+  `);
+  const map = new Map<string, string>();
+  for (const r of (rows as any[])) {
+    if (r.alias) map.set(r.alias, r.name);
+  }
+  return map;
+};
+
+// 从模型ID中提取子供应商 alias，例如 'protochat::a1::gpt-4o' → 'a1'
+const extractSubProviderAlias = (model: string): string | null => {
+  const m = model?.match(/^protochat::([^:]+)::/);
+  return m ? m[1] : null;
 };
 
 // 辅助函数：根据模型名获取价格
@@ -113,8 +126,8 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       GROUP BY m.model, m.provider
     `);
 
-    // 2. 获取 ProtoChat 模型的美元价格
-    const priceMap = await buildProtochatPriceMap();
+    // 2. 获取 ProtoChat 模型的美元价格 + alias→name 映射
+    const [priceMap, aliasNameMap] = await Promise.all([buildProtochatPriceMap(), buildAliasNameMap()]);
 
     // 3. 获取 Embedding 统计
     const embeddingStats = await db.execute(sql`
@@ -230,7 +243,7 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
     let totalChatCost = 0;
     let totalRequestCount = 0;
     const modelStats: any[] = [];
-    const providerMap = new Map<string, any>();
+    const subProviderMap = new Map<string, { alias: string; providerName: string; totalTokens: number; cost: number }>();
 
     for (const item of (chatStats as any[])) {
       const { inputPrice, outputPrice } = getProtochatModelPrice(item.model, item.provider, priceMap);
@@ -238,7 +251,6 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       const outputTokens = parseInt(item.outputTokens || '0');
       const requestCount = parseInt(item.requestCount || '0');
 
-      // 只有 protochat 供应商计算成本
       const cost = (inputTokens / 1_000_000) * inputPrice +
         (outputTokens / 1_000_000) * outputPrice;
 
@@ -256,14 +268,15 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
         cost: cost.toFixed(8),
       });
 
-      // Provider 统计
-      const provider = item.provider || 'unknown';
-      if (!providerMap.has(provider)) {
-        providerMap.set(provider, { provider, totalTokens: 0, cost: 0 });
+      // 子供应商统计：从模型ID提取 alias
+      const alias = extractSubProviderAlias(item.model) || item.provider || 'unknown';
+      const providerName = aliasNameMap.get(alias) || alias;
+      if (!subProviderMap.has(alias)) {
+        subProviderMap.set(alias, { alias, providerName, totalTokens: 0, cost: 0 });
       }
-      const p = providerMap.get(provider);
-      p.totalTokens += inputTokens + outputTokens;
-      p.cost += cost;
+      const sp = subProviderMap.get(alias)!;
+      sp.totalTokens += inputTokens + outputTokens;
+      sp.cost += cost;
     }
 
     // 免费用户成本计算（只有 protochat 供应商计入成本）
@@ -339,13 +352,13 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
         cost: costInUSD.toFixed(8),
       });
 
-      // 更新 provider 统计
-      const provider = item.provider || 'unknown';
-      if (!providerMap.has(provider)) {
-        providerMap.set(provider, { provider, totalTokens: 0, cost: 0 });
+      // 图片生成也归入子供应商统计
+      const imgAlias = extractSubProviderAlias(item.model || '') || item.provider || 'unknown';
+      const imgProviderName = aliasNameMap.get(imgAlias) || imgAlias;
+      if (!subProviderMap.has(imgAlias)) {
+        subProviderMap.set(imgAlias, { alias: imgAlias, providerName: imgProviderName, totalTokens: 0, cost: 0 });
       }
-      const p = providerMap.get(provider);
-      p.cost += costInUSD;
+      subProviderMap.get(imgAlias)!.cost += costInUSD;
     }
 
     // 合并图片模型到总模型统计
@@ -388,13 +401,15 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
         });
       }
 
-      const provider = item.provider || 'unknown';
-      if (!providerMap.has(provider)) {
-        providerMap.set(provider, { provider, totalTokens: 0, cost: 0 });
+      // 标题生成也归入子供应商
+      const titleAlias = extractSubProviderAlias(item.model || '') || item.provider || 'unknown';
+      const titleProviderName = aliasNameMap.get(titleAlias) || titleAlias;
+      if (!subProviderMap.has(titleAlias)) {
+        subProviderMap.set(titleAlias, { alias: titleAlias, providerName: titleProviderName, totalTokens: 0, cost: 0 });
       }
-      const p = providerMap.get(provider);
-      p.totalTokens += inputTokens + outputTokens;
-      p.cost += cost;
+      const tsp = subProviderMap.get(titleAlias)!;
+      tsp.totalTokens += inputTokens + outputTokens;
+      tsp.cost += cost;
     }
 
     return res.json({
@@ -426,7 +441,9 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
         },
         dailyTrend,
         modelStats: modelStats.sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
-        providerStats: Array.from(providerMap.values()).map(p => ({ ...p, cost: p.cost.toFixed(6) })),
+        subProviderStats: Array.from(subProviderMap.values())
+          .map(sp => ({ ...sp, cost: sp.cost.toFixed(6) }))
+          .sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
         freeUserStats: freeUserModelStats.sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
         imageStats: imageModelStats.sort((a, b) => parseFloat(b.cost) - parseFloat(a.cost)),
       },
