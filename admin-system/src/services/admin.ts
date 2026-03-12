@@ -174,9 +174,9 @@ export async function updateUserStatus(userId: string, params: { banned: boolean
   });
 }
 
-// 删除用户
-export async function deleteUser(userId: string): Promise<{ success: boolean }> {
-  return request(`/api/user-management/${userId}`, {
+// 注销用户（软删除：匿名化 + 清理数据，保留成本记录）
+export async function purgeUser(userId: string): Promise<{ success: boolean; message?: string; data?: { deletedMessages: number; deletedFiles: number; note: string } }> {
+  return request(`/api/users/${userId}`, {
     method: 'DELETE',
   });
 }

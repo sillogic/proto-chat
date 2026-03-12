@@ -1,9 +1,11 @@
 import { ActionType, PageContainer, ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Form, Input, Modal, Select, Space, Tag, message } from 'antd';
+import { Button, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd';
 import { Drawer } from 'antd';
 import { useRef, useState } from 'react';
 
-import { getUserList, updateUserPlan, updateUserStatus } from '@/services/admin';
+const { Text } = Typography;
+
+import { getUserList, updateUserPlan, updateUserStatus, purgeUser } from '@/services/admin';
 import type { User, UserListParams } from '@/services/api.d';
 
 import { UsageStatsView } from '../UsageStatistics';
@@ -15,6 +17,7 @@ const UsersPage: React.FC = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [usageDrawerVisible, setUsageDrawerVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [purgingUserId, setPurgingUserId] = useState<string | null>(null);
   const [form] = Form.useForm();
 
   // 编辑用户
@@ -147,10 +150,50 @@ const UsersPage: React.FC = () => {
               封禁
             </Button>
           )}
+          <Popconfirm
+            title="注销账号"
+            description={
+              <div style={{ maxWidth: 260 }}>
+                <div>将清理该用户的<Text strong>聊天记录、知识库、文件</Text>，并释放邮箱。</div>
+                <div style={{ marginTop: 4 }}>积分及交易记录<Text strong>会保留</Text>。此操作不可恢复。</div>
+              </div>
+            }
+            okText="确认注销"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => handlePurgeUser(record.id)}
+          >
+            <Button
+              size="small"
+              type="link"
+              danger
+              loading={purgingUserId === record.id}
+            >
+              注销
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },
   ];
+
+  // 注销用户
+  const handlePurgeUser = async (userId: string) => {
+    setPurgingUserId(userId);
+    try {
+      const res = await purgeUser(userId);
+      if (res.success) {
+        message.success(`账号已注销（清理消息 ${res.data?.deletedMessages ?? 0} 条，文件 ${res.data?.deletedFiles ?? 0} 个）`);
+        actionRef.current?.reload();
+      } else {
+        message.error(res.message || '注销失败');
+      }
+    } catch {
+      message.error('注销用户失败');
+    } finally {
+      setPurgingUserId(null);
+    }
+  };
 
   // 更新用户状态
   const handleUpdateUserStatus = async (userId: string, banned: boolean) => {

@@ -5,7 +5,7 @@ import { usageService } from '../services/usage-service';
 import { db } from '../config/database';
 import { users } from '../db/schema';
 import { userExtensions } from '../db/user-extensions-schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 const router: express.Router = express.Router();
 
@@ -289,6 +289,78 @@ router.put('/:userId/status', requirePermission('users.write'), async (req: Auth
       success: false,
       message: '更新用户状态失败',
     });
+  }
+});
+
+// DELETE /api/users/:userId - 注销用户账号（软删除：匿名化用户信息，清理数据，保留成本记录）
+router.delete('/:userId', requirePermission('users.write'), async (req: AuthenticatedRequest, res) => {
+  const { userId } = req.params;
+
+  // 查找用户
+  const userResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (userResult.length === 0) {
+    return res.status(404).json({ success: false, message: '用户不存在' });
+  }
+  const user = userResult[0];
+  const oldEmail = user.email;
+
+  try {
+    // 统计将被清理的数据量（仅用于返回信息）
+    const [msgCount, fileCount] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) AS c FROM messages WHERE user_id = ${userId}`),
+      db.execute(sql`SELECT COUNT(*) AS c FROM files WHERE user_id = ${userId}`),
+    ]);
+
+    // 1. 删除 betterAuth 登录凭据（阻断登录，auth_sessions/two_factor/passkey 均 cascade 自 accounts，但显式删除更安全）
+    await db.execute(sql`DELETE FROM accounts WHERE user_id = ${userId}`);
+    await db.execute(sql`DELETE FROM auth_sessions WHERE user_id = ${userId}`);
+    await db.execute(sql`DELETE FROM two_factor WHERE user_id = ${userId}`);
+    await db.execute(sql`DELETE FROM passkey WHERE "userId" = ${userId}`);
+
+    // 2. 删除聊天数据（sessions cascade 到 topics/messages）
+    await db.execute(sql`DELETE FROM sessions WHERE user_id = ${userId}`);
+    await db.execute(sql`DELETE FROM topics WHERE user_id = ${userId}`);
+    await db.execute(sql`DELETE FROM messages WHERE user_id = ${userId}`);
+
+    // 3. 删除知识库/文件/向量数据（chunks/embeddings 级联）
+    await db.execute(sql`DELETE FROM files WHERE user_id = ${userId}`);
+    await db.execute(sql`DELETE FROM documents WHERE user_id = ${userId}`);
+    await db.execute(sql`DELETE FROM knowledge_bases WHERE user_id = ${userId}`);
+
+    // 4. 删除用户扩展信息
+    await db.delete(userExtensions).where(eq(userExtensions.userId, userId));
+
+    // 5. 清理邮箱验证记录（释放 identifier 槽位）
+    if (oldEmail) {
+      await db.execute(sql`DELETE FROM verifications WHERE identifier = ${oldEmail}`);
+    }
+
+    // 6. 匿名化用户行（保留 userId 以维持 user_balances/user_transactions 外键引用）
+    const anonymousEmail = `deleted_${userId}@deleted.invalid`;
+    await db.update(users).set({
+      email: anonymousEmail,
+      normalizedEmail: anonymousEmail,
+      username: `deleted_${userId}`,
+      fullName: null,
+      firstName: null,
+      lastName: null,
+      phone: null,
+      avatar: null,
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+
+    return res.json({
+      success: true,
+      message: '用户账号已注销',
+      data: {
+        deletedMessages: Number((msgCount as any)[0]?.c ?? 0),
+        deletedFiles: Number((fileCount as any)[0]?.c ?? 0),
+        note: 'S3 对象存储文件未清理，积分及交易记录已保留',
+      },
+    });
+  } catch (error: any) {
+    console.error('Purge user error:', error);
+    return res.status(500).json({ success: false, message: '注销用户失败: ' + error.message });
   }
 });
 
