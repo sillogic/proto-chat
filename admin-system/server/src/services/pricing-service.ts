@@ -56,7 +56,28 @@ export class PricingService {
 
     // Get all model pricings
     async getAllPricings() {
-        return await db.select().from(modelPricings).orderBy(desc(modelPricings.updatedAt));
+        const rows = await db
+            .select({
+                id: modelPricings.id,
+                model: modelPricings.model,
+                provider: modelPricings.provider,
+                subProvider: modelPricings.subProvider,
+                inputPrice: modelPricings.inputPrice,
+                outputPrice: modelPricings.outputPrice,
+                perRequestPrice: modelPricings.perRequestPrice,
+                userInputPrice: modelPricings.userInputPrice,
+                userOutputPrice: modelPricings.userOutputPrice,
+                userCacheReadPrice: (modelPricings as any).userCacheReadPrice,
+                imageOutputPrice: modelPricings.imageOutputPrice,
+                userImageOutputPrice: modelPricings.userImageOutputPrice,
+                memo: modelPricings.memo,
+                updatedAt: modelPricings.updatedAt,
+                displayName: protochatModels.displayName,
+            })
+            .from(modelPricings)
+            .leftJoin(protochatModels, eq(protochatModels.id, modelPricings.model))
+            .orderBy(desc(modelPricings.updatedAt));
+        return rows;
     }
 
     // Get pricing by ID

@@ -146,17 +146,20 @@ const ModelPricingManagement: React.FC = () => {
   const modelColumns: ProColumns<ModelPricing>[] = [
     {
       title: '模型名',
-      dataIndex: 'model',
+      dataIndex: 'displayName',
       fixed: 'left',
       width: 180,
       search: false,
-      render: (_, record) => (
-        <Tooltip title={record.model}>
-          <Text strong style={{ whiteSpace: 'nowrap' }}>
-            {getModelDisplayName(record.model)}
-          </Text>
-        </Tooltip>
-      ),
+      render: (_, record) => {
+        const name = (record as any).displayName || getModelDisplayName(record.model);
+        return (
+          <Tooltip title={record.model}>
+            <Text strong style={{ whiteSpace: 'nowrap' }}>
+              {name}
+            </Text>
+          </Tooltip>
+        );
+      },
     },
     {
       title: '模型标识',
