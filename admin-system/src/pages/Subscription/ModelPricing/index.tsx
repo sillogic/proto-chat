@@ -177,61 +177,48 @@ const ModelPricingManagement: React.FC = () => {
     },
   ];
 
-  // Token 模型列
+  // Token 模型列（对账优先：USD成本紧跟积分成本，最后用户价）
   const tokenColumns: ProColumns<ModelPricing>[] = [
     ...modelColumns,
     {
-      title: '提示词成本价 (积分/1M)',
-      dataIndex: 'inputPrice',
-      width: 190,
-      valueType: 'digit',
-      fieldProps: { precision: 2 },
-      render: (_, record) => parseFloat(record.inputPrice as string).toFixed(2),
-    },
-    {
-      title: '提示词成本价 (USD/1M)',
+      title: '输入成本(USD)',
       dataIndex: 'inputPrice',
       key: 'inputPriceUSD',
-      width: 190,
+      width: 120,
       search: false,
       render: (_, record) => (
         <Text type="secondary">{formatUSD(creditsToUSD(record.inputPrice))}</Text>
       ),
     },
     {
-      title: '补全成本价 (积分/1M)',
-      dataIndex: 'outputPrice',
-      width: 190,
-      valueType: 'digit',
-      fieldProps: { precision: 2 },
-      render: (_, record) => parseFloat(record.outputPrice as string).toFixed(2),
+      title: '输入成本(积分)',
+      dataIndex: 'inputPrice',
+      width: 110,
+      search: false,
+      render: (_, record) => Math.round(parseFloat(record.inputPrice as string)),
     },
     {
-      title: '补全成本价 (USD/1M)',
+      title: '输出成本(USD)',
       dataIndex: 'outputPrice',
       key: 'outputPriceUSD',
-      width: 190,
+      width: 120,
       search: false,
       render: (_, record) => (
         <Text type="secondary">{formatUSD(creditsToUSD(record.outputPrice))}</Text>
       ),
     },
     {
-      title: 'Cache 读取成本价 (积分/1M)',
-      dataIndex: 'cacheReadPrice',
-      key: 'cacheReadPrice',
-      width: 210,
+      title: '输出成本(积分)',
+      dataIndex: 'outputPrice',
+      width: 110,
       search: false,
-      render: (_, record) => {
-        const price = parseFloat((record as any).cacheReadPrice || '0');
-        return price > 0 ? price.toFixed(2) : '-';
-      },
+      render: (_, record) => Math.round(parseFloat(record.outputPrice as string)),
     },
     {
-      title: 'Cache 读取成本价 (USD/1M)',
+      title: 'Cache成本(USD)',
       dataIndex: 'cacheReadPrice',
       key: 'cacheReadPriceUSD',
-      width: 210,
+      width: 125,
       search: false,
       render: (_, record) => {
         const usd = creditsToUSD((record as any).cacheReadPrice);
@@ -239,55 +226,63 @@ const ModelPricingManagement: React.FC = () => {
       },
     },
     {
+      title: 'Cache成本(积分)',
+      dataIndex: 'cacheReadPrice',
+      key: 'cacheReadPrice',
+      width: 115,
+      search: false,
+      render: (_, record) => {
+        const price = Math.round(parseFloat((record as any).cacheReadPrice || '0'));
+        return price > 0 ? price : '-';
+      },
+    },
+    {
       title: (
-        <Space>
-          <span>提示词用户价 (积分/1M)</span>
+        <Space size={4}>
+          <span>用户输入(积分)</span>
           {multiplier !== 1 && <Tag color="green">×{multiplier}</Tag>}
         </Space>
       ),
       dataIndex: 'userInputPrice',
-      width: 210,
+      width: 130,
       search: false,
-      render: (_, record) => {
-        const userPrice = parseFloat(record.userInputPrice as string);
-        return <Tag color="green">{userPrice.toFixed(2)}</Tag>;
-      },
+      render: (_, record) => (
+        <Tag color="green">{Math.round(parseFloat(record.userInputPrice as string))}</Tag>
+      ),
     },
     {
       title: (
-        <Space>
-          <span>补全用户价 (积分/1M)</span>
+        <Space size={4}>
+          <span>用户输出(积分)</span>
           {multiplier !== 1 && <Tag color="green">×{multiplier}</Tag>}
         </Space>
       ),
       dataIndex: 'userOutputPrice',
-      width: 210,
+      width: 130,
       search: false,
-      render: (_, record) => {
-        const userPrice = parseFloat(record.userOutputPrice as string);
-        return <Tag color="green">{userPrice.toFixed(2)}</Tag>;
-      },
+      render: (_, record) => (
+        <Tag color="green">{Math.round(parseFloat(record.userOutputPrice as string))}</Tag>
+      ),
     },
     {
       title: (
-        <Space>
-          <span>Cache 读取用户价 (积分/1M)</span>
+        <Space size={4}>
+          <span>用户Cache(积分)</span>
           {multiplier !== 1 && <Tag color="gold">×{multiplier}</Tag>}
         </Space>
       ),
       dataIndex: 'userCacheReadPrice',
-      width: 230,
+      width: 135,
       search: false,
       render: (_, record) => {
-        const cachePrice = parseFloat((record as any).userCacheReadPrice || '0');
-        if (cachePrice <= 0) return '-';
-        return <Tag color="gold">{cachePrice.toFixed(2)}</Tag>;
+        const price = Math.round(parseFloat((record as any).userCacheReadPrice || '0'));
+        return price > 0 ? <Tag color="gold">{price}</Tag> : '-';
       },
     },
     {
       title: '备注',
       dataIndex: 'memo',
-      width: 160,
+      width: 150,
       ellipsis: true,
       search: false,
     },
