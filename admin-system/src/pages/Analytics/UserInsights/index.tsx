@@ -324,6 +324,13 @@ const UserInsights: React.FC = () => {
               render: (_, r: any) => <Text>{formatUSD(r.cost)}</Text>,
             },
             {
+              title: '订阅金额 (CNY)',
+              dataIndex: 'subscriptionCNY',
+              render: (_, r: any) => (
+                <Text style={{ color: '#52c41a' }}>¥{Number(r.subscriptionCNY || 0).toFixed(2)}</Text>
+              ),
+            },
+            {
               title: '订阅金额 (USD)',
               dataIndex: 'subscriptionUSD',
               render: (_, r: any) => (
