@@ -165,6 +165,37 @@ export class CreditService {
     }
 
     /**
+     * Calculate the upstream cost (what we pay) for a model call.
+     * Uses inputPrice/outputPrice from model_pricings (not the user-facing markup price).
+     * Returns 0 if no pricing found.
+     */
+    async calculateCostPrice(
+        model: string,
+        provider: string,
+        inputTokens: number,
+        outputTokens: number,
+        cachedInputTokens: number = 0,
+    ): Promise<number> {
+        const pricing = await this.db.query.modelPricings.findFirst({
+            where: and(eq(modelPricings.model, model), eq(modelPricings.provider, provider)),
+        });
+        if (!pricing) return 0;
+
+        const inputPrice = parseFloat(pricing.inputPrice || '0');
+        const outputPrice = parseFloat(pricing.outputPrice || '0');
+        const cacheReadPrice = parseFloat((pricing as any).cacheReadPrice || '0');
+
+        const safeCachedTokens = Math.min(cachedInputTokens, inputTokens);
+        const cacheMissTokens = inputTokens - safeCachedTokens;
+        const inputCost = (cacheMissTokens / 1_000_000) * inputPrice
+            + (cacheReadPrice > 0
+                ? (safeCachedTokens / 1_000_000) * cacheReadPrice
+                : (safeCachedTokens / 1_000_000) * inputPrice);
+
+        return inputCost + (outputTokens / 1_000_000) * outputPrice;
+    }
+
+    /**
      * Check if user has enough credits
      */
     async hasEnoughCredits(estimatedAmount: number = 0) {

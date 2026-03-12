@@ -79,13 +79,17 @@ export class SystemAgentService {
 
       // Record usage for admin statistics without deducting credits
       if (capturedUsage) {
+        const inputTokens = (capturedUsage as { inputTokens: number }).inputTokens;
+        const outputTokens = (capturedUsage as { outputTokens: number }).outputTokens;
         const creditService = new CreditService(this.db, this.userId);
+        const costPrice = await creditService.calculateCostPrice(model, provider, inputTokens, outputTokens);
         void creditService
           .recordUsage('Topic title generation', {
+            costPrice,
             model,
             provider,
-            totalInputTokens: (capturedUsage as { inputTokens: number }).inputTokens,
-            totalOutputTokens: (capturedUsage as { outputTokens: number }).outputTokens,
+            totalInputTokens: inputTokens,
+            totalOutputTokens: outputTokens,
             type: 'title_generation',
           })
           .catch((e) => {

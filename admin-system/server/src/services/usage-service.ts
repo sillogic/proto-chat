@@ -598,52 +598,48 @@ export class UsageService {
     const startOfPeriod = new Date(localDate.getFullYear(), localDate.getMonth(), 1);
     const endOfPeriod = new Date(localDate.getFullYear(), localDate.getMonth() + 1, 1);
     const startOfPeriodStr = startOfPeriod.toISOString();
+    const endOfPeriodStr = endOfPeriod.toISOString();
 
+    // Read from user_transactions (CONSUMPTION type) which stores pre-computed costPrice in metadata.
+    // This covers both regular chat completions and system-initiated calls (title generation, etc.).
     const dailyTrend = await db.execute(sql`
-      SELECT 
-        TO_CHAR(m.created_at, 'YYYY-MM-DD') as date,
-        m.model,
-        SUM((COALESCE(m.metadata ->> 'totalInputTokens', '0'))::int) as "totalInputTokens",
-        SUM((COALESCE(m.metadata ->> 'totalOutputTokens', '0'))::int) as "totalOutputTokens",
-        SUM((COALESCE(m.metadata ->> 'totalInputTokens', '0'))::int + (COALESCE(m.metadata ->> 'totalOutputTokens', '0'))::int) as "totalTokens"
-      FROM messages m
-      WHERE m.role = 'assistant'
-      AND m.created_at >= ${startOfPeriodStr}
-      AND m.created_at < ${endOfPeriod.toISOString()}
-      AND m.user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
-      GROUP BY TO_CHAR(m.created_at, 'YYYY-MM-DD'), m.model
+      SELECT
+        TO_CHAR(t.created_at, 'YYYY-MM-DD') as date,
+        t.metadata ->> 'model' as model,
+        SUM((COALESCE(t.metadata ->> 'totalInputTokens', '0'))::int) as "totalInputTokens",
+        SUM((COALESCE(t.metadata ->> 'totalOutputTokens', '0'))::int) as "totalOutputTokens",
+        SUM((COALESCE(t.metadata ->> 'totalInputTokens', '0'))::int + (COALESCE(t.metadata ->> 'totalOutputTokens', '0'))::int) as "totalTokens"
+      FROM user_transactions t
+      WHERE t.type = 'CONSUMPTION'
+      AND t.created_at >= ${startOfPeriodStr}
+      AND t.created_at < ${endOfPeriodStr}
+      AND t.user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
+      AND t.metadata ->> 'model' IS NOT NULL
+      GROUP BY TO_CHAR(t.created_at, 'YYYY-MM-DD'), t.metadata ->> 'model'
       ORDER BY date ASC
     `);
 
     const aggregatedStats = await db.execute(sql`
-      SELECT 
-        m.model, m.provider,
-        SUM((COALESCE(m.metadata ->> 'totalInputTokens', '0'))::int) as "totalInputTokens",
-        SUM((COALESCE(m.metadata ->> 'totalOutputTokens', '0'))::int) as "totalOutputTokens",
+      SELECT
+        t.metadata ->> 'model' as model,
+        t.metadata ->> 'provider' as provider,
+        SUM((COALESCE(t.metadata ->> 'totalInputTokens', '0'))::int) as "totalInputTokens",
+        SUM((COALESCE(t.metadata ->> 'totalOutputTokens', '0'))::int) as "totalOutputTokens",
         COUNT(*) as "requestCount",
-        MAX(mp.input_price) as "inputPrice",
-        MAX(mp.output_price) as "outputPrice",
-        MAX(mp.per_request_price) as "perRequestPrice"
-      FROM messages m
-      LEFT JOIN model_pricings mp ON m.model = mp.model AND m.provider = mp.provider
-      WHERE m.role = 'assistant'
-      AND m.created_at >= ${startOfPeriodStr}
-      AND m.created_at < ${endOfPeriod.toISOString()}
-      GROUP BY m.model, m.provider
+        SUM((COALESCE(t.metadata ->> 'costPrice', '0'))::numeric) as "totalCostPrice"
+      FROM user_transactions t
+      WHERE t.type = 'CONSUMPTION'
+      AND t.created_at >= ${startOfPeriodStr}
+      AND t.created_at < ${endOfPeriodStr}
+      AND t.metadata ->> 'model' IS NOT NULL
+      GROUP BY t.metadata ->> 'model', t.metadata ->> 'provider'
     `);
 
     let totalCost = 0;
     const modelStatsMap = new Map<string, any>();
 
     for (const item of (aggregatedStats as any[])) {
-      const inputPrice = parseFloat(item.inputPrice || '0');
-      const outputPrice = parseFloat(item.outputPrice || '0');
-      const perRequestPrice = parseFloat(item.perRequestPrice || '0');
-
-      const cost = (item.totalInputTokens / 1_000_000) * inputPrice +
-        (item.totalOutputTokens / 1_000_000) * outputPrice +
-        (item.requestCount * perRequestPrice);
-
+      const cost = parseFloat(item.totalCostPrice || '0');
       totalCost += cost;
 
       if (!modelStatsMap.has(item.model)) {

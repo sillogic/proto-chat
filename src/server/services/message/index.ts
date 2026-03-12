@@ -241,17 +241,27 @@ export class MessageService {
               `[Credit/Cache] model=${message.model} totalInput=${totalInputTokens || 0} cached=${cachedTokens} miss=${(totalInputTokens || 0) - cachedTokens} output=${totalOutputTokens || 0}`,
             );
 
-            const cost = await this.creditService.calculateCost(
-              message.model,
-              message.provider,
-              totalInputTokens || 0,
-              totalOutputTokens || 0,
-              0, // outputImageTokens (not applicable for chat messages)
-              isUserConfig,
-              cachedTokens,
-            );
+            const [cost, costPrice] = await Promise.all([
+              this.creditService.calculateCost(
+                message.model,
+                message.provider,
+                totalInputTokens || 0,
+                totalOutputTokens || 0,
+                0, // outputImageTokens (not applicable for chat messages)
+                isUserConfig,
+                cachedTokens,
+              ),
+              this.creditService.calculateCostPrice(
+                message.model,
+                message.provider,
+                totalInputTokens || 0,
+                totalOutputTokens || 0,
+                cachedTokens,
+              ),
+            ]);
             if (cost > 0) {
               await this.creditService.deductCredits(cost, `Chat completion: ${message.model}`, id, {
+                costPrice,
                 inputCachedTokens: cachedTokens,
                 model: message.model,
                 provider: message.provider,
