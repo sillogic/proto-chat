@@ -1,14 +1,14 @@
-import { LOBE_DEFAULT_MODEL_LIST, AiModelType } from 'model-bank';
-import React, { useState, useMemo, useEffect } from 'react';
+import { LOBE_DEFAULT_MODEL_LIST } from 'model-bank';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { request } from '@umijs/max';
 import { Flexbox } from 'react-layout-kit';
-import { Typography, Tabs, Badge, Empty, message, Card, Button, Popconfirm, Input } from 'antd';
+import { Typography, Tabs, Badge, Empty, message, Card, Button, Popconfirm, Input, Skeleton } from 'antd';
 import { CloudSyncOutlined, SearchOutlined } from '@ant-design/icons';
 import type { AiProviderConfig } from '@/services/ai-provider';
 import ModelItem from './ModelItem';
 import { LucideMessageSquare, LucideImage, LucideType, LucideMic } from 'lucide-react';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface ModelListProps {
   id: string;
@@ -21,13 +21,31 @@ interface ModelListProps {
   formatLastSync?: (time: string) => string;
 }
 
+// 纯函数，移到组件外避免每次渲染重新创建
+const filterByTab = (list: any[], tab: string) => {
+  if (tab === 'all') return list;
+  if (tab === 'chat') return list.filter((m: any) => m.type === 'chat' && !m.abilities?.imageOutput);
+  if (tab === 'image') return list.filter((m: any) => m.type === 'image' || m.abilities?.imageOutput);
+  if (tab === 'stt') return list.filter((m: any) => m.type === 'stt' || m.abilities?.audioInput);
+  if (tab === 'tts') return list.filter((m: any) => m.type === 'tts' || m.abilities?.audioOutput);
+  return list.filter((m: any) => m.type === tab);
+};
+
+const TAB_DEFS = [
+  { key: 'all',   label: '全部',   icon: null,                        alwaysShow: true },
+  { key: 'chat',  label: '对话',   icon: <LucideMessageSquare size={14} />, alwaysShow: true },
+  { key: 'image', label: '图片生成', icon: <LucideImage size={14} />,  alwaysShow: false },
+  { key: 'stt',   label: '语音识别', icon: <LucideMic size={14} />,   alwaysShow: false },
+  { key: 'tts',   label: '语音合成', icon: <LucideType size={14} />,  alwaysShow: false },
+];
+
 const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix = '/api/admin', onSync, syncing, lastSyncTime, formatLastSync }) => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [dbModels, setDbModels] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState<string>('');
+  const [isPending, startTransition] = useTransition();
 
-  // 从数据库获取模型列表
   useEffect(() => {
     const fetchModels = async () => {
       setLoading(true);
@@ -35,115 +53,84 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
         const res = await request<{ success: boolean; data: any[] }>(
           `${apiPrefix}/models?provider=${id}`
         );
-        if (res.success && res.data) {
-          setDbModels(res.data);
-        } else {
-          // 数据库中没有数据，设置为空数组
-          setDbModels([]);
-        }
+        setDbModels(res.success && res.data ? res.data : []);
       } catch (error) {
         console.error('Failed to fetch models from DB:', error);
-        // 出错时设置为空数组，将使用fallback
         setDbModels([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchModels();
-  }, [id, apiPrefix, config]); // 添加 config 作为依赖，同步后会触发 onRefresh，config 会更新
+  }, [id, apiPrefix, config]);
 
   const models = useMemo(() => {
-    // 如果还在加载中，返回空数组
-    if (dbModels === null) {
-      return [];
-    }
-
-    // 优先使用数据库中的模型，如果没有则降级到 model-bank
-    if (dbModels.length > 0) {
-      return dbModels;
-    }
-
-    // Fallback: 从 model-bank 获取
+    if (dbModels === null) return [];
+    if (dbModels.length > 0) return dbModels;
+    // Fallback: model-bank
     const filtered = LOBE_DEFAULT_MODEL_LIST.filter((m: any) => m.providerId === id);
     const uniqueMap = new Map();
     filtered.forEach((model: any) => {
-      if (!uniqueMap.has(model.id)) {
-        uniqueMap.set(model.id, model);
-      }
+      if (!uniqueMap.has(model.id)) uniqueMap.set(model.id, model);
     });
     return Array.from(uniqueMap.values());
   }, [id, dbModels]);
 
-  const enabledModels = useMemo(() => {
-    // 统一使用数据库中的 enabled 字段
-    return models.filter((m: any) => m.enabled).map((m: any) => m.id);
+  const enabledSet = useMemo(
+    () => new Set(models.filter((m: any) => m.enabled).map((m: any) => m.id)),
+    [models],
+  );
+
+  // 预计算每个 tab 的数量，badge 和 tab 可见性共用
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: models.length };
+    for (const t of TAB_DEFS) {
+      if (t.key !== 'all') counts[t.key] = filterByTab(models, t.key).length;
+    }
+    return counts;
   }, [models]);
 
-  // 按 tab key 过滤模型（优先按 abilities，兼顾 type）
-  const filterByTab = (list: any[], tab: string) => {
-    if (tab === 'all') return list;
-    if (tab === 'chat') return list.filter((m: any) => m.type === 'chat' && !m.abilities?.imageOutput);
-    if (tab === 'image') return list.filter((m: any) => m.type === 'image' || m.abilities?.imageOutput);
-    if (tab === 'stt') return list.filter((m: any) => m.type === 'stt' || m.abilities?.audioInput);
-    if (tab === 'tts') return list.filter((m: any) => m.type === 'tts' || m.abilities?.audioOutput);
-    return list.filter((m: any) => m.type === tab);
-  };
+  const visibleTabs = useMemo(
+    () => TAB_DEFS.filter((t) => t.alwaysShow || tabCounts[t.key] > 0),
+    [tabCounts],
+  );
 
   const filteredModels = useMemo(() => {
-    let filtered = filterByTab(models, activeTab);
-
-    // 按搜索文本过滤
+    let list = filterByTab(models, activeTab);
     if (searchText.trim()) {
-      const searchLower = searchText.toLowerCase().trim();
-      filtered = filtered.filter((m: any) => {
-        const displayName = (m.displayName || '').toLowerCase();
-        const modelId = (m.id || '').toLowerCase();
-        return displayName.includes(searchLower) || modelId.includes(searchLower);
-      });
+      const lower = searchText.toLowerCase().trim();
+      list = list.filter(
+        (m: any) =>
+          (m.displayName || '').toLowerCase().includes(lower) ||
+          (m.id || '').toLowerCase().includes(lower),
+      );
     }
-
-    return filtered;
+    return list;
   }, [models, activeTab, searchText]);
 
-  const groups = useMemo(() => {
-    const enabled = filteredModels.filter((m: any) => enabledModels.includes(m.id));
-    const disabled = filteredModels.filter((m: any) => !enabledModels.includes(m.id));
-    return { enabled, disabled };
-  }, [filteredModels, enabledModels]);
+  const groups = useMemo(() => ({
+    enabled:  filteredModels.filter((m: any) => enabledSet.has(m.id)),
+    disabled: filteredModels.filter((m: any) => !enabledSet.has(m.id)),
+  }), [filteredModels, enabledSet]);
+
+  const handleTabChange = (key: string) => {
+    startTransition(() => setActiveTab(key));
+  };
 
   const handleToggle = async (modelId: string, enabled: boolean) => {
     try {
-      // 调用正确的API更新数据库中的 protochat_models.enabled 字段
-      // 需要对modelId进行URL编码，因为包含特殊字符如 :: 和 :
-      const res = await request<{ success: boolean; data?: { enabled: boolean } }>(
+      const res = await request<{ success: boolean }>(
         `${apiPrefix}/models/${encodeURIComponent(modelId)}/toggle`,
-        {
-          method: 'PUT',
-        }
+        { method: 'PUT' },
       );
       if (res.success) {
         message.success(`模型已${enabled ? '启用' : '禁用'}`);
         onRefresh();
       }
-    } catch (e) {
+    } catch {
       message.error('更新模型状态失败');
-      console.error('Toggle model error:', e);
     }
   };
-
-  const allTabs = [
-    { key: 'all', label: '全部', icon: null, alwaysShow: true },
-    { key: 'chat', label: '对话', icon: <LucideMessageSquare size={14} />, alwaysShow: true },
-    { key: 'image', label: '图片生成', icon: <LucideImage size={14} />, alwaysShow: false },
-    { key: 'stt', label: 'ASR', icon: <LucideMic size={14} />, alwaysShow: false },
-    { key: 'tts', label: 'TTS', icon: <LucideType size={14} />, alwaysShow: false },
-  ];
-
-  // 只显示有模型的 tab（全部和对话始终显示）
-  const tabs = allTabs.filter(
-    (tab) => tab.alwaysShow || filterByTab(models, tab.key).length > 0,
-  );
 
   const title = (
     <Flexbox horizontal align="center" justify="space-between" style={{ width: '100%' }}>
@@ -187,61 +174,63 @@ const ModelList: React.FC<ModelListProps> = ({ id, config, onRefresh, apiPrefix 
   return (
     <Card title={title} variant="outlined">
       <Flexbox gap={16}>
-        <Tabs 
-          activeKey={activeTab} 
-          onChange={setActiveTab}
-          items={tabs.map(tab => ({
+        <Tabs
+          activeKey={activeTab}
+          onChange={handleTabChange}
+          items={visibleTabs.map((tab) => ({
             key: tab.key,
             label: (
               <Flexbox horizontal align="center" gap={4}>
                 {tab.icon}
                 {tab.label}
-                <Badge 
-                  count={tab.key === 'all' ? models.length : models.filter((m: any) => m.type === tab.key).length} 
-                  showZero 
-                  color="#eee" 
+                <Badge
+                  count={tabCounts[tab.key] ?? 0}
+                  showZero
+                  color="#eee"
                   style={{ color: '#999', boxShadow: 'none' }}
                 />
               </Flexbox>
-            )
+            ),
           }))}
         />
 
-        <Flexbox gap={24}>
-          {groups.enabled.length > 0 && (
-            <Flexbox gap={8}>
-              <Text type="secondary" strong>已启用</Text>
-              <Flexbox>
-                {groups.enabled.map((model: any) => (
-                  <ModelItem 
-                    key={model.id} 
-                    model={model} 
-                    enabled={true} 
-                    onToggle={async (checked: boolean) => handleToggle(model.id, checked)} 
-                  />
-                ))}
+        {loading ? (
+          <Skeleton active paragraph={{ rows: 6 }} />
+        ) : (
+          <Flexbox gap={24} style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+            {groups.enabled.length > 0 && (
+              <Flexbox gap={8}>
+                <Text type="secondary" strong>已启用</Text>
+                <Flexbox>
+                  {groups.enabled.map((model: any) => (
+                    <ModelItem
+                      key={model.id}
+                      model={model}
+                      enabled={true}
+                      onToggle={(checked: boolean) => handleToggle(model.id, checked)}
+                    />
+                  ))}
+                </Flexbox>
               </Flexbox>
-            </Flexbox>
-          )}
-
-          {groups.disabled.length > 0 && (
-            <Flexbox gap={8}>
-              <Text type="secondary" strong>未启用</Text>
-              <Flexbox>
-                {groups.disabled.map((model: any) => (
-                  <ModelItem 
-                    key={model.id} 
-                    model={model} 
-                    enabled={false} 
-                    onToggle={async (checked: boolean) => handleToggle(model.id, checked)} 
-                  />
-                ))}
+            )}
+            {groups.disabled.length > 0 && (
+              <Flexbox gap={8}>
+                <Text type="secondary" strong>未启用</Text>
+                <Flexbox>
+                  {groups.disabled.map((model: any) => (
+                    <ModelItem
+                      key={model.id}
+                      model={model}
+                      enabled={false}
+                      onToggle={(checked: boolean) => handleToggle(model.id, checked)}
+                    />
+                  ))}
+                </Flexbox>
               </Flexbox>
-            </Flexbox>
-          )}
-
-          {filteredModels.length === 0 && <Empty description="暂无模型" style={{ marginBlock: 32 }} />}
-        </Flexbox>
+            )}
+            {filteredModels.length === 0 && <Empty description="暂无模型" style={{ marginBlock: 32 }} />}
+          </Flexbox>
+        )}
       </Flexbox>
     </Card>
   );
