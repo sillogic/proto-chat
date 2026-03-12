@@ -180,7 +180,7 @@ const RevenueOverview: React.FC = () => {
     >
       <Alert
         message="货币说明"
-        description={`收入数据为人民币 (CNY)，成本数据为美元 (USD)。当前汇率: ${exchangeRate} CNY = 1 USD。所有统计已转换为美元显示。`}
+        description={`收入数据为人民币 (CNY)，成本数据为美元 (USD)。当前汇率: ${exchangeRate} CNY = 1 USD。收入卡片显示原始人民币金额，并附换算美元供对比。`}
         type="info"
         showIcon
         style={{ marginBottom: 24 }}
@@ -191,19 +191,19 @@ const RevenueOverview: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="总收入 (USD)"
-              value={convertedData?.overview?.revenueUSD || 0}
+              title="总收入 (CNY)"
+              value={convertedData?.overview?.revenueCNY || 0}
               precision={2}
-              prefix="$"
+              prefix="¥"
               valueStyle={{ color: '#52c41a' }}
-              suffix={
-                <Tooltip title={`原始金额: ¥${(convertedData?.overview?.revenueCNY || 0).toFixed(2)}`}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    (¥{(convertedData?.overview?.revenueCNY || 0).toFixed(0)})
-                  </Text>
-                </Tooltip>
-              }
             />
+            <div style={{ marginTop: 8, borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                换算 USD：<Text style={{ color: '#52c41a', fontSize: 12 }}>
+                  ${(convertedData?.overview?.revenueUSD || 0).toFixed(2)}
+                </Text>
+              </Text>
+            </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
@@ -263,15 +263,24 @@ const RevenueOverview: React.FC = () => {
         <Col xs={24} sm={12} lg={8}>
           <Card loading={loading}>
             <Statistic
-              title="人均收入 (USD)"
+              title="人均收入 (CNY)"
               value={
                 convertedData?.overview?.subscriberCount
-                  ? (convertedData.overview.revenueUSD / convertedData.overview.subscriberCount)
+                  ? (convertedData.overview.revenueCNY / convertedData.overview.subscriberCount)
                   : 0
               }
-              precision={4}
-              prefix="$"
+              precision={2}
+              prefix="¥"
             />
+            <div style={{ marginTop: 8, borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                换算 USD：<Text style={{ fontSize: 12 }}>
+                  ${convertedData?.overview?.subscriberCount
+                    ? (convertedData.overview.revenueUSD / convertedData.overview.subscriberCount).toFixed(4)
+                    : '0.0000'}
+                </Text>
+              </Text>
+            </div>
           </Card>
         </Col>
       </Row>
