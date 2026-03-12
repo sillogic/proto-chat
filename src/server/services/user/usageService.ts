@@ -184,7 +184,7 @@ export class UserUsageService {
                 totalConsumed,
             },
             resetCountdown: {
-                nextResetDate: userExt?.planExpiresAt ? dayjs(userExt.planExpiresAt).format('YYYY-MM-DD') : '-',
+                nextResetDate: userExt?.nextCreditGrantAt ? dayjs(userExt.nextCreditGrantAt).format('YYYY-MM-DD') : '-',
             },
             storage: {
                 limitMB: plan?.storageLimit || 512,

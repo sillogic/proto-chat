@@ -171,8 +171,12 @@ export async function POST(request: NextRequest) {
       const planInterval = order.planInterval as 'month' | 'year';
       const expiresAt = calculateExpiresAt(subscriptionType, planInterval, durationMonths);
 
-      // For one-time payments, don't set nextCreditGrantAt (no auto-renewal)
-      const nextCreditGrantAt = subscriptionType === 'recurring' ? calculateNextCreditGrantAt() : null;
+      // Monthly credit reset applies to all multi-month plans:
+      // - recurring: always resets monthly
+      // - onetime with durationMonths > 1: resets monthly within the subscription period
+      // - onetime with durationMonths = 1: no reset needed (expires in ~1 month anyway)
+      const needsMonthlyReset = subscriptionType === 'recurring' || (durationMonths ?? 1) > 1;
+      const nextCreditGrantAt = needsMonthlyReset ? calculateNextCreditGrantAt() : null;
 
       // 7d. Update or insert user_extensions
       const existingUserExt = await tx
