@@ -55,6 +55,9 @@ export const userExtensions = pgTable('user_extensions', {
   // 下一个计费周期预设的方案 ID (用于中途降级或取消订阅)
   nextPlanId: text('next_plan_id'),
 
+  // 触发预设降级的原因: 'expired' | 'payment_failed' | null
+  nextPlanReason: text('next_plan_reason'),
+
   preference: jsonb('preference').default({}),
 }, (table) => ({
   userIdIdx: index('user_extension_user_id_idx').on(table.userId),

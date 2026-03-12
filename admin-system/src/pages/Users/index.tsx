@@ -288,7 +288,21 @@ const UsersPage: React.FC = () => {
         <Descriptions size="small" column={1} style={{ marginBottom: 16 }}>
           <Descriptions.Item label="邮箱">{currentUser?.email}</Descriptions.Item>
           <Descriptions.Item label="当前方案">{currentUser?.planType || 'free'}</Descriptions.Item>
-          <Descriptions.Item label="待定变更">{(currentUser as any)?.nextPlanId || '无'}</Descriptions.Item>
+          <Descriptions.Item label="待定变更">
+            {(currentUser as any)?.nextPlanId ? (
+              <span>
+                {(currentUser as any).nextPlanId}
+                {(currentUser as any)?.nextPlanReason && (
+                  <Tag
+                    color={(currentUser as any).nextPlanReason === 'payment_failed' ? 'red' : 'orange'}
+                    style={{ marginLeft: 6, fontSize: 11 }}
+                  >
+                    {(currentUser as any).nextPlanReason === 'payment_failed' ? '支付失败' : '到期降级'}
+                  </Tag>
+                )}
+              </span>
+            ) : '无'}
+          </Descriptions.Item>
           <Descriptions.Item label="积分余额">{(currentUser as any)?.credit_balance ?? '-'}</Descriptions.Item>
         </Descriptions>
 
