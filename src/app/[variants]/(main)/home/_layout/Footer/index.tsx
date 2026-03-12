@@ -2,12 +2,8 @@
 
 import { useAnalytics } from '@lobehub/analytics/react';
 import { type MenuProps } from '@lobehub/ui';
-import { ActionIcon, Flexbox, Icon } from '@lobehub/ui';
-import {
-  Feather,
-  FlaskConical,
-  Github,
-} from 'lucide-react';
+import { ActionIcon, DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
+import { CircleHelp, Feather, FlaskConical, Github } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -96,6 +92,18 @@ const Footer = memo(() => {
     openFeedbackModal();
   };
 
+  const helpMenuItems: MenuProps['items'] = useMemo(
+    () => [
+      {
+        icon: <Icon icon={Feather} />,
+        key: 'feedback',
+        label: t('userPanel.feedback'),
+        onClick: handleOpenFeedbackModal,
+      },
+    ],
+    [t],
+  );
+
   const handleOpenProductHuntCard = () => {
     setIsProductHuntCardOpen(true);
     trackProductHuntEvent('product_hunt_card_viewed', {
@@ -123,27 +131,13 @@ const Footer = memo(() => {
     });
   };
 
-  const helpMenuItems: MenuProps['items'] = useMemo(
-    () => [
-      {
-        icon: <Icon icon={Feather} />,
-        key: 'feedback',
-        label: t('userPanel.feedback'),
-        onClick: handleOpenFeedbackModal,
-      },
-    ],
-    [t],
-  );
-
   return (
     <>
       <Flexbox horizontal align={'center'} gap={2} justify={'space-between'} padding={8}>
         <Flexbox horizontal align={'center'} flex={1} gap={2}>
-          {/* TODO: 暂时隐藏帮助菜单，待"联系我们"功能开发完毕后恢复（计划提供企业微信二维码弹窗）
           <DropdownMenu items={helpMenuItems} placement="topLeft">
             <ActionIcon aria-label={t('userPanel.help')} icon={CircleHelp} size={16} />
           </DropdownMenu>
-          */}
           {!hideGitHub && (
             <a aria-label={'GitHub'} href={GITHUB} rel="noopener noreferrer" target={'_blank'}>
               <ActionIcon icon={Github} size={16} title={'GitHub'} />
