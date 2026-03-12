@@ -240,6 +240,51 @@ npm run preview
 
 ---
 
+## 🗄️ 数据库管理
+
+> 以下脚本均依赖 `server/.env` 中的 `DATABASE_URL`，没有数据库凭据无法执行。
+
+### 首次部署流程
+
+**1. 配置 `server/.env`**（不提交 git）：
+```env
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+JWT_SECRET=<用 openssl rand -base64 32 生成>
+ADMIN_INITIAL_PASSWORD=<首次初始化的管理员密码，不填默认 admin123>
+```
+
+**2. 建表**（执行 `server/migrations/` 下所有 .sql 文件）：
+```bash
+pnpm --filter protochat-admin-server migrate
+```
+
+**3. 创建默认管理员账号**：
+```bash
+pnpm --filter protochat-admin-server init-db
+```
+账号为 `admin`，密码取 `ADMIN_INITIAL_PASSWORD`，未设置则为 `admin123`。初始化后立即修改密码。
+
+> `ADMIN_INITIAL_PASSWORD` 仅在 `init-db` 执行时读取一次，服务重启不会触发密码修改。设置后如需修改密码请用 `reset-password` 脚本，该变量可在初始化完成后从 `.env` 删除。
+
+### 重置管理员密码
+
+忘记密码时执行：
+```bash
+pnpm --filter protochat-admin-server reset-password <用户名> <新密码>
+# 示例
+pnpm --filter protochat-admin-server reset-password admin MyNewPassword123
+```
+
+### 新增数据库迁移
+
+在 `server/migrations/` 下按顺序命名新文件（如 `002_add_xxx.sql`），然后执行：
+```bash
+pnpm --filter protochat-admin-server migrate
+```
+所有 SQL 文件使用 `IF NOT EXISTS` / `ON CONFLICT DO NOTHING`，重复执行安全。
+
+---
+
 <div align="center">
   Made with ❤️ by ProtoChat Team
 </div>

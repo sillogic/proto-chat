@@ -34,26 +34,13 @@ export const authenticateToken = async (
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
 
-    // 简化：直接信任Casdoor的JWT，不需要在lobechat表中查找用户
-    // 管理员用户通过Casdoor管理，权限通过Casdoor角色控制
-
-    // 设置默认权限（后续可以扩展为从Casdoor角色映射）
+    // 权限直接来自登录时写入 JWT payload 的 adminUsers.permissions 字段
     const userData = {
       id: decoded.id,
       username: decoded.username || decoded.name || 'admin',
       email: decoded.email,
       role: decoded.role || 'admin',
-      permissions: [
-        'users.read',
-        'users.write',
-        'plans.read',
-        'plans.write',
-        'stats.read',
-        'feedbacks.read',
-        'feedbacks.write',
-        'system.admin'
-      ], // 管理员默认权限
-      is_active: true
+      permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
     };
 
     // 将用户信息附加到请求对象

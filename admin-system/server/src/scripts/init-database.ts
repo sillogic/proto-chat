@@ -16,7 +16,8 @@ async function initDatabase() {
 
     if (existingAdmin.length === 0) {
       console.log('👤 创建默认管理员用户...');
-      const passwordHash = await bcrypt.hash('admin123', 10);
+      const initialPassword = process.env.ADMIN_INITIAL_PASSWORD || 'admin123';
+      const passwordHash = await bcrypt.hash(initialPassword, 10);
 
       await db.insert(adminUsers).values({
         authMethod: 'local',

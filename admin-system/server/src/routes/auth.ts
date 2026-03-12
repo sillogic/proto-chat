@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { Secret } from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { db } from '../config/database';
 import { adminUsers } from '../db/schema';
@@ -12,6 +13,15 @@ const router: express.Router = express.Router();
 const JWT_SECRET_LOCAL = JWT_SECRET;
 const JWT_EXPIRES_IN_LOCAL = JWT_EXPIRES_IN;
 
+// 登录接口速率限制：同一 IP 15 分钟内最多 10 次
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '登录尝试过于频繁，请 15 分钟后再试' },
+});
+
 // 登录验证schema
 const loginSchema = z.object({
   password: z.string().min(1, '密码不能为空'),
@@ -19,7 +29,7 @@ const loginSchema = z.object({
 });
 
 // POST /api/auth/login - 管理员登录
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     // 验证输入数据
     const validationResult = loginSchema.safeParse(req.body);

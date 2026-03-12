@@ -20,7 +20,6 @@ if (!connectionString) {
   throw new Error('DATABASE_URL is not defined in environment variables');
 }
 
-console.log('🔍 Database connection string:', connectionString.slice(0, 15) + '...' + (connectionString.split('@')[1] || 'parse_error'));
 
 const client = postgres(connectionString, {
   connect_timeout: 10,

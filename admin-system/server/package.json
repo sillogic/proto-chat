@@ -12,22 +12,25 @@
     "test:dashboard": "tsx test-dashboard.ts",
     "create-tables": "tsx src/scripts/create-tables.ts",
     "init-db": "tsx src/scripts/create-tables.ts && tsx src/scripts/init-database.ts",
-    "setup": "npm install && npm run init-db"
+    "migrate": "tsx src/scripts/migrate.ts",
+    "reset-password": "tsx src/scripts/reset-password.ts",
+    "setup": "npm install && npm run migrate && npm run init-db"
   },
   "dependencies": {
+    "@lobechat/model-runtime": "workspace:*",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "drizzle-orm": "^0.44.7",
     "drizzle-zod": "^0.5.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.3.1",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
+    "model-bank": "workspace:*",
     "node-fetch": "^2.6.7",
     "postgres": "^3.4.0",
-    "zod": "^3.22.0",
-    "model-bank": "workspace:*",
-    "@lobechat/model-runtime": "workspace:*"
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",

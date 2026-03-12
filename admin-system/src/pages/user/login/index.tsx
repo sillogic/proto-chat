@@ -1,11 +1,11 @@
-import { LockOutlined, UserOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { useEmotionCss } from '@ant-design/use-emotion-css';
 import { Helmet, history, useModel } from '@umijs/max';
-import { Alert, Button, message, Tabs, Space, Divider } from 'antd';
+import { Alert, message } from 'antd';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
-import { adminLogin, getCasdoorAuthUrl } from '@/services/admin';
+import { adminLogin } from '@/services/admin';
 import type { LoginParams } from '@/services/api.d';
 
 const Lang = () => {
@@ -53,7 +53,6 @@ const LoginMessage: React.FC<{
 
 const Login: React.FC = () => {
   const [userLoginState, setUserLoginState] = useState<{ status?: string; type?: string }>({});
-  const [type, setType] = useState<string>('account');
   const { initialState, setInitialState } = useModel('@@initialState');
 
   const containerClassName = useEmotionCss(() => {
@@ -109,25 +108,6 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleCasdoorLogin = async () => {
-    try {
-      const urlParams = new URL(window.location.href).searchParams;
-      const redirectTo = urlParams.get('redirect') || '/dashboard';
-
-      const result = await getCasdoorAuthUrl(redirectTo);
-
-      if (result.success && result.data) {
-        // 跳转到Casdoor登录页面
-        window.location.href = result.data.authUrl;
-      } else {
-        message.error('获取Casdoor授权URL失败');
-      }
-    } catch (error) {
-      console.error('Casdoor login error:', error);
-      message.error('Casdoor登录失败，请重试');
-    }
-  };
-
   return (
     <div className={containerClassName}>
       <Helmet>
@@ -158,87 +138,37 @@ const Login: React.FC = () => {
             await handleSubmit(values as LoginParams);
           }}
         >
-          <Tabs
-            activeKey={type}
-            onChange={setType}
-            centered
-            items={[
-              {
-                key: 'account',
-                label: '账户密码登录',
-              },
-              {
-                key: 'casdoor',
-                label: 'SSO登录',
-              },
-            ]}
-          />
-
           {userLoginState.status === 'error' && userLoginState.type === 'account' && (
             <LoginMessage content={'错误的用户名和密码'} type={'error'} />
           )}
-          {type === 'account' && (
-            <>
-              <ProFormText
-                name="username"
-                fieldProps={{
-                  size: 'large',
-                  prefix: <UserOutlined />,
-                }}
-                placeholder={'用户名: admin'}
-                rules={[
-                  {
-                    required: true,
-                    message: '用户名是必填项！',
-                  },
-                ]}
-              />
-              <ProFormText.Password
-                name="password"
-                fieldProps={{
-                  size: 'large',
-                  prefix: <LockOutlined />,
-                }}
-                placeholder={'密码: admin123'}
-                rules={[
-                  {
-                    required: true,
-                    message: '密码是必填项！',
-                  },
-                ]}
-              />
-
-              <div
-                style={{
-                  marginBottom: 24,
-                  textAlign: 'center',
-                }}
-              >
-                默认账号: admin / admin123
-              </div>
-            </>
-          )}
-
-          {type === 'casdoor' && (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ marginBottom: 16 }}>
-                <SafetyCertificateOutlined style={{ fontSize: 48, color: '#1890ff' }} />
-              </div>
-              <h3 style={{ marginBottom: 8, color: '#262626' }}>Casdoor 单点登录</h3>
-              <p style={{ color: '#8c8c8c', marginBottom: 24 }}>
-                使用企业统一身份认证系统安全登录
-              </p>
-              <Button
-                type="primary"
-                size="large"
-                block
-                onClick={handleCasdoorLogin}
-                style={{ height: 48, fontSize: 16 }}
-              >
-                使用 Casdoor 登录
-              </Button>
-            </div>
-          )}
+          <ProFormText
+            name="username"
+            fieldProps={{
+              size: 'large',
+              prefix: <UserOutlined />,
+            }}
+            placeholder={'用户名'}
+            rules={[
+              {
+                required: true,
+                message: '用户名是必填项！',
+              },
+            ]}
+          />
+          <ProFormText.Password
+            name="password"
+            fieldProps={{
+              size: 'large',
+              prefix: <LockOutlined />,
+            }}
+            placeholder={'密码'}
+            rules={[
+              {
+                required: true,
+                message: '密码是必填项！',
+              },
+            ]}
+          />
         </LoginForm>
       </div>
     </div>

@@ -5,6 +5,25 @@ async function createTables() {
   try {
     console.log('🗄️ 正在创建数据库表...');
 
+    // 创建后台管理员用户表（admin-system 专属，独立于主项目 users 表）
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id            TEXT      PRIMARY KEY DEFAULT gen_random_uuid(),
+        username      TEXT      UNIQUE NOT NULL,
+        email         TEXT      UNIQUE NOT NULL,
+        password_hash TEXT      NOT NULL,
+        role          TEXT      NOT NULL DEFAULT 'admin',
+        permissions   JSONB     NOT NULL DEFAULT '[]',
+        is_active     BOOLEAN   NOT NULL DEFAULT true,
+        auth_method   TEXT      DEFAULT 'local',
+        last_login_at TIMESTAMP,
+        created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_admin_users_email    ON admin_users(email)`);
+
     // 创建API密钥表
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS api_keys (

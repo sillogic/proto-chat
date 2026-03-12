@@ -33,14 +33,6 @@ export class CasdoorSyncService {
       organizationName: orgName
     };
 
-    console.log('🔍 Casdoor config initialized:', {
-      adminUsername: this.config.adminUsername,
-      applicationName: this.config.applicationName,
-      clientId: this.config.clientId,
-      clientSecret: this.config.clientSecret ? '[REDACTED]' : 'missing',
-      issuer: this.config.issuer,
-      organizationName: this.config.organizationName
-    });
   }
 
   // 获取Casdoor访问令牌
