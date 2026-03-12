@@ -371,7 +371,7 @@ export default {
   'providerModels.tabs.all': 'All',
   'providerModels.tabs.chat': 'Chat',
   'providerModels.tabs.embedding': 'Embedding',
-  'providerModels.tabs.image': 'Image',
+  'providerModels.tabs.image': 'Image Gen',
   'providerModels.tabs.stt': 'ASR',
   'providerModels.tabs.tts': 'TTS',
   'providerModels.tabs.video': 'Video',

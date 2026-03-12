@@ -63,6 +63,10 @@ const Content = memo<ContentProps>(({ id }) => {
       if (type && Object.prototype.hasOwnProperty.call(counts, type)) {
         counts[type as keyof typeof counts]++;
       }
+      // Also count chat models with imageOutput ability in the image tab
+      if (type !== 'image' && (model as any).abilities?.imageOutput) {
+        counts.image++;
+      }
     });
 
     return counts;
@@ -118,8 +122,8 @@ const Content = memo<ContentProps>(({ id }) => {
       },
     ];
 
-    // Only show tabs that have models (count > 0), but always show 'all' tab
-    return allTabs.filter((tab) => tab.key === 'all' || tab.count > 0);
+    // Only show tabs that have models (count > 0), but always show 'all', 'chat', and 'image' tabs
+    return allTabs.filter((tab) => tab.key === 'all' || tab.key === 'chat' || tab.key === 'image' || tab.count > 0);
   }, [modelCounts]);
 
   // Ensure active tab is available, fallback to 'all' if current tab is hidden

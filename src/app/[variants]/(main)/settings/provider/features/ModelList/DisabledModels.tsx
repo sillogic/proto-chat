@@ -176,6 +176,10 @@ const DisabledModels = memo<DisabledModelsProps>(({ activeTab, providerId }) => 
   // Filter models based on active tab
   const filteredDisabledModels = useMemo(() => {
     if (activeTab === 'all') return sourceDisabledModels;
+    if (activeTab === 'image')
+      return sourceDisabledModels.filter(
+        (model) => model.type === 'image' || (model as any).abilities?.imageOutput,
+      );
     return sourceDisabledModels.filter((model) => model.type === activeTab);
   }, [activeTab, sourceDisabledModels]);
 

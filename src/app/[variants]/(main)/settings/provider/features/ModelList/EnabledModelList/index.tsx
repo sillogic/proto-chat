@@ -27,6 +27,10 @@ const EnabledModelList = ({ activeTab }: EnabledModelListProps) => {
   // Filter models based on active tab
   const filteredModels = useMemo(() => {
     if (activeTab === 'all') return enabledModels;
+    if (activeTab === 'image')
+      return enabledModels.filter(
+        (model) => model.type === 'image' || (model as any).abilities?.imageOutput,
+      );
     return enabledModels.filter((model) => model.type === activeTab);
   }, [enabledModels, activeTab]);
 

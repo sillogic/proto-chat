@@ -311,7 +311,7 @@
   "providerModels.tabs.all": "全部",
   "providerModels.tabs.chat": "对话",
   "providerModels.tabs.embedding": "向量化",
-  "providerModels.tabs.image": "图片",
+  "providerModels.tabs.image": "图片生成",
   "providerModels.tabs.stt": "ASR",
   "providerModels.tabs.tts": "TTS",
   "providerModels.tabs.video": "视频",
