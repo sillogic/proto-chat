@@ -59,6 +59,7 @@ const GenerationTopicPanel = memo<GenerationTopicPanelProps>(
         minWidth={80}
         mode={md ? 'fixed' : 'float'}
         placement="right"
+        showHandleWhenCollapsed
         size={{ height: '100%', width: panelWidth }}
         classNames={{
           content: styles.content,
