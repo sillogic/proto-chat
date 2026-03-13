@@ -653,6 +653,9 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       (revMemoryLlmOutputTokens / 1_000_000) * revMemoryLlmPrice.outputPrice;
     const revMemoryCostUSD = memoryEmbeddingCostUSD + revMemoryLlmCostUSD;
 
+    // 计算每日成本（只统计 protochat 供应商）
+    const dailyCostMap = new Map<string, number>();
+
     // 计算标题生成成本
     let titleGenCostUSD = 0;
     let titleGenRequestCount = 0;
@@ -737,8 +740,6 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
       percentage: totalCostUSD > 0 ? ((titleGenCostUSD / totalCostUSD) * 100).toFixed(1) : '0',
     });
 
-    // 计算每日成本（只统计 protochat 供应商）
-    const dailyCostMap = new Map<string, number>();
     for (const item of (dailyCostRaw as any[])) {
       const { inputPrice, outputPrice } = getProtochatModelPrice(item.model, item.provider, priceMap);
       const inputTokens = parseInt(item.inputTokens || '0');

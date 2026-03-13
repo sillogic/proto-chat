@@ -681,7 +681,7 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
         }
 
         const baseQuery = db
-            .select({ ...protochatModels })
+            .select()
             .from(protochatModels)
             .innerJoin(protochatProviders, eq(protochatModels.originalProvider, protochatProviders.id));
 
