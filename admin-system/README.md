@@ -285,6 +285,71 @@ pnpm --filter protochat-admin-server migrate
 
 ---
 
+## ⏰ 定时任务（Cron）
+
+> 定时任务逻辑在**主项目**中实现，后台系统负责调度触发。
+
+### 架构说明
+
+```
+Linux crontab（单台服务器）
+    ↓ curl + CRON_SECRET
+主项目 /api/cron/*（执行业务逻辑）
+    ↓
+共享数据库
+    ↑
+后台系统（查询状态 / 人工补跑）
+```
+
+> 未来扩容为多台主项目服务器时，将调度迁移到后台系统内置 node-cron，确保只执行一次。
+
+### 生产部署步骤
+
+**1. 封锁 cron 接口的公网访问**（`/etc/nginx/nginx.conf` 主项目 server 块中加入）：
+
+```nginx
+location /api/cron/ {
+    allow 127.0.0.1;
+    deny all;
+}
+```
+
+配置片段在 `scripts/nginx-cron-block.conf`，修改后执行 `nginx -s reload`。
+
+**2. 安装 crontab**（在服务器上执行）：
+
+```bash
+bash scripts/install-cron.sh
+```
+
+脚本会自动从主项目 `.env` 读取 `CRON_SECRET`，注册以下任务：
+
+| 任务 | 执行时间 | 说明 |
+|------|---------|------|
+| `subscription` | 每天 08:05 北京时间 | 订阅到期降级 + 积分发放 |
+| `auto-deduct` | 待启用 | 支付宝自动扣款（接入后取消注释） |
+
+**3. 手动测试**：
+
+```bash
+source /etc/protochat-cron.env && bash scripts/cron-jobs.sh subscription
+```
+
+**4. 查看日志**：
+
+```bash
+tail -f /var/log/protochat/cron.log
+```
+
+### 待完成事项
+
+- [ ] **nginx 封锁**：在生产服务器 nginx.conf 中加入 cron 接口限制
+- [ ] **安装 crontab**：在服务器上执行 `bash scripts/install-cron.sh`
+- [ ] **支付宝代扣接入**：完成后在 `install-cron.sh` 中取消 auto-deduct 的注释
+- [ ] **扩容迁移**：多台主项目服务器时，将调度逻辑迁移到后台系统 `server/src/index.ts` 内置 node-cron，同时在后台 UI 定时任务页面增加执行日志和手动触发功能
+
+---
+
 <div align="center">
   Made with ❤️ by ProtoChat Team
 </div>
