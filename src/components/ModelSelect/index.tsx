@@ -275,6 +275,7 @@ export const ModelItemRender = memo<ModelItemRenderProps>(
     displayName,
     releasedAt,
     streaming: _streaming,
+    webSearch: _webSearch,
     ...rest
   }) => {
     const { mobile } = useResponsive();
