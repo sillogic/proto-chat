@@ -1,9 +1,8 @@
 'use client';
 
-import { Center, Flexbox, Icon } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { createStyles } from 'antd-style';
-import { GraduationCap } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -96,10 +95,7 @@ const Client = memo<ClientProps>(() => {
     <Flexbox className={styles.pageContainer} gap={48} width={'100%'}>
       {/* Header */}
       <Flexbox align={'center'} gap={20}>
-        <Center className={styles.headerIcon}>
-          <Icon color={theme.colorText} icon={GraduationCap} size={28} />
-        </Center>
-        <Flexbox align={'center'} gap={8}>
+<Flexbox align={'center'} gap={8}>
           <span className={styles.title}>{t('title', '订阅方案')}</span>
           <span className={styles.subtitle}>
             {t('subtitle', '选择适合您的 AI 研究助手服务')}

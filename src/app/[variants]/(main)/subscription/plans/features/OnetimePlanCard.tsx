@@ -76,6 +76,7 @@ const useStyles = createStyles(({ css, token, isDarkMode }) => ({
     border: none;
     border-radius: 10px;
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff !important;
   `,
   featureItem: css`
     font-size: 13px;
@@ -405,14 +406,25 @@ const OnetimePlanCard = memo<OnetimePlanCardProps>(({
         {/* Total Price */}
         <Flexbox gap={4}>
           <Flexbox horizontal align={'baseline'} gap={4}>
-            <span className={styles.price}>¥{currentAmount}</span>
-            <span className={styles.priceLabel}>总计</span>
+            <span className={styles.price}>
+              ¥{selectedDuration === 12 && yearlyPrice
+                ? (yearlyPrice / 12).toFixed(1)
+                : monthlyPrice}
+            </span>
+            <span className={styles.priceLabel}>
+              /每月{selectedDuration === 12 && yearlyPrice ? '（按年）' : ''}
+            </span>
           </Flexbox>
-          <span style={{ color: theme.colorTextTertiary, fontSize: 12 }}>
-            {selectedDuration === 12 && yearlyDiscount > 0
-              ? `立省 ¥${monthlyTotal - (yearlyPrice || 0)}`
-              : '无需自动续订'}
-          </span>
+          <Flexbox horizontal align={'center'} gap={6}>
+            <span style={{ color: theme.colorTextTertiary, fontSize: 13 }}>
+              ¥{currentAmount}/{selectedDuration === 12 ? '每年' : `共${selectedDuration}个月`}
+            </span>
+            {selectedDuration === 12 && yearlyDiscount > 0 && (
+              <Tag className={styles.discountTag} size={'small'}>
+                优惠 {yearlyDiscount}%
+              </Tag>
+            )}
+          </Flexbox>
         </Flexbox>
 
         {/* Purchase Button */}
