@@ -329,13 +329,17 @@ export class GenerationConfigActionImpl {
   };
 
   /**
-   * Set a generated image as the reference image for the next generation.
-   * Prefers imageUrls (array) over imageUrl (string) based on the model's schema.
+   * Append a generated image to the reference image list for the next generation.
+   * - imageUrls models: appends; if maxCount is reached the oldest entry is dropped.
+   * - imageUrl models: replaces (single-image constraint, no alternative).
    */
   useAsReference = (imageUrl: string): void => {
-    const { parametersSchema } = this.#get();
+    const { parametersSchema, parameters } = this.#get();
     if (parametersSchema && 'imageUrls' in parametersSchema) {
-      this.setParamOnInput('imageUrls', [imageUrl]);
+      const current: string[] = parameters?.imageUrls ?? [];
+      const maxCount: number | undefined = (parametersSchema.imageUrls as any)?.maxCount;
+      const next = [...current, imageUrl];
+      this.setParamOnInput('imageUrls', maxCount ? next.slice(-maxCount) : next);
     } else if (parametersSchema && 'imageUrl' in parametersSchema) {
       this.setParamOnInput('imageUrl', imageUrl);
     }
