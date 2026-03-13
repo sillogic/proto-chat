@@ -165,6 +165,13 @@ export const createGoogleGenerateObject = async (
 
   debug('API response received', { hasText: !!response.text, textLength: response.text?.length });
 
+  if (options?.onUsage && response.usageMetadata) {
+    options.onUsage({
+      inputTokens: response.usageMetadata.promptTokenCount ?? 0,
+      outputTokens: response.usageMetadata.candidatesTokenCount ?? 0,
+    });
+  }
+
   const text = response.text;
 
   try {
@@ -266,6 +273,13 @@ export const createGoogleGenerateObjectWithTools = async (
     }));
 
   debug('extracted function calls', { count: functionCalls.length, functionCalls });
+
+  if (options?.onUsage && response.usageMetadata) {
+    options.onUsage({
+      inputTokens: response.usageMetadata.promptTokenCount ?? 0,
+      outputTokens: response.usageMetadata.candidatesTokenCount ?? 0,
+    });
+  }
 
   return functionCalls.length > 0 ? functionCalls : undefined;
 };

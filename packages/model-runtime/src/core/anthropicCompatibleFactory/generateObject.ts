@@ -87,7 +87,22 @@ export const createAnthropicGenerateObject = async (
       }
 
       log('extracted tool input: %O', toolUseBlock.input);
+
+      if (options?.onUsage && response.usage) {
+        options.onUsage({
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+        });
+      }
+
       return toolUseBlock.input;
+    }
+
+    if (options?.onUsage && response.usage) {
+      options.onUsage({
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+      });
     }
 
     return response.content
