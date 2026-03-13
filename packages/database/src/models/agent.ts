@@ -526,7 +526,29 @@ export class AgentModel {
       where: and(eq(agents.slug, slug), eq(agents.userId, this.userId)),
     });
 
-    if (existing) return existing;
+    if (existing) {
+      // Check if the persist config has changed for model/provider.
+      // When a builtin agent's persist config no longer specifies model/provider
+      // (e.g. page-agent was updated to follow user defaults), clear stale values
+      // from the DB so mergeDefaultConfig falls back to the user's default provider.
+      const persistConfig = getAgentPersistConfig(slug);
+      if (persistConfig) {
+        const needsModelClear = !persistConfig.model && existing.model != null;
+        const needsProviderClear = !persistConfig.provider && existing.provider != null;
+        if (needsModelClear || needsProviderClear) {
+          const [updated] = await this.db
+            .update(agents)
+            .set({
+              model: persistConfig.model ?? null,
+              provider: persistConfig.provider ?? null,
+            })
+            .where(and(eq(agents.id, existing.id), eq(agents.userId, this.userId)))
+            .returning();
+          return updated;
+        }
+      }
+      return existing;
+    }
 
     // For inbox agent, it has special compatibility handling:
     // Historical inbox was stored as session with slug='inbox' and linked agent via agentsToSessions

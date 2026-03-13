@@ -3,7 +3,6 @@ import { createStaticStyles, cx } from 'antd-style';
 import { ChevronsUpDownIcon } from 'lucide-react';
 import { memo, Suspense, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 
 import AgentAvatar from '@/app/[variants]/(main)/home/_layout/Body/Agent/List/AgentItem/Avatar';
 import { AgentModalProvider } from '@/app/[variants]/(main)/home/_layout/Body/Agent/ModalProvider';
@@ -40,7 +39,7 @@ interface AgentSelectorActionProps {
 }
 
 const AgentSelectorAction = memo<AgentSelectorActionProps>(({ agentId, onAgentChange }) => {
-  const { t } = useTranslation(['chat', 'common']);
+  const { t } = useTranslation('chat');
   const [open, setOpen] = useState(false);
 
   const agents = useHomeStore(homeAgentListSelectors.allAgents);
@@ -104,25 +103,7 @@ const AgentSelectorAction = memo<AgentSelectorActionProps>(({ agentId, onAgentCh
           onClose={() => setOpen(false)}
         />
       ))}
-      {isAgentListInit && agents.length === 0 && (
-        <Flexbox
-          align={'center'}
-          gap={4}
-          padding={'4px 8px 8px'}
-          style={{ borderTop: '1px solid var(--lobe-chat-border-secondary)', marginTop: 4 }}
-        >
-          <span style={{ color: 'var(--lobe-chat-text-tertiary)', fontSize: 12, textAlign: 'center' }}>
-            {t('emptyAgentAction', { ns: 'chat' })}
-          </span>
-          <Link
-            style={{ color: 'var(--lobe-chat-brand)', fontSize: 12 }}
-            to="/"
-            onClick={() => setOpen(false)}
-          >
-            {t('tab.home', { ns: 'common' })}
-          </Link>
-        </Flexbox>
-      )}
+
     </Flexbox>
   );
 
