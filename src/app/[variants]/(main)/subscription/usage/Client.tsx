@@ -46,9 +46,7 @@ const Client = memo<{ mobile?: boolean }>(({ mobile }) => {
                 文本生成、文生图等计算积分使用明细（最新10条）
               </Typography.Text>
             </Flexbox>
-            <a href="/profile/usage/consumption" rel="noopener noreferrer" target="_blank">
-              <Typography.Link style={{ fontSize: '13px' }}>查看全部 ↗</Typography.Link>
-            </a>
+            <Typography.Link href="/profile/usage/consumption" rel="noopener noreferrer" style={{ fontSize: '13px' }} target="_blank">查看全部 ↗</Typography.Link>
           </Flexbox>
           <UsageConsumptionTable />
         </Flexbox>
