@@ -460,66 +460,74 @@ export class UsageService {
   }
 
   /**
-   * 仿真处理到期逻辑 (周期末结算)
+   * 仿真处理到期逻辑（与主项目 /api/cron/subscription 保持一致）
+   * 强制将当前用户降级到 free，模拟订阅到期的处理结果。
    */
   async processExpirations(userId: string) {
     const now = new Date();
     const userExt = await this.getUserExtension(userId);
     if (!userExt) return false;
 
-    // 如果没到期，仿真时我们强制它到期，或者逻辑上判断
-    // 正常定时任务会判断 expiresAt < now
+    // 如果已经是 free，不做处理
+    if (userExt.currentPlan === 'free' || userExt.currentPlan === 'plan_free') {
+      console.log(`[Simulate] User ${userId} is already on free plan, skipping`);
+      return true;
+    }
 
-    const nextId = userExt.nextPlanId;
+    // 查 free 方案
+    const freePlanResult = await db.select().from(subscriptionPlans)
+      .where(eq(subscriptionPlans.slug, 'free')).limit(1);
+    if (!freePlanResult[0]) {
+      console.error('[Simulate] Free plan not found');
+      return false;
+    }
+    const freePlan = freePlanResult[0];
+    const freeCredits = parseFloat(freePlan.credits || '0');
 
-    if (!nextId) {
-      // 场景 A: 自动续费 (nextPlanId 为空)
-      // 实际上这里应该触发扣费，扣费成功后执行：
-      console.log(`[Lifecycle] Renewing current plan ${userExt.planId} for user ${userId}`);
+    const nextCreditGrantAt = new Date(now);
+    nextCreditGrantAt.setMonth(nextCreditGrantAt.getMonth() + 1);
 
-      const planResult = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, userExt.planId || '')).limit(1);
-      const plan = planResult[0];
-      if (plan) {
-        const nextExpires = new Date(userExt.planExpiresAt || now);
-        // 使用 user_extensions.billingInterval 而不是 plan.interval
-        if (userExt.billingInterval === 'year') nextExpires.setFullYear(nextExpires.getFullYear() + 1);
-        else nextExpires.setMonth(nextExpires.getMonth() + 1);
-
-        await db.update(userExtensions)
-          .set({ planExpiresAt: nextExpires, updatedAt: now })
-          .where(eq(userExtensions.userId, userId));
-
-        // 发放新一月点数 (Transaction only, no new history)
-        const credits = parseFloat(plan.credits || '0');
-        await db.insert(userBalances)
-          .values({ balance: credits.toString(), updatedAt: now, userId })
-          .onConflictDoUpdate({ set: { balance: credits.toString(), updatedAt: now }, target: userBalances.userId });
-
-        await db.insert(userTransactions).values({
-          amount: credits,
-          balanceAfter: credits.toString(), // 续费后余额重置为套餐点数
-          category: 'RENEWAL_GRANT',
-          createdAt: now,
-          description: `Auto-renewal Success: ${plan.name}`,
-          id: 'tx_ren_' + Math.random().toString(36).slice(2, 12),
-          type: 'SUBSCRIPTION_GRANT',
+    await db.transaction(async (tx) => {
+      // 降级到 free
+      await tx.update(userExtensions)
+        .set({
+          billingInterval: null,
+          currentPlan: 'free',
+          nextCreditGrantAt,
+          nextPlanId: null,
+          nextPlanReason: null,
+          planExpiresAt: null,
+          planId: freePlan.id,
           updatedAt: now,
-          userId,
-        } as any);
-      }
-    } else {
-      // 场景 B: 执行预设变更 (降级或取消到 Free)
-      console.log(`[Lifecycle] Executing scheduled switch to ${nextId} for user ${userId}`);
+        })
+        .where(eq(userExtensions.userId, userId));
 
-      // 先标记旧的为已过期
-      await db.update(userSubscriptionHistory)
+      // 标记旧订阅历史为过期
+      await tx.update(userSubscriptionHistory)
         .set({ endedAt: now, isActive: false, status: 'expired' })
         .where(and(eq(userSubscriptionHistory.userId, userId), eq(userSubscriptionHistory.isActive, true)));
 
-      // 降级到 Free 方案时，使用默认的 month 计费周期
-      return await this.executeUpgrade(userId, nextId, 'month', 'DOWNGRADE_GRANT');
-    }
+      // 重置积分为 free 套餐额度
+      await tx.insert(userBalances)
+        .values({ balance: freeCredits.toString(), updatedAt: now, userId })
+        .onConflictDoUpdate({ set: { balance: freeCredits.toString(), updatedAt: now }, target: userBalances.userId });
 
+      // 写流水记录
+      await tx.insert(userTransactions).values({
+        amount: freeCredits,
+        balanceAfter: freeCredits.toString(),
+        category: 'SUBSCRIPTION_EXPIRED',
+        createdAt: now,
+        description: `[仿真] 订阅到期，降级到 Free，积分重置为 ${freeCredits}`,
+        id: 'tx_sim_' + Math.random().toString(36).slice(2, 12),
+        metadata: { previousPlan: userExt.currentPlan, simulate: true },
+        type: 'SUBSCRIPTION_GRANT',
+        updatedAt: now,
+        userId,
+      } as any);
+    });
+
+    console.log(`[Simulate] User ${userId} downgraded from ${userExt.currentPlan} to free`);
     return true;
   }
 

@@ -151,15 +151,18 @@ const UsersPage: React.FC = () => {
           >
             用量
           </Button>
-          {!isPurged && (record.banned ? (
-            <Button size="small" type="link" onClick={() => handleUpdateUserStatus(record.id, false)}>
-              解封
-            </Button>
-          ) : (
-            <Button size="small" type="link" danger onClick={() => handleUpdateUserStatus(record.id, true)}>
-              封禁
-            </Button>
-          ))}
+          {!isPurged && ((() => {
+            const isBanned = record.banned === true || record.banned === 't' || record.banned === 1;
+            return isBanned ? (
+              <Button size="small" type="link" onClick={() => handleUpdateUserStatus(record.id, false)}>
+                解封
+              </Button>
+            ) : (
+              <Button size="small" type="link" danger onClick={() => handleUpdateUserStatus(record.id, true)}>
+                封禁
+              </Button>
+            );
+          })())}
           {!isPurged && <Popconfirm
             title="注销账号"
             description={
