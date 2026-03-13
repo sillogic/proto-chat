@@ -256,7 +256,7 @@ const SharePopover = memo<SharePopoverProps>(({ children, onOpenModal }) => {
         },
       }}
     >
-      {children}
+      <span style={{ display: 'inline-flex' }}>{children}</span>
     </Popover>
   );
 });

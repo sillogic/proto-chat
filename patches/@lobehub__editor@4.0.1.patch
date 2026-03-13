@@ -1,0 +1,13 @@
+diff --git a/es/react/ChatInput/ChatInput.js b/es/react/ChatInput/ChatInput.js
+index d8cb6a65804abf98e98fd6647c595744d457ae41..703e76fe90a3cc5a0dc74d40bbb0afcc3f042ad4 100644
+--- a/es/react/ChatInput/ChatInput.js
++++ b/es/react/ChatInput/ChatInput.js
+@@ -130,7 +130,7 @@ var ChatInput = function ChatInput(props) {
+         width: '100%'
+       },
+       style: fullscreen ? {
+-        flex: 1,
++        flexGrow: 1,
+         overflow: 'hidden',
+         position: 'relative'
+       } : undefined,

@@ -254,7 +254,6 @@
     "@trpc/server": "^11.8.1",
     "@upstash/qstash": "^2.8.4",
     "@upstash/workflow": "^0.2.23",
-    "bullmq": "^5.56.3",
     "@vercel/analytics": "^1.6.1",
     "@vercel/edge-config": "^1.4.3",
     "@vercel/functions": "^3.3.6",
@@ -271,6 +270,7 @@
     "better-auth-harmony": "^1.2.5",
     "better-call": "1.1.8",
     "brotli-wasm": "^3.0.1",
+    "bullmq": "^5.56.3",
     "chroma-js": "^3.2.0",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
@@ -502,9 +502,10 @@
       "drizzle-orm": "^0.45.1"
     },
     "patchedDependencies": {
+      "@lobehub/ui@4.38.4": "patches/@lobehub__ui@4.38.4.patch",
       "@swagger-api/apidom-reference": "patches/@swagger-api__apidom-reference.patch",
       "@upstash/qstash": "patches/@upstash__qstash.patch",
-      "@lobehub/ui@5.3.0": "patches/@lobehub__ui@5.3.0.patch"
+      "@lobehub/editor@4.0.1": "patches/@lobehub__editor@4.0.1.patch"
     }
   }
 }
