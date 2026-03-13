@@ -2,7 +2,7 @@
 
 import { type ActionIconGroupProps, type ActionIconProps } from '@lobehub/ui';
 import { ActionIconGroup } from '@lobehub/ui';
-import { Dices, Download, Trash2 } from 'lucide-react';
+import { Dices, Download, Pencil, Trash2 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -18,8 +18,10 @@ export const ActionButtons = memo<ActionButtonsProps>(
     onDelete,
     onDownload,
     onCopySeed,
+    onUseAsReference,
     showDownload = false,
     showCopySeed = false,
+    showUseAsReference = false,
     seedTooltip,
   }) => {
     const { t } = useTranslation('image');
@@ -45,6 +47,12 @@ export const ActionButtons = memo<ActionButtonsProps>(
                 label: seedTooltip,
                 onClick: onCopySeed,
               },
+              Boolean(showUseAsReference && onUseAsReference) && {
+                icon: Pencil,
+                key: 'useAsReference',
+                label: t('generation.actions.useAsReference'),
+                onClick: onUseAsReference,
+              },
               {
                 danger: true,
                 icon: Trash2,
@@ -53,7 +61,7 @@ export const ActionButtons = memo<ActionButtonsProps>(
                 onClick: onDelete,
               },
             ].filter(Boolean) as ActionIconGroupProps['items'],
-          [showDownload, onDownload, showCopySeed, onCopySeed, seedTooltip, onDelete],
+          [showDownload, onDownload, showCopySeed, onCopySeed, seedTooltip, showUseAsReference, onUseAsReference, onDelete],
         )}
       />
     );

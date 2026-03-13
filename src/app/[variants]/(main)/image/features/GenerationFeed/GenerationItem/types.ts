@@ -10,9 +10,11 @@ export interface ActionButtonsProps {
   onCopySeed?: () => void;
   onDelete: () => void;
   onDownload?: () => void;
+  onUseAsReference?: () => void;
   seedTooltip?: string;
   showCopySeed?: boolean;
   showDownload?: boolean;
+  showUseAsReference?: boolean;
 }
 
 export interface SuccessStateProps {
@@ -22,8 +24,10 @@ export interface SuccessStateProps {
   onCopySeed?: () => void;
   onDelete: () => void;
   onDownload: () => void;
+  onUseAsReference?: () => void;
   prompt: string;
   seedTooltip?: string;
+  showUseAsReference?: boolean;
 }
 
 export interface ErrorStateProps {

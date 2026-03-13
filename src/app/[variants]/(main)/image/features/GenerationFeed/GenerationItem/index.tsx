@@ -26,8 +26,12 @@ export const GenerationItem = memo<GenerationItemProps>(
     const useCheckGenerationStatus = useImageStore((s) => s.useCheckGenerationStatus);
     const deleteGeneration = useImageStore((s) => s.removeGeneration);
     const reuseSeed = useImageStore((s) => s.reuseSeed);
+    const useAsReference = useImageStore((s) => s.useAsReference);
     const activeTopicId = useImageStore((s) => s.activeGenerationTopicId);
     const isSupportSeed = useImageStore(isSupportedParamSelector('seed'));
+    const isSupportImageUrl = useImageStore(isSupportedParamSelector('imageUrl'));
+    const isSupportImageUrls = useImageStore(isSupportedParamSelector('imageUrls'));
+    const showUseAsReference = isSupportImageUrl || isSupportImageUrls;
     const { downloadImage } = useDownloadImage();
 
     const isFinalized =
@@ -62,6 +66,12 @@ export const GenerationItem = memo<GenerationItemProps>(
 
       await downloadImage(generation.asset.url, fileName);
     }, [downloadImage, generation.asset?.url, generation.createdAt, prompt]);
+
+    const handleUseAsReference = useCallback(() => {
+      if (!generation.asset?.url) return;
+      useAsReference(generation.asset.url);
+      message.success(t('generation.actions.referenceApplied'));
+    }, [generation.asset?.url, message, t, useAsReference]);
 
     const handleCopySeed = useCallback(async () => {
       if (!generation.seed) return;
@@ -117,9 +127,11 @@ export const GenerationItem = memo<GenerationItemProps>(
           generationBatch={generationBatch}
           prompt={prompt}
           seedTooltip={seedTooltip}
+          showUseAsReference={showUseAsReference}
           onCopySeed={handleCopySeed}
           onDelete={handleDeleteGeneration}
           onDownload={handleDownloadImage}
+          onUseAsReference={handleUseAsReference}
         />
       );
     }

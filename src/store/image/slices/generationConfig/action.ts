@@ -328,6 +328,19 @@ export class GenerationConfigActionImpl {
     );
   };
 
+  /**
+   * Set a generated image as the reference image for the next generation.
+   * Prefers imageUrls (array) over imageUrl (string) based on the model's schema.
+   */
+  useAsReference = (imageUrl: string): void => {
+    const { parametersSchema } = this.#get();
+    if (parametersSchema && 'imageUrls' in parametersSchema) {
+      this.setParamOnInput('imageUrls', [imageUrl]);
+    } else if (parametersSchema && 'imageUrl' in parametersSchema) {
+      this.setParamOnInput('imageUrl', imageUrl);
+    }
+  };
+
   _initializeDefaultImageConfig = (): void => {
     const { defaultImageNum } = settingsSelectors.currentImageSettings(useUserStore.getState());
     this.#set({ imageNum: defaultImageNum, isInit: true }, false, 'initializeImageConfig/default');
