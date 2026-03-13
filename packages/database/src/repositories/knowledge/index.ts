@@ -631,6 +631,9 @@ export class KnowledgeRepo {
       case FilesTabs.Images: {
         return 'image';
       }
+      case FilesTabs.Pages: {
+        return 'custom/document';
+      }
       case FilesTabs.Videos: {
         return 'video';
       }
