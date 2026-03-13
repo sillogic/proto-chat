@@ -12,21 +12,24 @@ import { type AsyncRouter } from './index';
 import { asyncRouter } from './index';
 
 export const createAsyncServerClient = async (userId: string) => {
-  const token = await signInternalJWT();
   const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
-  const headers: Record<string, string> = {
-    Authorization: token,
-    [LOBE_CHAT_AUTH_HEADER]: await gateKeeper.encrypt(JSON.stringify({ userId })),
-  };
-
-  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
-    headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  }
+  // Encrypt userId once — it's static for this client instance
+  const encryptedAuth = await gateKeeper.encrypt(JSON.stringify({ userId }));
 
   const client = createTRPCClient<AsyncRouter>({
     links: [
       httpLink({
-        headers,
+        // Sign a fresh JWT per request so it never expires during Next.js cold-start compilation
+        headers: async () => {
+          const headers: Record<string, string> = {
+            Authorization: await signInternalJWT(),
+            [LOBE_CHAT_AUTH_HEADER]: encryptedAuth,
+          };
+          if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+            headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+          }
+          return headers;
+        },
         transformer: superjson,
         // Use INTERNAL_APP_URL for server-to-server calls to bypass CDN/proxy
         url: urlJoin(appEnv.INTERNAL_APP_URL!, '/trpc/async'),

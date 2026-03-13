@@ -80,6 +80,14 @@ cd packages/database && bunx vitest run --silent='passed-only' '[file]'
 2. If found, read `.agents/skills/linear/SKILL.md` and follow the workflow
 3. If not found, skip Linear integration (treat as not installed)
 
+## Known Issues / TODO
+
+### 品牌加载组件（BrandTextLoading）
+- **文件**: `src/components/Loading/BrandTextLoading/index.tsx`
+- **问题**: 上游使用 `@lobehub/ui/brand` 导出 `BrandLoading` + `LobeHubText` 来展示 LobeHub 品牌 Loading 动画；我们已替换品牌 Logo 但暂无自定义素材。
+- **当前处理**: 临时改为始终渲染 `CircleLoading`，去掉了对 `@lobehub/ui/brand` 的依赖。
+- **后续**: 准备好品牌素材后，替换为自定义 Loading 动画（可参考 `BrandLoading` 组件 API）。
+
 ## Skills (Auto-loaded by Claude)
 
 Claude Code automatically loads relevant skills from `.agents/skills/`.

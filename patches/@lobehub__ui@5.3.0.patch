@@ -1,3 +1,20 @@
+diff --git a/es/Image/components/Toolbar.mjs b/es/Image/components/Toolbar.mjs
+--- a/es/Image/components/Toolbar.mjs
++++ b/es/Image/components/Toolbar.mjs
+@@ -9,6 +9,6 @@
+ import { memo, useCallback, useState } from "react";
+ import { jsx, jsxs } from "react/jsx-runtime";
+-import { message } from "antd";
++import { App } from "antd";
+ import { Copy, Download, FlipHorizontal, FlipVertical, RotateCcw, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
+
+ //#region src/Image/components/Toolbar.tsx
+@@ -36,4 +36,5 @@
+ 	const [copyLoading, setCopyLoading] = useState(false);
+ 	const [downloadLoading, setDownloadLoading] = useState(false);
++	const { message } = App.useApp();
+ 	const { transform: { scale }, actions: { onFlipY, onFlipX, onRotateLeft, onRotateRight, onZoomOut, onZoomIn }, image: { url } } = info;
+ 	const handleDownload = useCallback(async () => {
 diff --git a/es/Image/components/usePreview.mjs b/es/Image/components/usePreview.mjs
 index 1bbed767ed6d4454d97eeb0e3fb7f0b899a0205e..e2df32c748b799466282e0f06f27227d983a23e5 100644
 --- a/es/Image/components/usePreview.mjs
@@ -24,6 +41,90 @@ index 417bb367ce6a26653c91c7203a472a8b07220525..d3f43ed19ad605da81bad4e10132847d
  			...rest
  		};
  	}, [
+diff --git a/es/base-ui/DropdownMenu/atoms.mjs b/es/base-ui/DropdownMenu/atoms.mjs
+--- a/es/base-ui/DropdownMenu/atoms.mjs
++++ b/es/base-ui/DropdownMenu/atoms.mjs
+@@ -42,7 +42,7 @@ const DropdownMenuTrigger = /* @__PURE__ */ forwardRef(function DropdownMenuTrig
+ 			...mergedProps,
+ 			className: clsx(CLASSNAMES.DropdownMenuTrigger, className, mergedProps.className),
+ 			ref: mergeRefs([
+-				children.ref,
++				children.props.ref,
+ 				props.ref,
+ 				refProp
+ 			])
+diff --git a/es/base-ui/Modal/atoms.mjs b/es/base-ui/Modal/atoms.mjs
+--- a/es/base-ui/Modal/atoms.mjs
++++ b/es/base-ui/Modal/atoms.mjs
+@@ -164,7 +164,7 @@ const DialogTrigger = /* @__PURE__ */ forwardRef(function DialogTrigger(props, r
+ 		return cloneElement(children, {
+ 			...mergeProps(children.props, resolvedProps),
+ 			ref: mergeRefs([
+-				children.ref,
++				children.props.ref,
+ 				props.ref,
+ 				refProp
+ 			])
+diff --git a/es/base-ui/Select/atoms.mjs b/es/base-ui/Select/atoms.mjs
+--- a/es/base-ui/Select/atoms.mjs
++++ b/es/base-ui/Select/atoms.mjs
+@@ -46,7 +46,7 @@ const SelectTrigger = /* @__PURE__ */ forwardRef(function SelectTrigger(props, r
+ 				...mergedProps,
+ 				className: cx(baseClassName, childClassName, extraClassName),
+ 				ref: mergeRefs([
+-					children.ref,
++					children.props.ref,
+ 					props.ref,
+ 					refProp
+ 				])
+diff --git a/es/Popover/atoms.mjs b/es/Popover/atoms.mjs
+--- a/es/Popover/atoms.mjs
++++ b/es/Popover/atoms.mjs
+@@ -37,7 +37,7 @@ const PopoverTrigger = /* @__PURE__ */ forwardRef(function PopoverTrigger(props,
+ 				...mergedProps,
+ 				className: cx(baseClassName, extraClassName),
+ 				ref: mergeRefs([
+-					children.ref,
++					children.props.ref,
+ 					props.ref,
+ 					refProp
+ 				])
+diff --git a/es/Popover/PopoverInGroup.mjs b/es/Popover/PopoverInGroup.mjs
+--- a/es/Popover/PopoverInGroup.mjs
++++ b/es/Popover/PopoverInGroup.mjs
+@@ -47,7 +47,7 @@ const PopoverTriggerInGroup = /* @__PURE__ */ forwardRef(function PopoverTrigger
+ 				...mergedProps,
+ 				className: cx(mergedProps.className, triggerClassName),
+ 				ref: mergeRefs([
+-					children.ref,
++					children.props.ref,
+ 					renderProps.ref,
+ 					refProp
+ 				])
+diff --git a/es/Tooltip/TooltipInGroup.mjs b/es/Tooltip/TooltipInGroup.mjs
+--- a/es/Tooltip/TooltipInGroup.mjs
++++ b/es/Tooltip/TooltipInGroup.mjs
+@@ -37,7 +37,7 @@ const TooltipInGroup = ({ children, ref: refProp, ...props }) => {
+ 		return cloneElement(childElement, {
+ 			...mergeProps(childElement.props, resolvedProps),
+ 			ref: mergeRefs([
+-				childElement.ref,
++				childElement.props.ref,
+ 				renderProps.ref,
+ 				refProp
+ 			])
+diff --git a/es/Tooltip/TooltipStandalone.mjs b/es/Tooltip/TooltipStandalone.mjs
+--- a/es/Tooltip/TooltipStandalone.mjs
++++ b/es/Tooltip/TooltipStandalone.mjs
+@@ -97,7 +97,7 @@ const TooltipStandalone = /* @__PURE__ */ forwardRef(function TooltipStandalone(
+ 				return cloneElement(children, {
+ 					...mergeProps(children.props, resolvedProps),
+ 					ref: mergeRefs([
+-						children.ref,
++						children.props.ref,
+ 						props.ref,
+ 						refProp,
+ 						triggerCallbackRef
 diff --git a/es/Modal/Modal.mjs b/es/Modal/Modal.mjs
 index 81ec2ee1e229209afd36d549caea2d838fbdd2e4..2f71314ab740561cafe7493fee77c9fedbd35637 100644
 --- a/es/Modal/Modal.mjs
