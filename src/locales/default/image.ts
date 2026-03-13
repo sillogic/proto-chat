@@ -32,7 +32,7 @@ export default {
   'generation.actions.delete': 'Delete',
   'generation.actions.deleteBatch': 'Delete Batch',
   'generation.actions.download': 'Download',
-  'generation.actions.referenceApplied': 'Set as Reference Image',
+  'generation.actions.referenceApplied': 'Reference image updated',
   'generation.actions.useAsReference': 'Use as Reference',
   'generation.actions.downloadFailed':
     'Failed to download image. Please check your network connection or S3 storage CORS configuration.',
