@@ -49,7 +49,7 @@ export class EditorErrorBoundary extends Component<
       return (
         <Alert
           showIcon
-          message={this.state.error?.message || 'An unknown error occurred in the editor'}
+          description={this.state.error?.message || 'An unknown error occurred in the editor'}
           title="Editor Error"
           type="error"
           style={{

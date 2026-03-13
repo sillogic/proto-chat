@@ -3,7 +3,6 @@
 import { App } from 'antd';
 import { memo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useBlocker } from 'react-router-dom';
 
 interface UnsavedChangesGuardProps {
   isDirty: boolean;
@@ -17,59 +16,44 @@ const UnsavedChangesGuard = memo<UnsavedChangesGuardProps>(
     void _title;
     const { t } = useTranslation('file');
     const { message: messageApi } = App.useApp();
-    const blocker = useBlocker(isDirty);
 
-    const blockerRef = useRef(blocker);
-    const isSavingRef = useRef(false);
-    blockerRef.current = blocker;
+    // Keep refs so the unmount cleanup always sees the latest values
+    const isDirtyRef = useRef(isDirty);
+    const onAutoSaveRef = useRef(onAutoSave);
+    const messageApiRef = useRef(messageApi);
+    const tRef = useRef(t);
+    isDirtyRef.current = isDirty;
+    onAutoSaveRef.current = onAutoSave;
+    messageApiRef.current = messageApi;
+    tRef.current = t;
 
+    // Auto-save when navigating away within the SPA (component unmounts)
     useEffect(() => {
-      if (blocker.state !== 'blocked') return;
-      if (isSavingRef.current) return;
-
-      isSavingRef.current = true;
-      const messageKey = `editor-leave-auto-save-${Date.now()}`;
-
-      const leaveWithAutoSave = async () => {
-        messageApi.loading({
-          content: t('pageEditor.saving'),
+      return () => {
+        if (!isDirtyRef.current || !onAutoSaveRef.current) return;
+        const messageKey = `editor-leave-auto-save-${Date.now()}`;
+        messageApiRef.current.loading({
+          content: tRef.current('pageEditor.saving'),
           duration: 0,
           key: messageKey,
         });
-
-        try {
-          const saved = (await onAutoSave?.()) ?? true;
-
-          if (!saved) {
-            messageApi.error({
-              content: t('networkError'),
+        void onAutoSaveRef.current().then((saved) => {
+          if (saved === false) {
+            messageApiRef.current.error({
+              content: tRef.current('networkError'),
               duration: 2,
               key: messageKey,
             });
-            blockerRef.current?.reset?.();
-            return;
+          } else {
+            messageApiRef.current.destroy(messageKey);
           }
-
-          messageApi.destroy(messageKey);
-          blockerRef.current?.proceed?.();
-        } catch (error) {
-          const content =
-            error instanceof Error && error.message ? error.message : t('networkError');
-
-          messageApi.error({
-            content,
-            duration: 2,
-            key: messageKey,
-          });
-          blockerRef.current?.reset?.();
-        } finally {
-          isSavingRef.current = false;
-        }
+        }).catch(() => {
+          messageApiRef.current.destroy(messageKey);
+        });
       };
+    }, []); // only on unmount
 
-      void leaveWithAutoSave();
-    }, [blocker.state, message, messageApi, onAutoSave, t]);
-
+    // Warn before browser tab close / refresh
     useEffect(() => {
       if (!isDirty) return;
 
