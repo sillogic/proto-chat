@@ -7,6 +7,7 @@ import { and, desc, eq } from 'drizzle-orm';
 
 import { FileService } from '@/server/services/file';
 
+import { FileModel } from './file';
 import type { GenerationTopicItem } from '../schemas/generation';
 import { generationTopics } from '../schemas/generation';
 import type { LobeChatDatabase } from '../type';
@@ -16,11 +17,13 @@ export class GenerationTopicModel {
   private userId: string;
   private db: LobeChatDatabase;
   private fileService: FileService;
+  private fileModel: FileModel;
 
   constructor(db: LobeChatDatabase, userId: string) {
     this.userId = userId;
     this.db = db;
     this.fileService = new FileService(db, userId);
+    this.fileModel = new FileModel(db, userId);
   }
 
   queryAll = async (type?: GenerationTopicType) => {
@@ -97,6 +100,7 @@ export class GenerationTopicModel {
             generations: {
               columns: {
                 asset: true,
+                fileId: true,
               },
             },
           },
@@ -109,8 +113,9 @@ export class GenerationTopicModel {
       return undefined;
     }
 
-    // 2. Collect all file URLs that need to be deleted
+    // 2. Collect all file URLs (S3 keys) and file record IDs that need to be deleted
     const filesToDelete: string[] = [];
+    const fileIdsToDelete: string[] = [];
 
     // Add cover image URL if exists
     if (topicWithBatches.coverUrl) {
@@ -127,6 +132,7 @@ export class GenerationTopicModel {
           if (asset && 'coverUrl' in asset && asset.coverUrl) {
             filesToDelete.push(asset.coverUrl);
           }
+          if (gen.fileId) fileIdsToDelete.push(gen.fileId);
         }
       }
     }
@@ -136,6 +142,11 @@ export class GenerationTopicModel {
       .delete(generationTopics)
       .where(and(eq(generationTopics.id, id), eq(generationTopics.userId, this.userId)))
       .returning();
+
+    // 4. Delete the associated file records from the resource library
+    if (fileIdsToDelete.length > 0) {
+      await this.fileModel.deleteMany(fileIdsToDelete);
+    }
 
     return {
       deletedTopic,
