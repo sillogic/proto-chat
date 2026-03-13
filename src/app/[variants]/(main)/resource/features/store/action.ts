@@ -190,7 +190,7 @@ export const store: CreateStore = (publicState) => (set, get) => ({
   },
 
   setCategory: (category) => {
-    set({ category });
+    set({ category, viewMode: category === 'images' ? 'masonry' : 'list' });
   },
 
   setCurrentFolderId: (currentFolderId) => {

@@ -181,11 +181,13 @@ const ImageFileItem = memo<ImageFileItemProps>(
                 transition: 'opacity 0.3s',
                 width: '100%',
               }}
-              wrapperStyle={{
-                inset: 0,
-                pointerEvents: imageLoaded ? 'auto' : 'none',
-                position: imageLoaded ? 'relative' : 'absolute',
-                width: '100%',
+              styles={{
+                root: {
+                  inset: 0,
+                  pointerEvents: imageLoaded ? 'auto' : 'none',
+                  position: imageLoaded ? 'relative' : 'absolute',
+                  width: '100%',
+                },
               }}
               onError={() => setImageLoaded(false)}
               onLoad={() => setImageLoaded(true)}
