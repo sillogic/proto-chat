@@ -276,6 +276,11 @@ export const ModelItemRender = memo<ModelItemRenderProps>(
     releasedAt,
     streaming: _streaming,
     webSearch: _webSearch,
+    cacheSupport: _cacheSupport,
+    instructType: _instructType,
+    inputModalities: _inputModalities,
+    outputModalities: _outputModalities,
+    internalReasoning: _internalReasoning,
     ...rest
   }) => {
     const { mobile } = useResponsive();
