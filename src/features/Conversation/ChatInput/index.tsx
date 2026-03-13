@@ -4,9 +4,11 @@ import { type SlashOptions } from '@lobehub/editor';
 import { type ChatInputActionsProps } from '@lobehub/editor/react';
 import { type MenuProps } from '@lobehub/ui';
 import { Alert, Flexbox } from '@lobehub/ui';
+import { Button } from 'antd';
 import { type ReactNode } from 'react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 import { type ActionKeys } from '@/features/ChatInput';
 import { ChatInputProvider, DesktopChatInput } from '@/features/ChatInput';
@@ -170,7 +172,23 @@ const ChatInput = memo<ChatInputProps>(
 
     const defaultContent = (
       <WideScreenContainer style={skipScrollMarginWithList ? { marginTop: -12 } : undefined}>
-        {sendMessageErrorMsg && (
+        {sendMessageErrorMsg === 'INSUFFICIENT_CREDITS' ? (
+          <Flexbox paddingBlock={'0 6px'} paddingInline={12}>
+            <Alert
+              action={
+                <Link to="/settings/plans">
+                  <Button size={'small'} type={'primary'}>
+                    {t('credits.upgradeNow', { ns: 'error' })}
+                  </Button>
+                </Link>
+              }
+              closable
+              message={t('credits.insufficient', { ns: 'error' })}
+              type={'warning'}
+              onClose={clearSendMessageError}
+            />
+          </Flexbox>
+        ) : sendMessageErrorMsg ? (
           <Flexbox paddingBlock={'0 6px'} paddingInline={12}>
             <Alert
               closable
@@ -179,7 +197,7 @@ const ChatInput = memo<ChatInputProps>(
               onClose={clearSendMessageError}
             />
           </Flexbox>
-        )}
+        ) : null}
         <DesktopChatInput
           actionBarStyle={actionBarStyle}
           borderRadius={12}

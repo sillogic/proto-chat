@@ -34,7 +34,7 @@ export class UserUsageService {
         if (!hasEnough) {
             throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'Insufficient credits. Please top up or upgrade your plan.',
+                message: 'INSUFFICIENT_CREDITS',
             });
         }
     }

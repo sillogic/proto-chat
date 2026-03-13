@@ -2,6 +2,7 @@ import { type SendMessageServerResponse } from '@lobechat/types';
 import { AiSendMessageServerSchema, StructureOutputSchema } from '@lobechat/types';
 import debug from 'debug';
 
+import { checkBudgetsUsage } from '@/business/server/trpc-middlewares/lambda';
 import { LOADING_FLAT } from '@/const/message';
 import { AgentModel } from '@/database/models/agent';
 import { MessageModel } from '@/database/models/message';
@@ -16,20 +17,24 @@ import { FileService } from '@/server/services/file';
 
 const log = debug('lobe-lambda-router:ai-chat');
 
-const aiChatProcedure = authedProcedure.use(serverDatabase).use(keyVaults).use(async (opts) => {
-  const { ctx } = opts;
+const aiChatProcedure = authedProcedure
+  .use(serverDatabase)
+  .use(keyVaults)
+  .use(checkBudgetsUsage)
+  .use(async (opts) => {
+    const { ctx } = opts;
 
-  return opts.next({
-    ctx: {
-      agentModel: new AgentModel(ctx.serverDB, ctx.userId),
-      aiChatService: new AiChatService(ctx.serverDB, ctx.userId),
-      fileService: new FileService(ctx.serverDB, ctx.userId),
-      messageModel: new MessageModel(ctx.serverDB, ctx.userId),
-      threadModel: new ThreadModel(ctx.serverDB, ctx.userId),
-      topicModel: new TopicModel(ctx.serverDB, ctx.userId),
-    },
+    return opts.next({
+      ctx: {
+        agentModel: new AgentModel(ctx.serverDB, ctx.userId),
+        aiChatService: new AiChatService(ctx.serverDB, ctx.userId),
+        fileService: new FileService(ctx.serverDB, ctx.userId),
+        messageModel: new MessageModel(ctx.serverDB, ctx.userId),
+        threadModel: new ThreadModel(ctx.serverDB, ctx.userId),
+        topicModel: new TopicModel(ctx.serverDB, ctx.userId),
+      },
+    });
   });
-});
 
 export const aiChatRouter = router({
   outputJSON: aiChatProcedure.input(StructureOutputSchema).mutation(async ({ input, ctx }) => {

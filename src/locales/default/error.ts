@@ -1,4 +1,8 @@
 export default {
+  'credits.image.description': 'You have run out of credits. Please upgrade your plan to generate images.',
+  'credits.image.title': 'Insufficient Credits',
+  'credits.insufficient': 'You have run out of credits. Please upgrade your plan to continue.',
+  'credits.upgradeNow': 'Upgrade Now',
   'error.backHome': 'Back to Home',
   'error.desc': 'Give it a try later, or go back to the known world.',
   'error.stack': 'Error Stack',

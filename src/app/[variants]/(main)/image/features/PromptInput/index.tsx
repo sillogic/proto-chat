@@ -2,11 +2,13 @@
 
 import { ChatInput } from '@lobehub/editor/react';
 import { Button, Flexbox, TextArea } from '@lobehub/ui';
+import { App } from 'antd';
 import { createStaticStyles, cx } from 'antd-style';
 import { Sparkles } from 'lucide-react';
 import { type KeyboardEvent } from 'react';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 import { loginRequired } from '@/components/Error/loginRequiredNotification';
 import { useIsDark } from '@/hooks/useIsDark';
@@ -43,6 +45,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const isDarkMode = useIsDark();
   const { t } = useTranslation('image');
+  const { t: tError } = useTranslation('error');
+  const { notification } = App.useApp();
+  const navigate = useNavigate();
   const { value, setValue } = useGenerationConfigParam('prompt');
   const isCreating = useImageStore(createImageSelectors.isCreating);
   const createImage = useImageStore((s) => s.createImage);
@@ -58,13 +63,32 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const hasProcessedPrompt = useRef(false);
   const hasProcessedModel = useRef(false);
 
+  const showInsufficientCreditsNotification = () => {
+    notification.warning({
+      btn: (
+        <Button size={'small'} type={'primary'} onClick={() => navigate('/settings/plans')}>
+          {tError('credits.upgradeNow')}
+        </Button>
+      ),
+      description: tError('credits.image.description'),
+      duration: 6,
+      message: tError('credits.image.title'),
+    });
+  };
+
   const handleGenerate = async () => {
     if (!isLogin) {
       loginRequired.redirect({ timeout: 2000 });
       return;
     }
 
-    await createImage();
+    try {
+      await createImage();
+    } catch (e: any) {
+      if (e?.message === 'INSUFFICIENT_CREDITS') {
+        showInsufficientCreditsNotification();
+      }
+    }
   };
 
   // Auto-select model when model query parameter is present
@@ -103,7 +127,13 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
 
       // Auto-trigger generation after a short delay to ensure state is updated
       setTimeout(async () => {
-        await createImage();
+        try {
+          await createImage();
+        } catch (e: any) {
+          if (e?.message === 'INSUFFICIENT_CREDITS') {
+            showInsufficientCreditsNotification();
+          }
+        }
       }, 100);
     }
   }, [promptParam, isLogin, setValue, setPromptParam, createImage]);
