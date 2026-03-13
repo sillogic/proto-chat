@@ -201,7 +201,10 @@ export class UserUsageService {
      * Get paginated transaction history
      */
     async getTransactions(limit: number = 20, offset: number = 0, mo?: string, dateFrom?: string, dateTo?: string) {
-        let whereClause = eq(userTransactions.userId, this.userId);
+        let whereClause: any = and(
+            eq(userTransactions.userId, this.userId),
+            sql`(${userTransactions.metadata}->>'type' IS DISTINCT FROM 'title_generation')`,
+        );
 
         if (mo) {
             const startAt = dayjs(mo, 'YYYY-MM').startOf('month').toDate();
@@ -255,6 +258,7 @@ export class UserUsageService {
         let whereClause: any = and(
             eq(userTransactions.userId, this.userId),
             eq(userTransactions.type, 'CONSUMPTION'),
+            sql`(${userTransactions.metadata}->>'type' IS DISTINCT FROM 'title_generation')`,
         );
 
         if (options?.dateFrom) {
@@ -333,6 +337,7 @@ export class UserUsageService {
         let whereClause = and(
             eq(userTransactions.userId, this.userId),
             eq(userTransactions.type, 'CONSUMPTION'),
+            sql`(${userTransactions.metadata}->>'type' IS DISTINCT FROM 'title_generation')`,
         );
 
         let embeddingWhereClause: SQL<unknown> | undefined = eq(embeddingUsageLogs.userId, this.userId);

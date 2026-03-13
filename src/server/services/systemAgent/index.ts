@@ -5,7 +5,8 @@ import debug from 'debug';
 
 import { UserModel } from '@/database/models/user';
 import { type LobeChatDatabase } from '@/database/type';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { initModelRuntimeFromDB, initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
+import { ProtoChatService } from '@/server/services/protochat';
 import { CreditService } from '@/server/services/credit';
 
 const log = debug('lobe-server:system-agent-service');
@@ -65,11 +66,20 @@ export class SystemAgentService {
 
       const payload = chainSummaryTitle(messages, locale);
 
-      const modelRuntime = await initModelRuntimeFromDB(this.db, this.userId, provider);
+      // For ProtoChat, we need to resolve the actual underlying model ID
+      let modelRuntime;
+      let effectiveModel = model;
+      if (ProtoChatService.isProtoChatProvider(provider)) {
+        const { runtime, actualModel } = await initModelRuntimeWithUserPayload(provider, {}, { model });
+        modelRuntime = runtime;
+        effectiveModel = actualModel || model;
+        } else {
+        modelRuntime = await initModelRuntimeFromDB(this.db, this.userId, provider);
+      }
 
       let capturedUsage: { inputTokens: number; outputTokens: number } | null = null;
       const result = await modelRuntime.generateObject(
-        { messages: payload.messages as any[], model, schema: TOPIC_TITLE_SCHEMA },
+        { messages: payload.messages as any[], model: effectiveModel, schema: TOPIC_TITLE_SCHEMA },
         {
           onUsage: (usage) => {
             capturedUsage = usage;
@@ -77,7 +87,6 @@ export class SystemAgentService {
         },
       );
 
-      // Record usage for admin statistics without deducting credits
       if (capturedUsage) {
         const inputTokens = (capturedUsage as { inputTokens: number }).inputTokens;
         const outputTokens = (capturedUsage as { outputTokens: number }).outputTokens;

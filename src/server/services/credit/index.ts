@@ -41,7 +41,6 @@ export class CreditService {
     ) {
         // If user is using their own API key, don't charge
         if (isUserConfig) {
-            console.info(`[Credit] User using own config for ${provider}, no charge`);
             return 0;
         }
 
@@ -51,7 +50,6 @@ export class CreditService {
         });
 
         if (!pricing) {
-            console.warn(`[Credit] No pricing found for ${provider}::${model}, no charge`);
             return 0;
         }
 
@@ -87,12 +85,6 @@ export class CreditService {
             + (outputTextTokens / 1_000_000) * userOutputPrice
             + imageOutputCost
             + perCost;
-
-        const subProviderInfo = pricing.subProvider ? ` (via ${pricing.subProvider})` : '';
-        const cacheInfo = safeCachedTokens > 0
-            ? ` [cache: hit=${safeCachedTokens} miss=${cacheMissTokens} cacheReadPrice=${userCacheReadPrice.toFixed(2)}]`
-            : '';
-        console.info(`[Credit] Charging for ${provider}::${model}${subProviderInfo}: cost=%s credits (in=${inputTokens} outText=${outputTextTokens} outImg=${outputImageTokens})${cacheInfo}`, cost.toFixed(4));
 
         return cost;
     }

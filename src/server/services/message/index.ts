@@ -237,9 +237,6 @@ export class MessageService {
             const isUserConfig = await this.isUserUsingOwnConfig(message.provider);
 
             const cachedTokens = inputCachedTokens || 0;
-            console.info(
-              `[Credit/Cache] model=${message.model} totalInput=${totalInputTokens || 0} cached=${cachedTokens} miss=${(totalInputTokens || 0) - cachedTokens} output=${totalOutputTokens || 0}`,
-            );
 
             const [cost, costPrice] = await Promise.all([
               this.creditService.calculateCost(

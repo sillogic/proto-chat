@@ -1,7 +1,6 @@
 /* eslint-disable sort-keys-fix/sort-keys-fix, typescript-sort-keys/interface */
 // Note: To make the code more logic and readable, we just disable the auto sort key eslint rule
 // DON'T REMOVE THE FIRST LINE
-import { chainSummaryTitle } from '@lobechat/prompts';
 import { type ChatTopicMetadata, type MessageMapScope, type UIChatMessage } from '@lobechat/types';
 import { TraceNameMap } from '@lobechat/types';
 import isEqual from 'fast-deep-equal';
@@ -18,12 +17,8 @@ import { topicService } from '@/services/topic';
 import { type ChatStore } from '@/store/chat';
 import { topicMapKey } from '@/store/chat/utils/topicMapKey';
 import { useGlobalStore } from '@/store/global';
-import { globalHelpers } from '@/store/global/helpers';
 import { type StoreSetter } from '@/store/types';
-import { useUserStore } from '@/store/user';
-import { systemAgentSelectors, userGeneralSettingsSelectors } from '@/store/user/selectors';
 import { type ChatTopic, type CreateTopicParams } from '@/types/topic';
-import { merge } from '@/utils/merge';
 import { setNamespace } from '@/utils/storeDebug';
 
 import { displayMessageSelectors } from '../message/selectors';
@@ -196,45 +191,45 @@ export class ChatTopicActionImpl {
     if (!topic) return;
 
     internal_updateTopicTitleInSummary(topicId, LOADING_FLAT);
+    internal_updateTopicLoading(topicId, true);
 
-    let output = '';
+    try {
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+      const lastAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant');
 
-    // Get current agent for topic
-    const topicConfig = systemAgentSelectors.topic(useUserStore.getState());
-
-    // Automatically summarize the topic title
-    await chatService.fetchPresetTaskResult({
-      onError: () => {
+      if (!lastUserMsg || !lastAssistantMsg) {
         internal_updateTopicTitleInSummary(topicId, topic.title);
-      },
-      onFinish: async (text) => {
-        await this.#get().internal_updateTopic(topicId, { title: text });
-      },
-      onLoadingChange: (loading) => {
-        internal_updateTopicLoading(topicId, loading);
-      },
-      onMessageHandle: (chunk) => {
-        switch (chunk.type) {
-          case 'text': {
-            output += chunk.text;
-          }
-        }
+        return;
+      }
 
-        internal_updateTopicTitleInSummary(topicId, output);
-      },
-      params: merge(
-        topicConfig,
-        chainSummaryTitle(
-          messages,
-          userGeneralSettingsSelectors.responseLanguage(useUserStore.getState()) ||
-            globalHelpers.getCurrentLanguage(),
-        ),
-      ),
-      trace: this.#get().getCurrentTracePayload({
-        traceName: TraceNameMap.SummaryTopicTitle,
+      const extractText = (content: UIChatMessage['content']): string => {
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) {
+          return content
+            .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+            .map((c) => c.text)
+            .join('');
+        }
+        return '';
+      };
+
+      const result = await topicService.generateTitle({
+        lastAssistantContent: extractText(lastAssistantMsg.content),
         topicId,
-      }),
-    });
+        userPrompt: extractText(lastUserMsg.content),
+      });
+
+      if (result.title) {
+        await this.#get().internal_updateTopic(topicId, { title: result.title });
+      } else {
+        internal_updateTopicTitleInSummary(topicId, topic.title);
+      }
+    } catch (e) {
+      console.error('summaryTopicTitle failed:', e);
+      internal_updateTopicTitleInSummary(topicId, topic.title);
+    } finally {
+      internal_updateTopicLoading(topicId, false);
+    }
   };
 
   favoriteTopic = async (id: string, favorite: boolean): Promise<void> => {

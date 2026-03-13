@@ -8,6 +8,8 @@ import { eq, inArray } from 'drizzle-orm';
 import { after } from 'next/server';
 import { z } from 'zod';
 
+import { SystemAgentService } from '@/server/services/systemAgent';
+
 import { TopicModel } from '@/database/models/topic';
 import { TopicShareModel } from '@/database/models/topicShare';
 import { AgentMigrationRepo } from '@/database/repositories/agentMigration';
@@ -521,6 +523,23 @@ export const topicRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       return ctx.topicModel.updateMetadata(input.id, input.metadata);
+    }),
+
+  generateTitle: topicProcedure
+    .input(
+      z.object({
+        lastAssistantContent: z.string(),
+        topicId: z.string(),
+        userPrompt: z.string(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const systemAgentService = new SystemAgentService(ctx.serverDB, ctx.userId);
+      const title = await systemAgentService.generateTopicTitle({
+        lastAssistantContent: input.lastAssistantContent,
+        userPrompt: input.userPrompt,
+      });
+      return { title };
     }),
 });
 
