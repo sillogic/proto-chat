@@ -7,7 +7,7 @@ import {
     protochatSettings,
     protochatUsageLogs,
 } from '../db/protochat-schema';
-import { eq, ne, desc, and, like, sql } from 'drizzle-orm';
+import { eq, ne, desc, and, like, sql, getTableColumns } from 'drizzle-orm';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import { KeyVaultsGateKeeper } from '../utils/encryption';
 import { z } from 'zod';
@@ -681,7 +681,7 @@ router.get('/models', authenticateToken, requirePermission('system.admin'), asyn
         }
 
         const baseQuery = db
-            .select()
+            .select(getTableColumns(protochatModels))
             .from(protochatModels)
             .innerJoin(protochatProviders, eq(protochatModels.originalProvider, protochatProviders.id));
 
