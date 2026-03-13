@@ -44,7 +44,6 @@ export const getServerGlobalConfig = async () => {
             comfyui: { enabled: false },
             fal: { enabled: false },
             google: { enabled: false },
-            ollama: { enabled: isDesktop ? true : false },
             openai: { enabled: false },
           }
         : {}),
@@ -64,7 +63,7 @@ export const getServerGlobalConfig = async () => {
         fetchOnClient: isDesktop ? false : undefined,
       },
       ollama: {
-        enabled: isDesktop ? true : undefined,
+        enabled: isDesktop ? true : ENABLE_BUSINESS_FEATURES ? false : undefined,
         fetchOnClient: isDesktop ? false : !process.env.OLLAMA_PROXY_URL,
       },
       ollamacloud: {
