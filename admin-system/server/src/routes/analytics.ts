@@ -100,6 +100,11 @@ const getProtochatModelPrice = (
   // 2. 直接用模型名查（覆盖：裸 ProtoChat ID、original_id 中提取的原始名）
   if (priceMap.has(model)) return priceMap.get(model)!;
 
+  // 3. 短名称后缀匹配：如 'gemini-2.5-flash' 匹配 'protochat::a1::gemini-2.5-flash'
+  for (const [key, value] of priceMap.entries()) {
+    if (key.endsWith(`::${model}`)) return value;
+  }
+
   return ZERO;
 };
 
