@@ -132,7 +132,7 @@ export default {
   'tab.home': 'Home',
   'tab.images': 'Images',
   'tab.moreTypes': 'More Types',
-  'tab.pages': 'Pages',
+  'tab.pages': '在线文稿',
   'tab.videos': 'Videos',
   'tab.websites': 'Websites',
   'title': 'Resources',

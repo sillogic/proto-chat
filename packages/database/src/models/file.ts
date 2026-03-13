@@ -330,6 +330,9 @@ export class FileModel {
       case FilesTabs.Documents: {
         return ['application', 'custom'];
       }
+      case FilesTabs.Pages: {
+        return 'custom/document';
+      }
       case FilesTabs.Images: {
         return 'image';
       }
