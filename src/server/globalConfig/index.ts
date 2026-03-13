@@ -63,7 +63,7 @@ export const getServerGlobalConfig = async () => {
         fetchOnClient: isDesktop ? false : undefined,
       },
       ollama: {
-        enabled: isDesktop ? true : ENABLE_BUSINESS_FEATURES ? false : undefined,
+        enabled: ENABLE_BUSINESS_FEATURES ? false : undefined,
         fetchOnClient: isDesktop ? false : !process.env.OLLAMA_PROXY_URL,
       },
       ollamacloud: {
