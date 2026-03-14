@@ -74,10 +74,34 @@ const buildAliasNameMap = async (): Promise<Map<string, string>> => {
   return map;
 };
 
+// 构建短模型名 → alias 映射（如 'gemini-2.5-flash' → 'a1'）
+// 用于标题生成等场景，model 字段只有短名没有 protochat:: 前缀
+const buildShortModelAliasMap = async (): Promise<Map<string, string>> => {
+  const rows = await db.execute(sql`
+    SELECT id FROM protochat_models
+  `);
+  const map = new Map<string, string>();
+  for (const r of (rows as any[])) {
+    const id = r.id as string;
+    const m = id.match(/^protochat::([^:]+)::(.+)$/);
+    if (m) {
+      // m[1] = alias (e.g. 'a1'), m[2] = short model name (e.g. 'gemini-2.5-flash')
+      map.set(m[2], m[1]);
+    }
+  }
+  return map;
+};
+
 // 从模型ID中提取子供应商 alias，例如 'protochat::a1::gpt-4o' → 'a1'
-const extractSubProviderAlias = (model: string): string | null => {
+// 支持短模型名 fallback（通过 shortModelAliasMap）
+const extractSubProviderAlias = (model: string, shortModelAliasMap?: Map<string, string>): string | null => {
   const m = model?.match(/^protochat::([^:]+)::/);
-  return m ? m[1] : null;
+  if (m) return m[1];
+  // Fallback: 短模型名查找（如 'gemini-2.5-flash' → 'a1'）
+  if (shortModelAliasMap && model) {
+    return shortModelAliasMap.get(model) || null;
+  }
+  return null;
 };
 
 // 辅助函数：根据模型名获取价格
@@ -131,8 +155,10 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       GROUP BY m.model, m.provider
     `);
 
-    // 2. 获取 ProtoChat 模型的美元价格 + alias→name 映射
-    const [priceMap, aliasNameMap] = await Promise.all([buildProtochatPriceMap(), buildAliasNameMap()]);
+    // 2. 获取 ProtoChat 模型的美元价格 + alias→name 映射 + 短模型名→alias 映射
+    const [priceMap, aliasNameMap, shortModelAliasMap] = await Promise.all([
+      buildProtochatPriceMap(), buildAliasNameMap(), buildShortModelAliasMap(),
+    ]);
 
     // 3. 获取 Embedding 统计
     const embeddingStats = await db.execute(sql`
@@ -226,19 +252,51 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       GROUP BY m.model, m.provider
     `);
 
-    // 6. 趋势数据（月度按天，年度按月）- 分别返回上行和下行 Token
+    // 6. 趋势数据（月度按天，年度按月）- 合并 Chat + 标题生成 + 图片生成 的 Token
     const dailyTrend = await db.execute(sql`
-      SELECT
-        TO_CHAR(m.created_at, ${sql.raw(`'${dateFormat}'`)}) as date,
-        m.model,
-        SUM((COALESCE(m.metadata ->> 'totalInputTokens', '0'))::int) as "inputTokens",
-        SUM((COALESCE(m.metadata ->> 'totalOutputTokens', '0'))::int) as "outputTokens"
-      FROM messages m
-      WHERE m.role = 'assistant'
-        AND m.created_at >= ${startStr}
-        AND m.created_at < ${endStr}
-        AND m.user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
-      GROUP BY TO_CHAR(m.created_at, ${sql.raw(`'${dateFormat}'`)}), m.model
+      SELECT date, model, SUM("inputTokens") as "inputTokens", SUM("outputTokens") as "outputTokens"
+      FROM (
+        -- Chat tokens
+        SELECT
+          TO_CHAR(m.created_at, ${sql.raw(`'${dateFormat}'`)}) as date,
+          m.model,
+          (COALESCE(m.metadata ->> 'totalInputTokens', '0'))::bigint as "inputTokens",
+          (COALESCE(m.metadata ->> 'totalOutputTokens', '0'))::bigint as "outputTokens"
+        FROM messages m
+        WHERE m.role = 'assistant'
+          AND m.created_at >= ${startStr}
+          AND m.created_at < ${endStr}
+          AND m.user_id NOT IN (SELECT id FROM users WHERE email = 'admin@system.local')
+
+        UNION ALL
+
+        -- Title generation tokens
+        SELECT
+          TO_CHAR(t.created_at, ${sql.raw(`'${dateFormat}'`)}) as date,
+          COALESCE(t.metadata ->> 'model', 'unknown') as model,
+          COALESCE((NULLIF(t.metadata ->> 'totalInputTokens', ''))::bigint, 0) as "inputTokens",
+          COALESCE((NULLIF(t.metadata ->> 'totalOutputTokens', ''))::bigint, 0) as "outputTokens"
+        FROM user_transactions t
+        WHERE t.type = 'CONSUMPTION'
+          AND t.created_at >= ${startStr}
+          AND t.created_at < ${endStr}
+          AND t.metadata ->> 'type' = 'title_generation'
+
+        UNION ALL
+
+        -- Image generation tokens
+        SELECT
+          TO_CHAR(t.created_at, ${sql.raw(`'${dateFormat}'`)}) as date,
+          COALESCE(t.metadata ->> 'model', 'unknown') as model,
+          COALESCE((NULLIF(t.metadata ->> 'totalInputTokens', ''))::bigint, 0) as "inputTokens",
+          COALESCE((NULLIF(t.metadata ->> 'totalOutputTokens', ''))::bigint, 0) as "outputTokens"
+        FROM user_transactions t
+        WHERE t.type = 'CONSUMPTION'
+          AND t.created_at >= ${startStr}
+          AND t.created_at < ${endStr}
+          AND t.metadata ->> 'type' = 'image'
+      ) combined
+      GROUP BY date, model
       ORDER BY date ASC
     `);
 
@@ -274,7 +332,7 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       });
 
       // 子供应商统计：从模型ID提取 alias
-      const alias = extractSubProviderAlias(item.model) || item.provider || 'unknown';
+      const alias = extractSubProviderAlias(item.model, shortModelAliasMap) || item.provider || 'unknown';
       const providerName = aliasNameMap.get(alias) || alias;
       if (!subProviderMap.has(alias)) {
         subProviderMap.set(alias, { alias, providerName, totalTokens: 0, cost: 0 });
@@ -358,7 +416,7 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       });
 
       // 图片生成也归入子供应商统计
-      const imgAlias = extractSubProviderAlias(item.model || '') || item.provider || 'unknown';
+      const imgAlias = extractSubProviderAlias(item.model || '', shortModelAliasMap) || item.provider || 'unknown';
       const imgProviderName = aliasNameMap.get(imgAlias) || imgAlias;
       if (!subProviderMap.has(imgAlias)) {
         subProviderMap.set(imgAlias, { alias: imgAlias, providerName: imgProviderName, totalTokens: 0, cost: 0 });
@@ -407,7 +465,7 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       }
 
       // 标题生成也归入子供应商
-      const titleAlias = extractSubProviderAlias(item.model || '') || item.provider || 'unknown';
+      const titleAlias = extractSubProviderAlias(item.model || '', shortModelAliasMap) || item.provider || 'unknown';
       const titleProviderName = aliasNameMap.get(titleAlias) || titleAlias;
       if (!subProviderMap.has(titleAlias)) {
         subProviderMap.set(titleAlias, { alias: titleAlias, providerName: titleProviderName, totalTokens: 0, cost: 0 });
