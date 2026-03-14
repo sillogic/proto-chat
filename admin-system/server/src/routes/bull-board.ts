@@ -23,16 +23,16 @@ import { JWT_SECRET } from '../config/auth';
 
 const BASE_PATH = '/queues';
 
-const QUEUE_NAMES = [
-  // Agent cron job queues
-  'agent-cron-dispatch',
-  'agent-cron-execution',
-  // Memory extraction queues
-  'hourly-analysis',
-  'process-users',
-  'process-user-topics',
-  'process-topics',
-  'update-persona',
+const QUEUES = [
+  // ── Agent 定时任务 ──
+  { description: '定时任务调度器 — 每分钟检查到期任务并入队', name: 'agent-cron-dispatch' },
+  { description: '定时任务执行 — 调用 LLM 生成回复并存储对话', name: 'agent-cron-execution' },
+  // ── 用户记忆提取 ──
+  { description: '记忆提取入口 — 每小时分页扫描用户', name: 'hourly-analysis' },
+  { description: '记忆提取 — 按用户批量分发 Topic 任务', name: 'process-users' },
+  { description: '记忆提取 — 按用户分页拉取 Topic 列表', name: 'process-user-topics' },
+  { description: '记忆提取 — 对 Topic 批次执行 LLM 抽取', name: 'process-topics' },
+  { description: '记忆合成 — 汇总提取结果生成用户画像', name: 'update-persona' },
 ];
 
 /**
@@ -75,7 +75,10 @@ export function createBullBoardRouter() {
     ...(process.env.REDIS_TLS === '1' || process.env.REDIS_TLS === 'true' ? { tls: {} } : {}),
   });
 
-  const queues = QUEUE_NAMES.map((name) => new BullMQAdapter(new Queue(name, { connection })));
+  const queues = QUEUES.map(
+    ({ name, description }) =>
+      new BullMQAdapter(new Queue(name, { connection }), { description }),
+  );
 
   const serverAdapter = new ExpressAdapter();
   serverAdapter.setBasePath(BASE_PATH);
