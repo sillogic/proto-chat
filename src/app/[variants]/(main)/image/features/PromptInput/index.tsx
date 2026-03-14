@@ -55,6 +55,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const isCreating = useImageStore(createImageSelectors.isCreating);
   const createImage = useImageStore((s) => s.createImage);
   const setModelAndProviderOnSelect = useImageStore((s) => s.setModelAndProviderOnSelect);
+  const setParamRaw = useImageStore((s) => s.setParamOnInput) as (name: string, value: any) => void;
   const isInit = useImageStore((s) => s.isInit);
   const isLogin = useUserStore(authSelectors.isLogin);
   const enabledImageModelList = useAiInfraStore(aiProviderSelectors.enabledImageModelList);
@@ -145,6 +146,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
 
   const handleApplyOptimized = () => {
     if (optimizedPrompt) {
+      setParamRaw('originalPrompt', value); // preserve what the user typed
       setValue(optimizedPrompt);
       setOptimizedPrompt(null);
     }

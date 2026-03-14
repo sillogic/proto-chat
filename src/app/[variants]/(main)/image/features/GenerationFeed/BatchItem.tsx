@@ -3,7 +3,7 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { ModelTag } from '@lobehub/icons';
 import { ActionIconGroup, Block, Flexbox, Grid, Markdown, Tag, Text } from '@lobehub/ui';
-import { App } from 'antd';
+import { App, theme } from 'antd';
 import { createStaticStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import { omit } from 'es-toolkit/compat';
@@ -74,12 +74,25 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
     return dayjs(batch.createdAt).format('YYYY-MM-DD HH:mm:ss');
   }, [batch.createdAt]);
 
+  const { token } = theme.useToken();
+  const originalPrompt = (batch.config as any)?.originalPrompt as string | undefined;
+
   const handleCopyPrompt = async () => {
     try {
       await navigator.clipboard.writeText(batch.prompt);
       message.success(t('generation.actions.promptCopied'));
     } catch (error) {
       console.error('Failed to copy prompt:', error);
+      message.error(t('generation.actions.promptCopyFailed'));
+    }
+  };
+
+  const handleCopyOriginalPrompt = async () => {
+    if (!originalPrompt) return;
+    try {
+      await navigator.clipboard.writeText(originalPrompt);
+      message.success(t('generation.actions.promptCopied'));
+    } catch {
       message.error(t('generation.actions.promptCopyFailed'));
     }
   };
@@ -144,7 +157,149 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
   // Content for prompt and metadata
   const promptAndMetadata = (
     <>
-      <Markdown variant={'chat'}>{batch.prompt}</Markdown>
+      {originalPrompt ? (
+        <Flexbox gap={0} style={{ marginBottom: 4 }}>
+          {/* ── 原始提示词 ── */}
+          <Flexbox
+            gap={5}
+            style={{
+              borderLeft: `2px solid ${token.colorBorderSecondary}`,
+              paddingBottom: 8,
+              paddingLeft: 10,
+            }}
+          >
+            <Flexbox horizontal align="center" justify="space-between" style={{ height: 20 }}>
+              <span
+                style={{
+                  color: token.colorTextQuaternary,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: '0.07em',
+                  textTransform: 'uppercase',
+                  userSelect: 'none',
+                }}
+              >
+                原始提示词
+              </span>
+              <button
+                onClick={handleCopyOriginalPrompt}
+                title="复制原始提示词"
+                style={{
+                  alignItems: 'center',
+                  background: 'none',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: token.colorTextQuaternary,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  padding: '2px 4px',
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = token.colorText;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = token.colorTextQuaternary;
+                }}
+              >
+                <CopyIcon size={11} />
+              </button>
+            </Flexbox>
+            <span
+              style={{
+                color: token.colorTextTertiary,
+                fontSize: 12,
+                lineHeight: 1.65,
+                wordBreak: 'break-all',
+              }}
+            >
+              {originalPrompt}
+            </span>
+          </Flexbox>
+
+          {/* ── 连接器 ── */}
+          <Flexbox
+            horizontal
+            align="center"
+            gap={5}
+            style={{ paddingBottom: 4, paddingLeft: 9, paddingTop: 2 }}
+          >
+            <div
+              style={{
+                background: token.colorPrimaryBorder,
+                borderRadius: 1,
+                height: 10,
+                width: 2,
+              }}
+            />
+            <span
+              style={{
+                color: token.colorPrimary,
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                opacity: 0.75,
+                textTransform: 'uppercase',
+                userSelect: 'none',
+              }}
+            >
+              AI 优化
+            </span>
+          </Flexbox>
+
+          {/* ── 优化后提示词 ── */}
+          <Flexbox
+            gap={5}
+            style={{
+              borderLeft: `2px solid ${token.colorPrimary}`,
+              paddingLeft: 10,
+            }}
+          >
+            <Flexbox horizontal align="center" justify="space-between" style={{ height: 20 }}>
+              <span
+                style={{
+                  color: token.colorPrimary,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: '0.07em',
+                  opacity: 0.85,
+                  textTransform: 'uppercase',
+                  userSelect: 'none',
+                }}
+              >
+                优化后提示词
+              </span>
+              <button
+                onClick={handleCopyPrompt}
+                title="复制优化后提示词"
+                style={{
+                  alignItems: 'center',
+                  background: 'none',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: token.colorTextQuaternary,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  padding: '2px 4px',
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = token.colorText;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = token.colorTextQuaternary;
+                }}
+              >
+                <CopyIcon size={11} />
+              </button>
+            </Flexbox>
+            <Markdown variant={'chat'}>{batch.prompt}</Markdown>
+          </Flexbox>
+        </Flexbox>
+      ) : (
+        <Markdown variant={'chat'}>{batch.prompt}</Markdown>
+      )}
+
       <Flexbox horizontal gap={4} justify="space-between" style={{ marginBottom: 10 }}>
         <Flexbox horizontal gap={4}>
           <ModelTag model={batch.model} />

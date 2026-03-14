@@ -97,11 +97,13 @@ export class CreateImageActionImpl {
         await this.#get().refreshGenerationBatches();
       }
 
-      // 7. Clear the prompt input after successful image creation
+      // 7. Clear the prompt input and originalPrompt after successful image creation
       this.#set(
-        (state) => ({
-          parameters: { ...state.parameters, prompt: '' },
-        }),
+        (state) => {
+          const { originalPrompt: _op, ...rest } = state.parameters as any;
+          void _op;
+          return { parameters: { ...rest, prompt: '' } };
+        },
         false,
         'createImage/clearPrompt',
       );
