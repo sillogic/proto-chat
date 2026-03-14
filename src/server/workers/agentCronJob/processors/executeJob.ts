@@ -1,3 +1,5 @@
+import { DEFAULT_PROVIDER } from '@lobechat/business-const';
+import { DEFAULT_MODEL } from '@lobechat/const';
 import { type Job } from 'bullmq';
 
 import { AgentModel } from '@/database/models/agent';
@@ -76,12 +78,10 @@ const _execute = async (
     return { reason: 'Agent not found', skipped: true };
   }
 
-  const provider = agent.provider ?? 'openai';
-  const model = agent.model;
-
-  if (!model) {
-    return { reason: 'Agent has no model configured', skipped: true };
-  }
+  // Fall back to project defaults when agent has no explicit model/provider
+  // (e.g. inbox agent or agents that inherit from user default settings)
+  const provider = agent.provider || DEFAULT_PROVIDER;
+  const model = agent.model || DEFAULT_MODEL;
 
   // 3. Build messages
   const messages: Array<{ content: string; role: 'system' | 'user' }> = [];
