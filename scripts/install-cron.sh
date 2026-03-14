@@ -78,9 +78,6 @@ CRON_ENTRIES="
 # ProtoChat - 自动扣款（待接入支付宝后取消注释）
 # 0 1 * * * $CRON_CMD auto-deduct >> $LOG_DIR/cron.log 2>&1
 # 0 4 * * * $CRON_CMD auto-deduct >> $LOG_DIR/cron.log 2>&1
-
-# ProtoChat - Agent 定时任务调度（每分钟：检查到期任务并入队 BullMQ）
-* * * * * $CRON_CMD agent-cron-jobs >> $LOG_DIR/cron.log 2>&1
 "
 
 # 备份并更新 crontab（清除旧的 ProtoChat 条目后重新写入）

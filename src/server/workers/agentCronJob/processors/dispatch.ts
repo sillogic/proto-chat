@@ -1,30 +1,11 @@
-/**
- * Agent Cron Jobs Dispatcher
- *
- * Called every minute by the system crontab.
- * Queries all enabled agent cron jobs, checks which ones are due to run right now
- * (based on cronPattern + timezone), and enqueues them into BullMQ.
- *
- * Actual LLM execution happens asynchronously in the BullMQ worker
- * (src/server/workers/agentCronJob), with concurrency limits to prevent
- * server overload across many users.
- *
- * Auth: Bearer $CRON_SECRET
- * Schedule: * * * * * (every minute)
- */
-
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-
 import { AgentCronJobModel } from '@/database/models/agentCronJob';
 import { getServerDB } from '@/database/server';
-import { AgentCronJobBullMQService } from '@/server/workers/agentCronJob/service';
 
-const CRON_SECRET = process.env.CRON_SECRET || '';
+import { getAgentCronExecutionQueue } from '../queues';
 
 // ─────────────────────────────────────────────────────────────
 // Cron pattern matching (no external dependency)
-// Handles: * */n n,m n-m exact values
+// Handles: *  */n  n,m  n-m  exact values
 // Field order: minute hour day-of-month month day-of-week
 // ─────────────────────────────────────────────────────────────
 
@@ -66,7 +47,6 @@ const WEEKDAY_SHORT: Record<string, number> = {
 function isDue(cronPattern: string, timezone: string): boolean {
   try {
     const now = new Date();
-
     const parts = new Intl.DateTimeFormat('en-US', {
       day: 'numeric',
       hour: 'numeric',
@@ -102,60 +82,40 @@ function isDue(cronPattern: string, timezone: string): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Dispatcher processor — runs every minute via BullMQ repeat
+// ─────────────────────────────────────────────────────────────
 
-export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const token = authHeader?.replace('Bearer ', '');
+export const dispatchAgentCronJobs = async () => {
+  const db = await getServerDB();
+  const allJobs = await AgentCronJobModel.getEnabledJobs(db);
 
-  if (!CRON_SECRET || token !== CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const dueJobs = allJobs.filter((job) => isDue(job.cronPattern, job.timezone ?? 'UTC'));
+
+  if (dueJobs.length === 0) {
+    return { dispatched: 0, total: allJobs.length };
   }
 
-  try {
-    const db = await getServerDB();
-    const jobs = await AgentCronJobModel.getEnabledJobs(db);
+  const queue = getAgentCronExecutionQueue();
+  const minuteKey = Math.floor(Date.now() / 60_000);
+  let dispatched = 0;
 
-    const dueJobs = jobs.filter((job) =>
-      isDue(job.cronPattern, job.timezone ?? 'UTC'),
-    );
+  await Promise.all(
+    dueJobs.map(async (job) => {
+      try {
+        // Deterministic jobId prevents double-enqueue if BullMQ fires twice in one minute
+        const jobId = `acron:${job.id}:${minuteKey}`;
+        await queue.add(
+          'execute',
+          { agentCronJobId: job.id, agentId: job.agentId!, userId: job.userId },
+          { jobId },
+        );
+        dispatched++;
+      } catch (err) {
+        console.error(`[agent-cron:dispatch] Failed to enqueue job=${job.id}:`, err);
+      }
+    }),
+  );
 
-    if (dueJobs.length === 0) {
-      return NextResponse.json({ enqueued: 0, success: true });
-    }
-
-    let enqueued = 0;
-    const errors: string[] = [];
-
-    await Promise.all(
-      dueJobs.map(async (job) => {
-        try {
-          await AgentCronJobBullMQService.enqueueJob({
-            agentCronJobId: job.id,
-            agentId: job.agentId!,
-            userId: job.userId,
-          });
-          enqueued++;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Unknown error';
-          console.error(`[agent-cron:dispatch] Failed to enqueue job=${job.id}:`, msg);
-          errors.push(`job=${job.id}: ${msg}`);
-        }
-      }),
-    );
-
-    console.log(
-      `[agent-cron:dispatch] Due=${dueJobs.length} Enqueued=${enqueued} Errors=${errors.length}`,
-    );
-
-    return NextResponse.json({
-      enqueued,
-      errors: errors.length > 0 ? errors : undefined,
-      success: true,
-      total: dueJobs.length,
-    });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[agent-cron:dispatch] Fatal error:', error);
-    return NextResponse.json({ error: msg, success: false }, { status: 500 });
-  }
-}
+  console.log(`[agent-cron:dispatch] Dispatched=${dispatched}/${dueJobs.length} (total enabled=${allJobs.length})`);
+  return { dispatched, total: allJobs.length };
+};

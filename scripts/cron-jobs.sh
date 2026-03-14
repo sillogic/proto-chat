@@ -100,13 +100,8 @@ case "$JOB" in
     run_job "cleanup-unverified-users" "$PROTOCHAT_URL/api/cron/cleanup-unverified-users"
     ;;
 
-  agent-cron-jobs)
-    # 每分钟执行：检查到期的用户 Agent 定时任务并入队到 BullMQ
-    run_job "agent-cron-jobs" "$PROTOCHAT_URL/api/cron/agent-cron-jobs"
-    ;;
-
   *)
-    die "未知任务: $JOB，可用值: subscription | auto-deduct | cleanup-orders | cleanup-users | agent-cron-jobs"
+    die "未知任务: $JOB，可用值: subscription | auto-deduct | cleanup-orders | cleanup-users"
     ;;
 esac
 
