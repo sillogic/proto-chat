@@ -332,7 +332,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  AI 模型
+                  提示词优化 AI 模型
                 </span>
                 <Select
                   size="small"
