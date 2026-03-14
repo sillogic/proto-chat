@@ -7,6 +7,9 @@ export async function register() {
       './server/workers/memoryExtraction/index'
     );
     startMemoryExtractionWorkers();
+
+    const { startAgentCronJobWorkers } = await import('./server/workers/agentCronJob/index');
+    startAgentCronJobWorkers();
   }
 
   if (process.env.NODE_ENV !== 'production' && !process.env.ENABLE_TELEMETRY_IN_DEV) {
