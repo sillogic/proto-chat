@@ -203,10 +203,10 @@ export class SystemAgentService {
       if (capturedUsage) {
         const { inputTokens, outputTokens } = capturedUsage as { inputTokens: number; outputTokens: number };
         const creditService = new CreditService(this.db, this.userId);
-        const costPrice = await creditService.calculateCostPrice(modelId, 'protochat', inputTokens, outputTokens);
+        // Use user-facing markup price (calculateCost) + deductCredits so it appears in user stats
+        const cost = await creditService.calculateCost(modelId, 'protochat', inputTokens, outputTokens);
         void creditService
-          .recordUsage('Image prompt optimization', {
-            costPrice,
+          .deductCredits(cost, `Prompt optimization: ${modelId}`, undefined, {
             model: modelId,
             provider: 'protochat',
             totalInputTokens: inputTokens,
@@ -214,7 +214,7 @@ export class SystemAgentService {
             type: 'prompt_optimize',
           })
           .catch((e) => {
-            console.error('SystemAgentService: failed to record prompt optimization usage:', e);
+            console.error('SystemAgentService: failed to deduct credits for prompt optimization:', e);
           });
       }
 
