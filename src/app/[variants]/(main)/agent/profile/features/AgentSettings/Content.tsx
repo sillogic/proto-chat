@@ -24,7 +24,7 @@ const Content = memo(() => {
   ]);
   const config = useAgentStore(agentSelectors.currentAgentConfig, isEqual);
   const meta = useAgentStore(agentSelectors.currentAgentMeta, isEqual);
-  const [tab, setTab] = useState(isInbox ? ChatSettingsTabs.Modal : ChatSettingsTabs.Meta);
+  const [tab, setTab] = useState(ChatSettingsTabs.Meta);
 
   const updateAgentConfig = async (config: any) => {
     if (!agentId) return;
@@ -39,20 +39,16 @@ const Content = memo(() => {
   const menuItems: ItemType[] = useMemo(
     () =>
       [
-        !isInbox
-          ? {
-              icon: <Icon icon={UserIcon} />,
-              key: ChatSettingsTabs.Meta,
-              label: t('agentTab.meta'),
-            }
-          : null,
-        !isInbox
-          ? {
-              icon: <Icon icon={MessageSquareHeartIcon} />,
-              key: ChatSettingsTabs.Opening,
-              label: t('agentTab.opening'),
-            }
-          : null,
+        {
+          icon: <Icon icon={UserIcon} />,
+          key: ChatSettingsTabs.Meta,
+          label: t('agentTab.meta'),
+        },
+        {
+          icon: <Icon icon={MessageSquareHeartIcon} />,
+          key: ChatSettingsTabs.Opening,
+          label: t('agentTab.opening'),
+        },
         {
           icon: <Icon icon={MessagesSquareIcon} />,
           key: ChatSettingsTabs.Chat,
@@ -63,8 +59,8 @@ const Content = memo(() => {
           key: ChatSettingsTabs.Modal,
           label: t('agentTab.modal'),
         },
-      ].filter(Boolean) as ItemType[],
-    [t, isInbox],
+      ],
+    [t],
   );
 
   const displayTitle = isInbox ? 'ProtoChat' : meta.title || t('defaultSession', { ns: 'common' });

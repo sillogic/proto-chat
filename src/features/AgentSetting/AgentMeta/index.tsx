@@ -36,8 +36,6 @@ const AgentMeta = memo(() => {
     form.setFieldsValue(meta);
   }, [meta]);
 
-  if (isInbox) return;
-
   const basic = [
     {
       Render: AutoGenerateInput,

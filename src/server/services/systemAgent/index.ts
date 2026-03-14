@@ -233,6 +233,10 @@ export class SystemAgentService {
   /**
    * Get the model/provider config for a specific systemAgent task type.
    * Falls back to DEFAULT_SYSTEM_AGENT_CONFIG when user has no custom settings.
+   *
+   * Also fixes stale provider values: if the stored provider differs from
+   * DEFAULT_PROVIDER (e.g. old 'anthropic' from upstream LobeChat defaults),
+   * fall back to defaults so requests route through ProtoChat.
    */
   private async getTaskModelConfig(
     taskKey: UserSystemAgentConfigKey,
@@ -244,9 +248,17 @@ export class SystemAgentService {
     const taskConfig = systemAgent?.[taskKey];
     const defaults = DEFAULT_SYSTEM_AGENT_CONFIG[taskKey];
 
+    const provider = taskConfig?.provider || defaults.provider;
+
+    // If stored provider is stale (not matching current default), use defaults entirely
+    // so the model is also consistent with the provider.
+    if (provider !== defaults.provider) {
+      return { model: defaults.model, provider: defaults.provider };
+    }
+
     return {
       model: taskConfig?.model || defaults.model,
-      provider: taskConfig?.provider || defaults.provider,
+      provider,
     };
   }
 
