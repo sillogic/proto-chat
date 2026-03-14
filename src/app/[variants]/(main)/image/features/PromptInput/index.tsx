@@ -80,10 +80,15 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
     return options;
   }, [enabledChatModelList]);
 
-  // Auto-select first ProtoChat model when list loads
+  // Auto-select preferred ProtoChat model when list loads (Gemini 2.5 Flash preferred)
   useEffect(() => {
     if (!optimizerModelId && protoChatModelOptions.length > 0) {
-      setOptimizerModelId(protoChatModelOptions[0].value);
+      const preferred = protoChatModelOptions.find(
+        (m) =>
+          m.value.toLowerCase().includes('gemini-2.5-flash') ||
+          (typeof m.label === 'string' && m.label.toLowerCase().includes('gemini 2.5 flash')),
+      );
+      setOptimizerModelId((preferred ?? protoChatModelOptions[0]).value);
     }
   }, [protoChatModelOptions, optimizerModelId]);
 
@@ -275,24 +280,80 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
 
           {/* Optimizer toolbar */}
           {showOptimizer && (
-            <Flexbox horizontal align="center" justify="flex-end" gap={6}>
-              <Select
-                size="small"
-                value={optimizerModelId || undefined}
-                onChange={setOptimizerModelId}
-                options={protoChatModelOptions}
-                placeholder="选择模型"
-                style={{ width: 180 }}
-                variant="borderless"
-              />
+            <Flexbox
+              horizontal
+              align="center"
+              gap={6}
+              style={{
+                borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                paddingTop: 6,
+              }}
+            >
+              {/* Section identity badge */}
+              <Flexbox
+                horizontal
+                align="center"
+                gap={4}
+                style={{
+                  background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                  borderRadius: 4,
+                  flexShrink: 0,
+                  padding: '2px 6px',
+                }}
+              >
+                <Wand2
+                  size={10}
+                  style={{ color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }}
+                />
+                <span
+                  style={{
+                    color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+                    fontSize: 10,
+                    fontWeight: 500,
+                    letterSpacing: '0.04em',
+                    userSelect: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  提示词优化
+                </span>
+              </Flexbox>
+
+              {/* Spacer */}
+              <div style={{ flex: 1 }} />
+
+              {/* Model selector with explicit label */}
+              <Flexbox horizontal align="center" gap={4} style={{ flexShrink: 0 }}>
+                <span
+                  style={{
+                    color: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                    fontSize: 11,
+                    userSelect: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  AI 模型
+                </span>
+                <Select
+                  size="small"
+                  value={optimizerModelId || undefined}
+                  onChange={setOptimizerModelId}
+                  options={protoChatModelOptions}
+                  placeholder="选择模型"
+                  style={{ width: 160 }}
+                  variant="borderless"
+                />
+              </Flexbox>
+
               <Button
                 size="small"
                 icon={Wand2}
                 loading={isOptimizing}
                 disabled={!value.trim() || !optimizerModelId}
                 onClick={handleOptimize}
+                style={{ flexShrink: 0 }}
               >
-                优化提示词
+                优化
               </Button>
             </Flexbox>
           )}
