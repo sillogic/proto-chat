@@ -11,6 +11,19 @@ import { CreditService } from '@/server/services/credit';
 
 const log = debug('lobe-server:system-agent-service');
 
+const OPTIMIZE_IMAGE_PROMPT_SCHEMA = {
+  name: 'optimized_image_prompt',
+  schema: {
+    additionalProperties: false,
+    properties: {
+      optimizedPrompt: { description: 'The optimized image generation prompt', type: 'string' },
+    },
+    required: ['optimizedPrompt'],
+    type: 'object' as const,
+  },
+  strict: true,
+};
+
 const TOPIC_TITLE_SCHEMA = {
   name: 'topic_title',
   schema: {
@@ -116,6 +129,81 @@ export class SystemAgentService {
       return title;
     } catch (error) {
       console.error('SystemAgentService.generateTopicTitle failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Optimize a rough image generation prompt using a specified ProtoChat model.
+   *
+   * @param prompt  - The user's rough prompt idea
+   * @param modelId - Full ProtoChat model ID, e.g. "protochat::alias::gpt-4o"
+   * @returns The optimized prompt string, or null on failure
+   */
+  async optimizeImagePrompt(params: {
+    modelId: string;
+    prompt: string;
+  }): Promise<string | null> {
+    const { prompt, modelId } = params;
+
+    try {
+      // Parse "protochat::alias::originalModel" → provider="protochat::alias", model="originalModel"
+      const parts = modelId.split('::');
+      if (parts.length < 3 || parts[0] !== 'protochat') {
+        console.error('SystemAgentService.optimizeImagePrompt: invalid modelId format:', modelId);
+        return null;
+      }
+      const provider = `${parts[0]}::${parts[1]}`;
+      const model = parts.slice(2).join('::');
+
+      const { runtime, actualModel } = await initModelRuntimeWithUserPayload(provider, {}, { model });
+      const effectiveModel = actualModel || model;
+
+      const messages = [
+        {
+          content: [
+            '你是一位专业的 AI 图像生成提示词专家。',
+            '请将用户的粗略想法优化为一段详细、生动的图像生成提示词。',
+            '要求：',
+            '- 补充光线、风格、情绪、色调、构图等视觉细节',
+            '- 保持简洁有力（英文，50-150词为宜）',
+            '- 直接输出优化后的提示词，不加解释',
+          ].join('\n'),
+          role: 'system' as const,
+        },
+        { content: prompt, role: 'user' as const },
+      ];
+
+      let capturedUsage: { inputTokens: number; outputTokens: number } | null = null;
+      const result = await runtime.generateObject(
+        { messages, model: effectiveModel, schema: OPTIMIZE_IMAGE_PROMPT_SCHEMA },
+        { onUsage: (usage) => { capturedUsage = usage; } },
+      );
+
+      if (capturedUsage) {
+        const { inputTokens, outputTokens } = capturedUsage as { inputTokens: number; outputTokens: number };
+        const creditService = new CreditService(this.db, this.userId);
+        const costPrice = await creditService.calculateCostPrice(model, provider, inputTokens, outputTokens);
+        void creditService
+          .recordUsage('Image prompt optimization', {
+            costPrice,
+            model,
+            provider,
+            totalInputTokens: inputTokens,
+            totalOutputTokens: outputTokens,
+            type: 'prompt_optimize',
+          })
+          .catch((e) => {
+            console.error('SystemAgentService: failed to record prompt optimization usage:', e);
+          });
+      }
+
+      const optimizedPrompt = (result as { optimizedPrompt?: string })?.optimizedPrompt?.trim();
+      if (!optimizedPrompt) return null;
+
+      return optimizedPrompt;
+    } catch (error) {
+      console.error('SystemAgentService.optimizeImagePrompt failed:', error);
       return null;
     }
   }

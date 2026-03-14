@@ -18,6 +18,8 @@ import {
 } from '@/types/asyncTask';
 import { generateUniqueSeeds } from '@/utils/number';
 
+import { SystemAgentService } from '@/server/services/systemAgent';
+
 import { validateNoUrlsInConfig } from './utils';
 
 const log = debug('lobe-image:lambda');
@@ -63,6 +65,15 @@ const createImageInputSchema = z.object({
 export type CreateImageServicePayload = z.infer<typeof createImageInputSchema>;
 
 export const imageRouter = router({
+  optimizePrompt: authedProcedure
+    .use(serverDatabase)
+    .input(z.object({ modelId: z.string(), prompt: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const service = new SystemAgentService(ctx.serverDB, ctx.userId);
+      const optimizedPrompt = await service.optimizeImagePrompt(input);
+      return { optimizedPrompt };
+    }),
+
   createImage: imageProcedure.input(createImageInputSchema).mutation(async ({ input, ctx }) => {
     const { userId, serverDB, asyncTaskModel, fileService } = ctx;
     const { generationTopicId, provider, model, imageNum, params } = input;

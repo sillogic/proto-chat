@@ -7,6 +7,16 @@ import { type CreateImageServicePayload } from '@/server/routers/lambda/image';
 const log = debug('lobe-image:service');
 
 export class AiImageService {
+  async optimizePrompt(prompt: string, modelId: string): Promise<string | null> {
+    try {
+      const result = await lambdaClient.image.optimizePrompt.mutate({ modelId, prompt });
+      return result?.optimizedPrompt ?? null;
+    } catch (error) {
+      log('optimizePrompt failed: %O', { error: (error as Error).message });
+      return null;
+    }
+  }
+
   async createImage(payload: CreateImageServicePayload) {
     log('Creating image with payload: %O', payload);
 

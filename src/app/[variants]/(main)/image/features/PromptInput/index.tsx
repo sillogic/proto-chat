@@ -2,11 +2,11 @@
 
 import { ChatInput } from '@lobehub/editor/react';
 import { Button, Flexbox, TextArea } from '@lobehub/ui';
-import { App } from 'antd';
+import { App, Select, Typography } from 'antd';
 import { createStaticStyles, cx } from 'antd-style';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Wand2, X, Check } from 'lucide-react';
 import { type KeyboardEvent } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,8 +19,11 @@ import { createImageSelectors } from '@/store/image/selectors';
 import { useGenerationConfigParam } from '@/store/image/slices/generationConfig/hooks';
 import { useUserStore } from '@/store/user';
 import { authSelectors } from '@/store/user/slices/auth/selectors';
+import { imageService } from '@/services/image';
 
 import PromptTitle from './Title';
+
+const { Text } = Typography;
 
 interface PromptInputProps {
   disableAnimation?: boolean;
@@ -55,6 +58,34 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const isInit = useImageStore((s) => s.isInit);
   const isLogin = useUserStore(authSelectors.isLogin);
   const enabledImageModelList = useAiInfraStore(aiProviderSelectors.enabledImageModelList);
+  const enabledChatModelList = useAiInfraStore((s) => s.enabledChatModelList || []);
+
+  // Prompt optimizer state
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizedPrompt, setOptimizedPrompt] = useState<string | null>(null);
+  const [optimizerModelId, setOptimizerModelId] = useState<string>('');
+
+  // ProtoChat chat models for the optimizer selector
+  const protoChatModelOptions = useMemo(() => {
+    const options: { label: string; value: string }[] = [];
+    for (const group of enabledChatModelList) {
+      if (!group.id.startsWith('protochat')) continue;
+      for (const m of group.children ?? []) {
+        options.push({
+          label: m.displayName || m.id,
+          value: m.id,
+        });
+      }
+    }
+    return options;
+  }, [enabledChatModelList]);
+
+  // Auto-select first ProtoChat model when list loads
+  useEffect(() => {
+    if (!optimizerModelId && protoChatModelOptions.length > 0) {
+      setOptimizerModelId(protoChatModelOptions[0].value);
+    }
+  }, [protoChatModelOptions, optimizerModelId]);
 
   // Read prompt from query parameter
   const [promptParam, setPromptParam] = useQueryState('prompt');
@@ -88,6 +119,29 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
       if (e?.message === 'INSUFFICIENT_CREDITS') {
         showInsufficientCreditsNotification();
       }
+    }
+  };
+
+  const handleOptimize = async () => {
+    if (!value.trim() || !optimizerModelId) return;
+    if (!isLogin) {
+      loginRequired.redirect({ timeout: 2000 });
+      return;
+    }
+    setIsOptimizing(true);
+    setOptimizedPrompt(null);
+    try {
+      const result = await imageService.optimizePrompt(value.trim(), optimizerModelId);
+      if (result) setOptimizedPrompt(result);
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  const handleApplyOptimized = () => {
+    if (optimizedPrompt) {
+      setValue(optimizedPrompt);
+      setOptimizedPrompt(null);
     }
   };
 
@@ -147,6 +201,8 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
     }
   };
 
+  const showOptimizer = protoChatModelOptions.length > 0;
+
   return (
     <Flexbox gap={32} width={'100%'}>
       {showTitle && <PromptTitle />}
@@ -154,36 +210,93 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
         className={cx(styles.container, isDarkMode && styles.container_dark)}
         styles={{ body: { padding: 8 } }}
       >
-        <Flexbox horizontal align="flex-end" gap={12} height={'100%'} width={'100%'}>
-          <TextArea
-            autoSize={{ maxRows: 6, minRows: 3 }}
-            placeholder={t('config.prompt.placeholder')}
-            value={value}
-            variant={'borderless'}
-            style={{
-              borderRadius: 0,
-              padding: 0,
-            }}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <Button
-            disabled={!value}
-            icon={Sparkles}
-            loading={isCreating}
-            size={'large'}
-            type={'primary'}
-            style={{
-              fontWeight: 500,
-              height: 64,
-              minWidth: 64,
-              width: 64,
-            }}
-            title={
-              isCreating ? t('generation.status.generating') : t('generation.actions.generate')
-            }
-            onClick={handleGenerate}
-          />
+        <Flexbox gap={8} width={'100%'}>
+
+          {/* Optimized prompt result card */}
+          {optimizedPrompt && (
+            <Flexbox
+              style={{
+                background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(22,119,255,0.04)',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(22,119,255,0.2)'}`,
+                borderRadius: 8,
+                padding: '10px 12px',
+              }}
+              gap={8}
+            >
+              <Flexbox horizontal justify="space-between" align="flex-start">
+                <Text style={{ color: '#1677ff', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  ✨ 优化结果
+                </Text>
+                <Button
+                  size="small"
+                  type="text"
+                  icon={X}
+                  style={{ color: '#8c8c8c', height: 20, minWidth: 20, padding: 0 }}
+                  onClick={() => setOptimizedPrompt(null)}
+                />
+              </Flexbox>
+              <Text style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {optimizedPrompt}
+              </Text>
+              <Button
+                size="small"
+                type="primary"
+                icon={Check}
+                onClick={handleApplyOptimized}
+                style={{ alignSelf: 'flex-end' }}
+              >
+                使用此提示词
+              </Button>
+            </Flexbox>
+          )}
+
+          {/* Main input row */}
+          <Flexbox horizontal align="flex-end" gap={12} width={'100%'}>
+            <TextArea
+              autoSize={{ maxRows: 6, minRows: 3 }}
+              placeholder={t('config.prompt.placeholder')}
+              value={value}
+              variant={'borderless'}
+              style={{ borderRadius: 0, padding: 0 }}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <Button
+              disabled={!value}
+              icon={Sparkles}
+              loading={isCreating}
+              size={'large'}
+              type={'primary'}
+              style={{ fontWeight: 500, height: 64, minWidth: 64, width: 64 }}
+              title={isCreating ? t('generation.status.generating') : t('generation.actions.generate')}
+              onClick={handleGenerate}
+            />
+          </Flexbox>
+
+          {/* Optimizer toolbar */}
+          {showOptimizer && (
+            <Flexbox horizontal align="center" justify="flex-end" gap={6}>
+              <Select
+                size="small"
+                value={optimizerModelId || undefined}
+                onChange={setOptimizerModelId}
+                options={protoChatModelOptions}
+                placeholder="选择模型"
+                style={{ width: 180 }}
+                variant="borderless"
+              />
+              <Button
+                size="small"
+                icon={Wand2}
+                loading={isOptimizing}
+                disabled={!value.trim() || !optimizerModelId}
+                onClick={handleOptimize}
+              >
+                优化提示词
+              </Button>
+            </Flexbox>
+          )}
+
         </Flexbox>
       </ChatInput>
     </Flexbox>
