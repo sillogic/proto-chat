@@ -34,6 +34,26 @@ export const executeAgentCronJob = async (job: Job<ExecuteAgentCronJobData>) => 
 
   const db = await getServerDB();
 
+  // Wrap in try/catch so we can record failure status before re-throwing
+  try {
+    return await _execute(db, agentCronJobId, agentId, userId);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    // Best-effort: don't let the status write swallow the original error
+    await AgentCronJobModel.recordExecutionResult(db, agentCronJobId, 'failed', msg).catch(
+      () => {},
+    );
+    throw error;
+  }
+};
+
+const _execute = async (
+  db: Awaited<ReturnType<typeof getServerDB>>,
+  agentCronJobId: string,
+  agentId: string,
+  userId: string,
+) => {
+
   // 1. Load and validate cron job
   const cronJobModel = new AgentCronJobModel(db, userId);
   const cronJob = await cronJobModel.findById(agentCronJobId);
@@ -122,8 +142,11 @@ export const executeAgentCronJob = async (job: Job<ExecuteAgentCronJobData>) => 
     topicId: topic.id,
   });
 
-  // 7. Update execution stats (only on success)
-  await AgentCronJobModel.updateExecutionStats(db, agentCronJobId);
+  // 7. Update execution stats + status (only on success)
+  await Promise.all([
+    AgentCronJobModel.updateExecutionStats(db, agentCronJobId),
+    AgentCronJobModel.recordExecutionResult(db, agentCronJobId, 'success'),
+  ]);
 
   console.log(
     `[agent-cron] Executed job=${agentCronJobId} user=${userId} agent=${agentId} topic=${topic.id}`,

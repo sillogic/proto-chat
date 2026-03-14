@@ -166,6 +166,23 @@ export class AgentCronJobModel {
     return updatedJob || null;
   }
 
+  // Record execution outcome (success or failure) for user-facing status indicator
+  static async recordExecutionResult(
+    db: LobeChatDatabase,
+    jobId: string,
+    status: 'failed' | 'success',
+    error?: string,
+  ): Promise<void> {
+    await db
+      .update(agentCronJobs)
+      .set({
+        lastExecutionError: status === 'failed' ? (error ?? 'Unknown error') : null,
+        lastExecutionStatus: status,
+        updatedAt: new Date(),
+      })
+      .where(eq(agentCronJobs.id, jobId));
+  }
+
   // Reset execution counts and re-enable job
   async resetExecutions(id: string, newMaxExecutions?: number): Promise<AgentCronJob | null> {
     const result = await this.db

@@ -49,6 +49,10 @@ export const agentCronJobs = pgTable(
     lastExecutedAt: timestamp('last_executed_at'),
     totalExecutions: integer('total_executions').default(0),
 
+    // Last execution result (for user-facing status indicator)
+    lastExecutionStatus: text('last_execution_status').$type<'failed' | 'success'>(),
+    lastExecutionError: text('last_execution_error'),
+
     ...timestamps,
   },
   (t) => [
