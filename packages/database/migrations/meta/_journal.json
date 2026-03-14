@@ -616,6 +616,20 @@
       "when": 1772500000000,
       "tag": "0093_add_user_feedbacks",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1772600000000,
+      "tag": "0094_add_cron_job_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1772700000000,
+      "tag": "0095_add_agent_cron_job_status",
+      "breakpoints": true
     }
   ],
   "version": "6"
