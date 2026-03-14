@@ -102,12 +102,6 @@ export const processTopics = async (job: Job<ProcessTopicsJobData>) => {
   // Trigger persona update after processing this topic batch
   await getUpdatePersonaQueue().add('update-persona', { userId });
 
-  console.log('[memory:process-topics] Done:', {
-    errors: errors.length,
-    processedTopics: payload.topicIds.length,
-    userId,
-  });
-
   return {
     errors,
     processedTopics: payload.topicIds.length,

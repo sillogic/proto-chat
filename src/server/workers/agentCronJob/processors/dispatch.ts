@@ -116,6 +116,5 @@ export const dispatchAgentCronJobs = async () => {
     }),
   );
 
-  console.log(`[agent-cron:dispatch] Dispatched=${dispatched}/${dueJobs.length} (total enabled=${allJobs.length})`);
   return { dispatched, total: allJobs.length };
 };

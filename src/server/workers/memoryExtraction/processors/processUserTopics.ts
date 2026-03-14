@@ -100,7 +100,5 @@ export const processUserTopics = async (job: Job<ProcessUserTopicsJobData>) => {
     }
   }
 
-  console.log('[memory:process-user-topics] Done:', { processedUsers: params.userIds.length });
-
   return { processedUsers: params.userIds.length };
 };

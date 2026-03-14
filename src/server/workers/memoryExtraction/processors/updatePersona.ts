@@ -20,13 +20,6 @@ export const updatePersona = async (job: Job<UpdatePersonaJobData>) => {
   const context = await buildUserPersonaJobInput(db, userId);
   const result = await service.composeWriting({ ...context, userId });
 
-  console.log('[memory:update-persona] Done:', {
-    diffId: result.diff?.id,
-    documentId: result.document.id,
-    userId,
-    version: result.document.version,
-  });
-
   return {
     diffId: result.diff?.id,
     documentId: result.document.id,

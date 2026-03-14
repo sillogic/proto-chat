@@ -22,9 +22,7 @@ export const startAgentCronJobWorkers = async () => {
 
   executionWorker.on('completed', (job, result) => {
     if (result?.skipped) {
-      console.log(`[agent-cron:exec] Skipped job=${job.id}: ${result.reason}`);
-    } else {
-      console.log(`[agent-cron:exec] Done job=${job.id} topic=${result?.topicId}`);
+      console.warn(`[agent-cron:exec] Skipped job=${job.id}: ${result.reason}`);
     }
   });
   executionWorker.on('failed', (job, err) => {

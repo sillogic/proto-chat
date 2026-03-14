@@ -41,7 +41,6 @@ export const processHourlyAnalysis = async (job: Job<HourlyAnalysisJobData>) => 
 
   const userIds = userBatch.ids;
   if (userIds.length === 0) {
-    console.log('[memory:hourly] No eligible users for hourly memory extraction.');
     return { message: 'No eligible users for hourly memory extraction.', processedUsers: 0 };
   }
 
@@ -80,13 +79,6 @@ export const processHourlyAnalysis = async (job: Job<HourlyAnalysisJobData>) => 
       jobId: `hourly-analysis:${nextCursor.id}`,
     });
   }
-
-  console.log('[memory:hourly] Processed batch:', {
-    dryRun: !!dryRun,
-    hasNextPage: !!nextCursor,
-    processedUsers: userIds.length,
-    scheduledBatches: dryRun ? 0 : chunk(userIds, USER_BATCH_SIZE).length,
-  });
 
   return {
     dryRun: !!dryRun,

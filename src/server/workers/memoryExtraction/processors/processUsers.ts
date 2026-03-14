@@ -68,12 +68,6 @@ export const processUsers = async (job: Job<ProcessUsersJobData>) => {
     );
   }
 
-  console.log('[memory:process-users] Done:', {
-    batches: batches.length,
-    nextCursor: cursor ? cursor.id : null,
-    processedUsers: ids.length,
-  });
-
   return {
     batches: batches.length,
     nextCursor: cursor ? cursor.id : null,

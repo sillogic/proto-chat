@@ -148,9 +148,5 @@ const _execute = async (
     AgentCronJobModel.recordExecutionResult(db, agentCronJobId, 'success'),
   ]);
 
-  console.log(
-    `[agent-cron] Executed job=${agentCronJobId} user=${userId} agent=${agentId} topic=${topic.id}`,
-  );
-
   return { success: true, topicId: topic.id };
 };
