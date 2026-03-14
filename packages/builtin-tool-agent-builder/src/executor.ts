@@ -50,12 +50,6 @@ class AgentBuilderExecutor extends BaseExecutor<typeof AgentBuilderApiName> {
 
   // ==================== Write Operations ====================
 
-  // Alias: LLM sometimes calls 'updateMeta' instead of 'updateConfig' for metadata-only updates
-  updateMeta = async (
-    params: UpdateAgentConfigParams,
-    ctx: BuiltinToolContext,
-  ): Promise<BuiltinToolResult> => this.updateConfig(params, ctx);
-
   updateConfig = async (
     params: UpdateAgentConfigParams,
     ctx: BuiltinToolContext,

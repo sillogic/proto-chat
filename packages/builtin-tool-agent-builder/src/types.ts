@@ -17,11 +17,9 @@ export const AgentBuilderApiName = {
   installPlugin: 'installPlugin',
   searchMarketTools: 'searchMarketTools',
   // Write operations
-  // Note: setModel, setOpeningMessage, setOpeningQuestions, updateChatConfig, togglePlugin are removed
+  // Note: setModel, setOpeningMessage, setOpeningQuestions, updateChatConfig, updateAgentMeta, togglePlugin are removed
   // and consolidated into updateAgentConfig
   updateAgentConfig: 'updateConfig',
-  // Alias: LLM sometimes calls 'updateMeta' instead of 'updateConfig' for metadata-only updates
-  updateMeta: 'updateMeta',
   updatePrompt: 'updatePrompt',
 } as const;
 
