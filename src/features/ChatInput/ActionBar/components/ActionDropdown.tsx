@@ -120,9 +120,9 @@ const ActionDropdown = memo<ActionDropdownProps>(
       return trigger === 'hover';
     }, [trigger]);
     const resolvedTriggerProps = useMemo(() => {
-      if (openOnHover === undefined) return { nativeButton: false, ...triggerProps };
+      if (openOnHover === undefined) return { nativeButton: true, ...triggerProps };
       return {
-        nativeButton: false,
+        nativeButton: true,
         ...triggerProps,
         openOnHover,
       };
