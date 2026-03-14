@@ -27,12 +27,12 @@ const QUEUES = [
   // ── Agent 定时任务 ──
   { description: '定时任务调度器 — 每分钟检查到期任务并入队', name: 'agent-cron-dispatch' },
   { description: '定时任务执行 — 调用 LLM 生成回复并存储对话', name: 'agent-cron-execution' },
-  // ── 用户记忆提取 ──
-  { description: '记忆提取入口 — 每小时分页扫描用户', name: 'hourly-analysis' },
-  { description: '记忆提取 — 按用户批量分发 Topic 任务', name: 'process-users' },
-  { description: '记忆提取 — 按用户分页拉取 Topic 列表', name: 'process-user-topics' },
-  { description: '记忆提取 — 对 Topic 批次执行 LLM 抽取', name: 'process-topics' },
-  { description: '记忆合成 — 汇总提取结果生成用户画像', name: 'update-persona' },
+  // ── 用户记忆提取（队列名须与主项目 QUEUE_NAMES 一致）──
+  { description: '记忆提取入口 — 每小时分页扫描用户', name: 'memory-extraction-hourly-analysis' },
+  { description: '记忆提取 — 按用户批量分发 Topic 任务', name: 'memory-extraction-process-users' },
+  { description: '记忆提取 — 按用户分页拉取 Topic 列表', name: 'memory-extraction-process-user-topics' },
+  { description: '记忆提取 — 对 Topic 批次执行 LLM 抽取', name: 'memory-extraction-process-topics' },
+  { description: '记忆合成 — 汇总提取结果生成用户画像', name: 'memory-extraction-update-persona' },
 ];
 
 /**
