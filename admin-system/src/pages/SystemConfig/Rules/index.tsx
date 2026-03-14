@@ -1,16 +1,125 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { Card, Collapse, Descriptions, Tag, Typography, Space, Alert, Table, Divider } from 'antd';
+import { Card, Collapse, Descriptions, Tag, Typography, Space, Alert, Table, Divider, Button, Tooltip } from 'antd';
 import {
   ClockCircleOutlined,
   CreditCardOutlined,
   SafetyOutlined,
   DatabaseOutlined,
   ScheduleOutlined,
+  ReloadOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { getCronJobLogs, CronJobLog } from '../../../services/cron';
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
+
+const JOB_NAME_MAP: Record<string, string> = {
+  'auto-deduct': '自动扣款',
+  'cleanup-orders': '订单清理',
+  'cleanup-users': '用户清理',
+  'subscription': '订阅维护',
+};
+
+const CronLogsPanel: React.FC = () => {
+  const [logs, setLogs] = useState<CronJobLog[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getCronJobLogs({ days: 7, limit: 100 });
+      if (res.success) setLogs(res.data);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  const columns = [
+    {
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (v: string) => new Date(v).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      title: '执行时间',
+      width: 180,
+    },
+    {
+      dataIndex: 'jobName',
+      key: 'jobName',
+      render: (v: string) => <Text strong>{JOB_NAME_MAP[v] || v}</Text>,
+      title: '任务',
+      width: 110,
+    },
+    {
+      dataIndex: 'status',
+      key: 'status',
+      render: (v: string) =>
+        v === 'success' ? (
+          <Tag color="success" icon={<CheckCircleOutlined />}>成功</Tag>
+        ) : (
+          <Tag color="error" icon={<CloseCircleOutlined />}>失败</Tag>
+        ),
+      title: '状态',
+      width: 90,
+    },
+    {
+      dataIndex: 'durationMs',
+      key: 'durationMs',
+      render: (v?: number) => v != null ? `${(v / 1000).toFixed(1)}s` : '-',
+      title: '耗时',
+      width: 80,
+    },
+    {
+      key: 'detail',
+      render: (_: any, record: CronJobLog) => {
+        if (record.status === 'error') {
+          return <Text type="danger" style={{ fontSize: 12 }}>{record.error}</Text>;
+        }
+        if (!record.result) return '-';
+        const r = record.result as Record<string, any>;
+        const parts: string[] = [];
+        if (r.deleted != null) parts.push(`删除: ${r.deleted}`);
+        if (r.creditsGranted != null) parts.push(`积分发放: ${r.creditsGranted}`);
+        if (r.subscriptionsExpired != null) parts.push(`到期处理: ${r.subscriptionsExpired}`);
+        if (r.processed != null) parts.push(`处理: ${r.processed}`);
+        if (r.successful != null) parts.push(`成功: ${r.successful}`);
+        if (r.failed != null) parts.push(`失败: ${r.failed}`);
+        if (r.downgraded != null) parts.push(`降级: ${r.downgraded}`);
+        return <Text style={{ fontSize: 12 }}>{parts.join(' | ') || r.message || '-'}</Text>;
+      },
+      title: '执行结果',
+    },
+  ];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Text type="secondary">最近 7 天执行记录（最多 100 条）</Text>
+        <Tooltip title="刷新">
+          <Button icon={<ReloadOutlined />} onClick={fetchLogs} loading={loading} size="small">
+            刷新
+          </Button>
+        </Tooltip>
+      </div>
+      <Table
+        dataSource={logs}
+        rowKey="id"
+        columns={columns}
+        pagination={{ pageSize: 20, showSizeChanger: false }}
+        size="small"
+        loading={loading}
+        locale={{ emptyText: '暂无执行记录（需先运行 install-cron.sh 并执行过定时任务）' }}
+        rowClassName={(record) => record.status === 'error' ? 'cron-log-error-row' : ''}
+      />
+    </div>
+  );
+};
 
 // System Rules Data (from src/config/system-rules.json)
 const systemRules = {
@@ -588,6 +697,10 @@ const SystemRulesPage: React.FC = () => {
               </li>
             ))}
           </ul>
+
+          <Divider />
+          <Title level={5}>执行日志</Title>
+          <CronLogsPanel />
         </Card>
 
         {/* 安全规则 */}

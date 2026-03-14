@@ -10,9 +10,9 @@
  * - paid orders: NEVER deleted (financial/audit records)
  */
 
-import { paymentOrders, serverDB } from '@lobechat/database';
-import { and, eq,lt, or } from 'drizzle-orm';
-import type { NextRequest} from 'next/server';
+import { cronJobLogs, paymentOrders, serverDB } from '@lobechat/database';
+import { and, eq, lt, or } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 // Configuration
@@ -20,6 +20,8 @@ const RETENTION_DAYS = 7; // Keep pending/closed orders for 7 days
 const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     // 1. Verify cron secret to prevent unauthorized access
     const authHeader = request.headers.get('authorization');
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Count orders to be deleted (for logging)
     const ordersToDelete = await serverDB
-      .select({ count: paymentOrders.id })
+      .select({ id: paymentOrders.id })
       .from(paymentOrders)
       .where(
         and(
@@ -50,11 +52,17 @@ export async function POST(request: NextRequest) {
 
     if (count === 0) {
       console.info('[Cleanup] No orders to clean up');
-      return NextResponse.json({
-        deleted: 0,
-        message: 'No orders to clean up',
-        success: true,
+
+      const result = { cutoffDate: cutoffDate.toISOString(), deleted: 0, message: 'No orders to clean up', success: true };
+      await serverDB.insert(cronJobLogs).values({
+        durationMs: Date.now() - startTime,
+        jobName: 'cleanup-orders',
+        jobPath: '/api/cron/cleanup-orders',
+        result,
+        status: 'success',
       });
+
+      return NextResponse.json(result);
     }
 
     // 4. Delete old pending/closed orders
@@ -69,19 +77,36 @@ export async function POST(request: NextRequest) {
 
     console.info(`[Cleanup] Successfully deleted ${count} old orders`);
 
-    return NextResponse.json({
+    const result = {
       cutoffDate: cutoffDate.toISOString(),
       deleted: count,
       message: `Deleted ${count} old pending/closed orders`,
       success: true,
+    };
+
+    await serverDB.insert(cronJobLogs).values({
+      durationMs: Date.now() - startTime,
+      jobName: 'cleanup-orders',
+      jobPath: '/api/cron/cleanup-orders',
+      result,
+      status: 'success',
     });
+
+    return NextResponse.json(result);
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Cleanup] Error cleaning up orders:', error);
+
+    await serverDB.insert(cronJobLogs).values({
+      durationMs: Date.now() - startTime,
+      error: errorMsg,
+      jobName: 'cleanup-orders',
+      jobPath: '/api/cron/cleanup-orders',
+      status: 'error',
+    }).catch(() => {});
+
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        success: false,
-      },
+      { error: errorMsg, success: false },
       { status: 500 },
     );
   }

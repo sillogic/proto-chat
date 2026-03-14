@@ -7,6 +7,12 @@
 # 前置条件：
 #   - 已在 /etc/environment 或当前用户 ~/.profile 中设置 CRON_SECRET
 #   - 主项目运行在 http://127.0.0.1:3010
+#
+# 包含的定时任务（北京时间）：
+#   - 08:05  每天   订阅维护（积分发放 + 到期降级）
+#   - 04:00  每天   用户清理（删除未验证僵尸账号）
+#   - 03:00  每周日 订单清理（删除7天前的 pending/closed 订单）
+#   - 09:00 / 12:00  每天（自动扣款，待支付宝接入后取消注释）
 
 set -euo pipefail
 
@@ -63,12 +69,18 @@ CRON_ENTRIES="
 # ProtoChat - 订阅维护（每天 08:05 北京时间 = 00:05 UTC）
 5 0 * * * $CRON_CMD subscription >> $LOG_DIR/cron.log 2>&1
 
+# ProtoChat - 用户清理（每天 04:00 北京时间 = 20:00 UTC 前一天）
+0 20 * * * $CRON_CMD cleanup-users >> $LOG_DIR/cron.log 2>&1
+
+# ProtoChat - 订单清理（每周日 03:00 北京时间 = 周六 19:00 UTC）
+0 19 * * 6 $CRON_CMD cleanup-orders >> $LOG_DIR/cron.log 2>&1
+
 # ProtoChat - 自动扣款（待接入支付宝后取消注释）
 # 0 1 * * * $CRON_CMD auto-deduct >> $LOG_DIR/cron.log 2>&1
 # 0 4 * * * $CRON_CMD auto-deduct >> $LOG_DIR/cron.log 2>&1
 "
 
-# 备份并更新 crontab
+# 备份并更新 crontab（清除旧的 ProtoChat 条目后重新写入）
 TMPFILE=$(mktemp)
 crontab -l 2>/dev/null | grep -v "ProtoChat" | grep -v "cron-jobs.sh" > "$TMPFILE" || true
 echo "$CRON_ENTRIES" >> "$TMPFILE"
@@ -86,3 +98,5 @@ echo "✓ 安装完成！日志文件: $LOG_DIR/cron.log"
 echo ""
 echo "手动测试："
 echo "  source $ENV_FILE && bash $CRON_SCRIPT subscription"
+echo "  source $ENV_FILE && bash $CRON_SCRIPT cleanup-users"
+echo "  source $ENV_FILE && bash $CRON_SCRIPT cleanup-orders"

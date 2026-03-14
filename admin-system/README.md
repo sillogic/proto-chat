@@ -324,15 +324,21 @@ bash scripts/install-cron.sh
 
 脚本会自动从主项目 `.env` 读取 `CRON_SECRET`，注册以下任务：
 
-| 任务 | 执行时间 | 说明 |
-|------|---------|------|
-| `subscription` | 每天 08:05 北京时间 | 订阅到期降级 + 积分发放 |
+| 任务 | 执行时间（北京） | 说明 |
+|------|----------------|------|
+| `subscription` | 每天 08:05 | 订阅到期降级 + 积分发放 |
+| `cleanup-users` | 每天 04:00 | 清理7天前未验证的僵尸账号 |
+| `cleanup-orders` | 每周日 03:00 | 清理7天前的 pending/closed 订单 |
 | `auto-deduct` | 待启用 | 支付宝自动扣款（接入后取消注释） |
+
+每次执行结果会写入数据库 `cron_job_logs` 表，可在后台「系统规则」→「定时任务」→「执行日志」面板查看。
 
 **3. 手动测试**：
 
 ```bash
 source /etc/protochat-cron.env && bash scripts/cron-jobs.sh subscription
+source /etc/protochat-cron.env && bash scripts/cron-jobs.sh cleanup-users
+source /etc/protochat-cron.env && bash scripts/cron-jobs.sh cleanup-orders
 ```
 
 **4. 查看日志**：
@@ -346,7 +352,10 @@ tail -f /var/log/protochat/cron.log
 - [ ] **nginx 封锁**：在生产服务器 nginx.conf 中加入 cron 接口限制
 - [ ] **安装 crontab**：在服务器上执行 `bash scripts/install-cron.sh`
 - [ ] **支付宝代扣接入**：完成后在 `install-cron.sh` 中取消 auto-deduct 的注释
-- [ ] **扩容迁移**：多台主项目服务器时，将调度逻辑迁移到后台系统 `server/src/index.ts` 内置 node-cron，同时在后台 UI 定时任务页面增加执行日志和手动触发功能
+- [ ] **扩容迁移（重要）**：当主项目扩容为多台服务器时，当前方案（每台服务器各自 crontab 调用自身 `/api/cron/*`）会导致同一任务被重复执行。届时需要：
+  1. 在后台系统 Express 服务中引入 `node-cron`，由**单一后台服务**统一调度
+  2. 调用任意一台主项目节点（或走内部负载均衡）执行业务逻辑，保证每个任务只跑一次
+  3. 现有 `cron_job_logs` 写库 + 后台执行日志面板可直接复用，无需重新设计
 
 ---
 

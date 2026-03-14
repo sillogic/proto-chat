@@ -12,6 +12,7 @@
  */
 
 import {
+  cronJobLogs,
   paymentNotifications,
   serverDB,
   subscriptionPlans,
@@ -375,6 +376,8 @@ async function downgradeToFree(agreement: any, plan: any): Promise<void> {
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     // Verify cron secret
     const authHeader = request.headers.get('authorization');
@@ -458,7 +461,7 @@ export async function POST(request: NextRequest) {
 
     console.info(`[AutoDeduct] Completed: success=${successCount}, fail=${failCount}, downgrade=${downgradeCount}`);
 
-    return NextResponse.json({
+    const jobResult = {
       downgraded: downgradeCount,
       failed: failCount,
       isSecondAttempt,
@@ -466,16 +469,30 @@ export async function POST(request: NextRequest) {
       success: true,
       successful: successCount,
       timestamp: new Date().toISOString(),
+    };
+
+    await serverDB.insert(cronJobLogs).values({
+      durationMs: Date.now() - startTime,
+      jobName: 'auto-deduct',
+      jobPath: '/api/cron/auto-deduct',
+      result: jobResult,
+      status: 'success',
     });
+
+    return NextResponse.json(jobResult);
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     console.error('[AutoDeduct] Error:', error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        success: false,
-      },
-      { status: 500 },
-    );
+
+    await serverDB.insert(cronJobLogs).values({
+      durationMs: Date.now() - startTime,
+      error: errorMsg,
+      jobName: 'auto-deduct',
+      jobPath: '/api/cron/auto-deduct',
+      status: 'error',
+    }).catch(() => {});
+
+    return NextResponse.json({ error: errorMsg, success: false }, { status: 500 });
   }
 }
 

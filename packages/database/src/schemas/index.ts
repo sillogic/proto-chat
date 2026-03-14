@@ -9,6 +9,7 @@ export * from './asyncTask';
 export * from './betterAuth';
 export * from './chatGroup';
 export * from './credit';
+export * from './cronJobLog';
 export * from './feedback';
 export * from './file';
 export * from './generation';

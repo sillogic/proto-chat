@@ -14,6 +14,7 @@
  */
 
 import {
+  cronJobLogs,
   serverDB,
   subscriptionPlans,
   userBalances,
@@ -284,6 +285,8 @@ async function processExpirations() {
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     // Verify cron secret
     const authHeader = request.headers.get('authorization');
@@ -303,21 +306,35 @@ export async function POST(request: NextRequest) {
 
     console.info('[Cron] Subscription maintenance completed');
 
-    return NextResponse.json({
+    const result = {
       creditsGranted: creditsResult.granted,
       subscriptionsExpired: expirationsResult.expired,
       success: true,
       timestamp: new Date().toISOString(),
+    };
+
+    await serverDB.insert(cronJobLogs).values({
+      durationMs: Date.now() - startTime,
+      jobName: 'subscription',
+      jobPath: '/api/cron/subscription',
+      result,
+      status: 'success',
     });
+
+    return NextResponse.json(result);
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Cron] Error in subscription maintenance:', error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        success: false,
-      },
-      { status: 500 },
-    );
+
+    await serverDB.insert(cronJobLogs).values({
+      durationMs: Date.now() - startTime,
+      error: errorMsg,
+      jobName: 'subscription',
+      jobPath: '/api/cron/subscription',
+      status: 'error',
+    }).catch(() => {});
+
+    return NextResponse.json({ error: errorMsg, success: false }, { status: 500 });
   }
 }
 

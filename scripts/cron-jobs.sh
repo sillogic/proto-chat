@@ -8,6 +8,8 @@
 # 手动执行：
 #   bash scripts/cron-jobs.sh subscription
 #   bash scripts/cron-jobs.sh auto-deduct  (待接入支付宝后启用)
+#   bash scripts/cron-jobs.sh cleanup-orders
+#   bash scripts/cron-jobs.sh cleanup-users
 
 set -euo pipefail
 
@@ -88,13 +90,18 @@ case "$JOB" in
     run_job "auto-deduct" "$PROTOCHAT_URL/api/cron/auto-deduct"
     ;;
 
-  cleanup)
-    # 清理未验证用户（可选）
-    run_job "cleanup-unverified" "$PROTOCHAT_URL/api/cron/cleanup-unverified-users"
+  cleanup-orders)
+    # 每周执行：清理7天前的 pending/closed 订单
+    run_job "cleanup-orders" "$PROTOCHAT_URL/api/cron/cleanup-orders"
+    ;;
+
+  cleanup-users)
+    # 每天执行：清理7天前未验证的僵尸账号
+    run_job "cleanup-unverified-users" "$PROTOCHAT_URL/api/cron/cleanup-unverified-users"
     ;;
 
   *)
-    die "未知任务: $JOB，可用值: subscription | auto-deduct | cleanup"
+    die "未知任务: $JOB，可用值: subscription | auto-deduct | cleanup-orders | cleanup-users"
     ;;
 esac
 
