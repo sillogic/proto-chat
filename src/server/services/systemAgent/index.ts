@@ -147,17 +147,14 @@ export class SystemAgentService {
     const { prompt, modelId } = params;
 
     try {
-      // Parse "protochat::alias::originalModel" → provider="protochat::alias", model="originalModel"
-      const parts = modelId.split('::');
-      if (parts.length < 3 || parts[0] !== 'protochat') {
+      if (!modelId.startsWith('protochat::')) {
         console.error('SystemAgentService.optimizeImagePrompt: invalid modelId format:', modelId);
         return null;
       }
-      const provider = `${parts[0]}::${parts[1]}`;
-      const model = parts.slice(2).join('::');
 
-      const { runtime, actualModel } = await initModelRuntimeWithUserPayload(provider, {}, { model });
-      const effectiveModel = actualModel || model;
+      // Pass full composite ID as params.model; initProtoChatRuntime will look it up via getModelMapping
+      const { runtime, actualModel } = await initModelRuntimeWithUserPayload('protochat', {}, { model: modelId });
+      const effectiveModel = actualModel || modelId;
 
       const messages = [
         {
@@ -183,12 +180,12 @@ export class SystemAgentService {
       if (capturedUsage) {
         const { inputTokens, outputTokens } = capturedUsage as { inputTokens: number; outputTokens: number };
         const creditService = new CreditService(this.db, this.userId);
-        const costPrice = await creditService.calculateCostPrice(model, provider, inputTokens, outputTokens);
+        const costPrice = await creditService.calculateCostPrice(modelId, 'protochat', inputTokens, outputTokens);
         void creditService
           .recordUsage('Image prompt optimization', {
             costPrice,
-            model,
-            provider,
+            model: modelId,
+            provider: 'protochat',
             totalInputTokens: inputTokens,
             totalOutputTokens: outputTokens,
             type: 'prompt_optimize',
