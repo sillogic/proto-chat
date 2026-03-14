@@ -276,67 +276,138 @@ const CostAnalysis: React.FC = () => {
         styles={{ body: { padding: '16px 24px' } }}
       >
         <Row gutter={0} align="middle" wrap={false}>
-          {[
-            {
-              label: '本期总成本',
-              value: totalCost,
-              color: COLORS.total,
-              size:  28,
-              tip:   undefined as string | undefined,
-              border: true,
-            },
-            {
-              label:  'Chat 成本',
-              value:  Number(ov.chatCost || 0),
-              color:  COLORS.chat,
-              size:   20,
-              tip:    undefined,
-              border: true,
-            },
-            {
-              label:  '免费用户成本',
-              value:  Number(ov.freeUserCost || 0),
-              color:  COLORS.freeUser,
-              size:   20,
-              tip:    '免费用户产生的成本为平台纯支出，无收入对冲',
-              border: true,
-            },
-            {
-              label:  '总请求数',
-              value:  ov.requestCount || 0,
-              color:  undefined,
-              size:   20,
-              tip:    undefined,
-              border: false,
-              isCount: true,
-            },
-          ].map((item, i) => (
-            <Col key={i} flex="1" style={{
-              borderRight: item.border ? '1px solid #f0f0f0' : undefined,
-              paddingLeft:  i > 0 ? 24 : undefined,
-              paddingRight: item.border ? 24 : undefined,
+
+          {/* 本期总成本 */}
+          <Col flex="none" style={{ paddingRight: 24, borderRight: '1px solid #f0f0f0', minWidth: 160 }}>
+            <Statistic
+              title={
+                <Text style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  本期总成本
+                </Text>
+              }
+              value={totalCost}
+              precision={6}
+              prefix="$"
+              groupSeparator=","
+              valueStyle={{ color: COLORS.total, fontSize: 28, fontWeight: 700 }}
+            />
+          </Col>
+
+          {/* 用户计费成本（扣积分） */}
+          <Col flex="1" style={{ padding: '0 24px', borderRight: '1px solid #f0f0f0' }}>
+            <div style={{ marginBottom: 8 }}>
+              <Space size={4}>
+                <Text style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  用户计费成本
+                </Text>
+                <Tooltip title="用户使用时扣除积分的成本，包括 Chat 对话和图片生成">
+                  <InfoCircleOutlined style={{ fontSize: 11, color: '#bfbfbf' }} />
+                </Tooltip>
+              </Space>
+            </div>
+            <div style={{
+              borderLeft: `3px solid ${COLORS.chat}`,
+              paddingLeft: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 5,
             }}>
-              <Statistic
-                title={
-                  <Space size={4}>
-                    <Text style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      {item.label}
-                    </Text>
-                    {item.tip && (
-                      <Tooltip title={item.tip}>
-                        <InfoCircleOutlined style={{ fontSize: 11, color: '#bfbfbf' }} />
-                      </Tooltip>
-                    )}
-                  </Space>
-                }
-                value={item.isCount ? item.value : item.value}
-                precision={item.isCount ? 0 : 6}
-                prefix={item.isCount ? undefined : '$'}
-                groupSeparator=","
-                valueStyle={{ color: item.color, fontSize: item.size, fontWeight: 700 }}
-              />
-            </Col>
-          ))}
+              {[
+                { label: 'Chat 对话',  value: Number(ov.chatCost  || 0), color: COLORS.chat  },
+                { label: '图片生成',   value: Number(ov.imageCost || 0), color: COLORS.image },
+                {
+                  label: '小计',
+                  value: Number(ov.chatCost || 0) + Number(ov.imageCost || 0),
+                  color: COLORS.total,
+                  bold: true,
+                },
+              ].map((row) => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <Text style={{ fontSize: 11, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{row.label}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: row.bold ? 700 : 600, color: row.color, fontVariantNumeric: 'tabular-nums' }}>
+                    {formatUSD(row.value)}
+                  </Text>
+                </div>
+              ))}
+            </div>
+          </Col>
+
+          {/* 平台自承成本（不扣积分） */}
+          <Col flex="1" style={{ padding: '0 24px', borderRight: '1px solid #f0f0f0' }}>
+            <div style={{ marginBottom: 8 }}>
+              <Space size={4}>
+                <Text style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  平台自承成本
+                </Text>
+                <Tooltip title="平台内部服务产生的成本，不扣除用户积分，包括记忆提取、标题生成和 Embedding">
+                  <InfoCircleOutlined style={{ fontSize: 11, color: '#bfbfbf' }} />
+                </Tooltip>
+              </Space>
+            </div>
+            <div style={{
+              borderLeft: `3px solid ${COLORS.freeUser}`,
+              paddingLeft: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 5,
+            }}>
+              {[
+                { label: '记忆提取',   value: Number(ov.memoryCost    || 0), color: COLORS.memory    },
+                { label: '标题生成',   value: Number(ov.titleCost     || 0), color: COLORS.title     },
+                { label: 'Embedding', value: Number(ov.embeddingCost || 0), color: COLORS.embedding },
+                {
+                  label: '小计',
+                  value: Number(ov.memoryCost || 0) + Number(ov.titleCost || 0) + Number(ov.embeddingCost || 0),
+                  color: '#d46b08',
+                  bold: true,
+                },
+              ].map((row) => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <Text style={{ fontSize: 11, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{row.label}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: row.bold ? 700 : 600, color: row.color, fontVariantNumeric: 'tabular-nums' }}>
+                    {formatUSD(row.value)}
+                  </Text>
+                </div>
+              ))}
+            </div>
+          </Col>
+
+          {/* 免费用户成本 */}
+          <Col flex="none" style={{ padding: '0 24px', borderRight: '1px solid #f0f0f0', minWidth: 140 }}>
+            <Statistic
+              title={
+                <Space size={4}>
+                  <Text style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    免费用户成本
+                  </Text>
+                  <Tooltip title="免费用户产生的成本为平台纯支出，无收入对冲">
+                    <InfoCircleOutlined style={{ fontSize: 11, color: '#bfbfbf' }} />
+                  </Tooltip>
+                </Space>
+              }
+              value={Number(ov.freeUserCost || 0)}
+              precision={6}
+              prefix="$"
+              groupSeparator=","
+              valueStyle={{ color: COLORS.freeUser, fontSize: 20, fontWeight: 700 }}
+            />
+          </Col>
+
+          {/* 总请求数 */}
+          <Col flex="none" style={{ paddingLeft: 24, minWidth: 100 }}>
+            <Statistic
+              title={
+                <Text style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  总请求数
+                </Text>
+              }
+              value={ov.requestCount || 0}
+              precision={0}
+              groupSeparator=","
+              valueStyle={{ fontSize: 20, fontWeight: 700 }}
+            />
+          </Col>
+
         </Row>
       </Card>
 
