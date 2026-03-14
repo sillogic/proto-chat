@@ -181,13 +181,25 @@ const categorizeError = (
 
   if (error.message?.includes('network') || error.name === 'NetworkError') {
     return {
-      errorMessage: error.message || AsyncTaskErrorType.ServerError,
+      errorMessage: AsyncTaskErrorType.ServerError,
       errorType: AsyncTaskErrorType.ServerError,
     };
   }
 
+  // Premature close / connection interrupted (e.g. upstream provider dropped the connection)
+  if (error.message?.includes('Premature close') || error.message?.includes('premature close')) {
+    return {
+      errorMessage: 'Connection interrupted. Please retry.',
+      errorType: AsyncTaskErrorType.ServerError,
+    };
+  }
+
+  // Strip any upstream provider URLs from the error message before storing/displaying
+  const rawMessage: string = error.message || error.error?.message || AsyncTaskErrorType.ServerError;
+  const sanitizedMessage = rawMessage.replace(/https?:\/\/[^\s,;:]+/g, '[provider]');
+
   return {
-    errorMessage: error.message || error.error?.message || AsyncTaskErrorType.ServerError,
+    errorMessage: sanitizedMessage,
     errorType: AsyncTaskErrorType.ServerError,
   };
 };
