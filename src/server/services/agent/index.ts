@@ -1,5 +1,6 @@
 import { type BuiltinAgentSlug } from '@lobechat/builtin-agents';
 import { BUILTIN_AGENTS } from '@lobechat/builtin-agents';
+import { DEFAULT_PROVIDER } from '@lobechat/business-const';
 import { DEFAULT_AGENT_CONFIG } from '@lobechat/const';
 import { type LobeChatDatabase } from '@lobechat/database';
 import { type AgentItem, type LobeAgentConfig } from '@lobechat/types';
@@ -189,7 +190,16 @@ export class AgentService {
     const baseConfig = merge(DEFAULT_AGENT_CONFIG, serverDefaultAgentConfig);
     const withUserConfig = merge(baseConfig, userDefaultAgentConfig);
 
-    return merge(withUserConfig, cleanObject(agent));
+    // Strip stale model/provider from agent before merge so defaults apply.
+    // When the project switched to ProtoChat, old agents may have stored
+    // non-ProtoChat values (e.g. google/gemini-1.5-pro) that are no longer valid.
+    const cleaned = cleanObject(agent);
+    if (cleaned.provider && cleaned.provider !== DEFAULT_PROVIDER) {
+      delete cleaned.model;
+      delete cleaned.provider;
+    }
+
+    return merge(withUserConfig, cleaned);
   }
 
   /**
