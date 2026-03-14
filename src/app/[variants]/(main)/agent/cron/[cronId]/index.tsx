@@ -3,7 +3,7 @@
 import { EDITOR_DEBOUNCE_TIME } from '@lobechat/const';
 import { ActionIcon, Flexbox } from '@lobehub/ui';
 import { useDebounceFn } from 'ahooks';
-import { App, Empty, message } from 'antd';
+import { App, Empty } from 'antd';
 import { type Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { Trash2 } from 'lucide-react';
@@ -85,7 +85,7 @@ const CronJobDetailPage = memo(() => {
   const { t } = useTranslation(['setting', 'common']);
   const { aid, cronId } = useParams<{ aid?: string; cronId?: string }>();
   const router = useQueryRoute();
-  const { modal } = App.useApp();
+  const { message, modal } = App.useApp();
   const enableRichRender = useUserStore(labPreferSelectors.enableInputMarkdown);
   const enableBusinessFeatures = useServerConfigStore(serverConfigSelectors.enableBusinessFeatures);
 
