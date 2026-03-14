@@ -121,6 +121,12 @@ export default [
     component: './Feedbacks',
   },
   {
+    path: '/queue-monitor',
+    name: 'queueMonitor',
+    icon: 'FundOutlined',
+    component: './Queues',
+  },
+  {
     path: '/system-config',
     name: 'systemConfig',
     icon: 'SettingOutlined',

@@ -61,6 +61,7 @@ export default {
   'menu.analytics.revenueOverview': 'Revenue Overview',
   'menu.analytics.userInsights': 'User Insights',
   'menu.protochat': 'AI Providers',
+  'menu.queueMonitor': 'Queue Monitor',
   'menu.systemConfig': 'System Config',
   'menu.systemConfig.defaultModel': 'Default Model',
   'menu.systemConfig.embedding': 'Embedding Config',

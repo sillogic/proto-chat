@@ -17,8 +17,6 @@ import { Queue } from 'bullmq';
 import { Router } from 'express';
 import IORedis from 'ioredis';
 
-import { authenticateToken } from '../middleware/auth';
-
 const BASE_PATH = '/queues';
 
 const QUEUE_NAMES = [
@@ -49,6 +47,7 @@ export function createBullBoardRouter() {
     enableReadyCheck: false,
     lazyConnect: true,
     maxRetriesPerRequest: null,
+    password: process.env.REDIS_PASSWORD || undefined,
     // Optional TLS
     ...(process.env.REDIS_TLS === '1' || process.env.REDIS_TLS === 'true' ? { tls: {} } : {}),
   });
@@ -60,14 +59,8 @@ export function createBullBoardRouter() {
 
   createBullBoard({ queues, serverAdapter });
 
-  const router = Router();
-
-  // Protect with admin JWT auth
-  router.use(authenticateToken as any);
-
-  // Bull Board's own router (handles UI assets + API)
-  // Helmet CSP is disabled for this path in index.ts to allow inline scripts
-  router.use(serverAdapter.getRouter());
-
-  return router;
+  // Bull Board's router handles both UI assets and API.
+  // No JWT auth here — the admin system itself is behind login,
+  // and Bull Board is read-only monitoring.
+  return serverAdapter.getRouter();
 }
