@@ -3,7 +3,7 @@ import { Worker } from 'bullmq';
 
 import { createBullMQConnection } from '@/libs/bullmq';
 
-import { QUEUE_NAMES } from './queues';
+import { QUEUE_NAMES, getHourlyAnalysisQueue } from './queues';
 import { processHourlyAnalysis } from './processors/hourlyAnalysis';
 import { processUsers } from './processors/processUsers';
 import { processUserTopics } from './processors/processUserTopics';
@@ -79,7 +79,16 @@ export const startMemoryExtractionWorkers = () => {
     });
   }
 
-  log('Memory extraction workers started (%d workers)', workers.length);
+  // Register repeatable hourly-analysis job (every hour at minute 0).
+  // In upstream LobeChat this is triggered by an external cron service (Vercel/Upstash),
+  // but for self-hosted we use BullMQ's built-in repeat — idempotent across restarts.
+  const hourlyQueue = getHourlyAnalysisQueue();
+  hourlyQueue.add('hourly-analysis', {}, {
+    jobId: 'hourly-analysis:root',
+    repeat: { pattern: '0 * * * *' },
+  });
+
+  log('Memory extraction workers started (%d workers), hourly-analysis registered (0 * * * *)', workers.length);
 
   return workers;
 };
