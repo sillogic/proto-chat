@@ -56,7 +56,7 @@ function requireAdminCookie(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export function createBullBoardRouter() {
+export function createBullBoardRouter(): ReturnType<typeof Router> {
   const redisUrl = process.env.REDIS_URL;
 
   if (!redisUrl) {
@@ -77,7 +77,7 @@ export function createBullBoardRouter() {
 
   const queues = QUEUES.map(
     ({ name, description }) =>
-      new BullMQAdapter(new Queue(name, { connection }), { description }),
+      new BullMQAdapter(new Queue(name, { connection: connection as any }), { description }),
   );
 
   const serverAdapter = new ExpressAdapter();
