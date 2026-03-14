@@ -2,6 +2,8 @@ import { DEFAULT_SYSTEM_AGENT_CONFIG } from '@lobechat/const';
 import { chainSummaryTitle } from '@lobechat/prompts';
 import { type UserSystemAgentConfig, type UserSystemAgentConfigKey } from '@lobechat/types';
 import debug from 'debug';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { UserModel } from '@/database/models/user';
 import { type LobeChatDatabase } from '@/database/type';
@@ -10,6 +12,34 @@ import { ProtoChatService } from '@/server/services/protochat';
 import { CreditService } from '@/server/services/credit';
 
 const log = debug('lobe-server:system-agent-service');
+
+// Fallback inline prompt used when the MD file cannot be read
+const IMAGE_OPTIMIZER_PROMPT_FALLBACK = [
+  '你是一位专业的科研图像生成提示词专家，服务对象为中国科研院所、高校的科研人员与教师。',
+  '要求：',
+  '- 始终输出英文提示词',
+  '- 不得指定分辨率、宽高比或图片张数',
+  '- 不要要求图中出现可读文字',
+  '- 只输出提示词本身，不加解释',
+  '- 符合 SCI 期刊插图的视觉标准，50–120 词',
+].join('\n');
+
+let _imageOptimizerPrompt: string | null = null;
+const getImageOptimizerPrompt = (): string => {
+  if (_imageOptimizerPrompt !== null) return _imageOptimizerPrompt;
+  try {
+    const promptPath = path.join(
+      process.cwd(),
+      'src/server/services/systemAgent/prompts/image-optimizer.md',
+    );
+    _imageOptimizerPrompt = fs.readFileSync(promptPath, 'utf-8');
+    log('Loaded image optimizer prompt from file (%d chars)', _imageOptimizerPrompt.length);
+  } catch {
+    log('image-optimizer.md not found, using fallback prompt');
+    _imageOptimizerPrompt = IMAGE_OPTIMIZER_PROMPT_FALLBACK;
+  }
+  return _imageOptimizerPrompt;
+};
 
 const OPTIMIZE_IMAGE_PROMPT_SCHEMA = {
   name: 'optimized_image_prompt',
@@ -158,14 +188,7 @@ export class SystemAgentService {
 
       const messages = [
         {
-          content: [
-            '你是一位专业的 AI 图像生成提示词专家。',
-            '请将用户的粗略想法优化为一段详细、生动的图像生成提示词。',
-            '要求：',
-            '- 补充光线、风格、情绪、色调、构图等视觉细节',
-            '- 保持简洁有力（英文，50-150词为宜）',
-            '- 直接输出优化后的提示词，不加解释',
-          ].join('\n'),
+          content: getImageOptimizerPrompt(),
           role: 'system' as const,
         },
         { content: prompt, role: 'user' as const },
