@@ -97,6 +97,14 @@ router.post('/login', loginLimiter, async (req, res) => {
       })
       .where(eq(adminUsers.id, user.id));
 
+    // Set HttpOnly cookie for Bull Board (browser-navigated routes that can't use Bearer header)
+    res.cookie('admin_token', token, {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24h, matches JWT expiry
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
     return res.json({
       data: {
         token,
@@ -122,7 +130,8 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 // POST /api/auth/logout - 管理员登出
 router.post('/logout', (req, res) => {
-  // 在实际应用中，可以在这里将token加入黑名单
+  // Clear the Bull Board auth cookie
+  res.clearCookie('admin_token');
   return res.json({
     message: '登出成功',
     success: true,
