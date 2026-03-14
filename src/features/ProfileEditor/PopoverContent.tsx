@@ -1,7 +1,7 @@
 import { type ItemType } from '@lobehub/ui';
 import { Flexbox, Icon, Segmented, stopPropagation } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { ChevronRight, ExternalLink, Settings, Store } from 'lucide-react';
+import { ExternalLink, Settings } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -37,12 +37,11 @@ interface PopoverContentProps {
   allTabItems: ItemType[];
   installedTabItems: ItemType[];
   onClose?: () => void;
-  onOpenStore: () => void;
   onTabChange: (tab: TabType) => void;
 }
 
 const PopoverContent = memo<PopoverContentProps>(
-  ({ activeTab, onTabChange, allTabItems, installedTabItems, onOpenStore, onClose }) => {
+  ({ activeTab, onTabChange, allTabItems, installedTabItems, onClose }) => {
     const { t } = useTranslation('setting');
     const navigate = useNavigate();
 
@@ -77,13 +76,6 @@ const PopoverContent = memo<PopoverContentProps>(
           )}
         </div>
         <div className={styles.footer}>
-          <div className={toolsListStyles.item} role="button" tabIndex={0} onClick={onOpenStore}>
-            <div className={toolsListStyles.itemIcon}>
-              <Icon icon={Store} size={SKILL_ICON_SIZE} />
-            </div>
-            <div className={toolsListStyles.itemContent}>{t('skillStore.title')}</div>
-            <Icon className={styles.trailingIcon} icon={ChevronRight} size={16} />
-          </div>
           <div
             className={toolsListStyles.item}
             role="button"

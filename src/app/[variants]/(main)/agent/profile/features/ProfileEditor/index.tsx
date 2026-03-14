@@ -19,7 +19,6 @@ import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfi
 import AgentCronJobs from '../AgentCronJobs';
 import AgentSettings from '../AgentSettings';
 import EditorCanvas from '../EditorCanvas';
-import AgentPublishButton from '../Header/AgentPublishButton';
 import AgentHeader from './AgentHeader';
 import AgentTool from './AgentTool';
 
@@ -95,7 +94,6 @@ const ProfileEditor = memo(() => {
           >
             {t('startConversation')}
           </Button>
-          <AgentPublishButton />
           {enableBusinessFeatures && (
             <Button icon={Clock} onClick={handleCreateCronJob}>
               {t('agentCronJobs.addJob')}
