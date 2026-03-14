@@ -25,6 +25,8 @@ export interface BuiltinAgentPersistConfig {
   model?: string;
   /** Default provider */
   provider?: string;
+  /** Default title (displayed name) */
+  title?: string;
 }
 
 /**

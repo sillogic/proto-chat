@@ -1,3 +1,4 @@
+import { CloudSandboxIdentifier } from '@lobechat/builtin-tool-cloud-sandbox';
 import { GTDIdentifier } from '@lobechat/builtin-tool-gtd';
 import { NotebookIdentifier } from '@lobechat/builtin-tool-notebook';
 
@@ -12,8 +13,18 @@ import { systemRole } from './systemRole';
  */
 export const INBOX: BuiltinAgentDefinition = {
   avatar: '/avatars/lobe-ai.png',
+  persist: {
+    title: 'ProtoChat',
+  },
   runtime: (ctx) => ({
-    plugins: [GTDIdentifier, NotebookIdentifier, ...(ctx.plugins || [])],
+    plugins: [
+      'lobe-artifacts',
+      'lobe-web-browsing',
+      CloudSandboxIdentifier,
+      GTDIdentifier,
+      NotebookIdentifier,
+      ...(ctx.plugins || []),
+    ],
     systemRole: systemRole,
   }),
 

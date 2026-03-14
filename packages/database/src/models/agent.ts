@@ -535,12 +535,14 @@ export class AgentModel {
       if (persistConfig) {
         const needsModelClear = !persistConfig.model && existing.model != null;
         const needsProviderClear = !persistConfig.provider && existing.provider != null;
-        if (needsModelClear || needsProviderClear) {
+        const needsTitleSync = persistConfig.title && existing.title !== persistConfig.title;
+        if (needsModelClear || needsProviderClear || needsTitleSync) {
           const [updated] = await this.db
             .update(agents)
             .set({
               model: persistConfig.model ?? null,
               provider: persistConfig.provider ?? null,
+              ...(needsTitleSync ? { title: persistConfig.title } : {}),
             })
             .where(and(eq(agents.id, existing.id), eq(agents.userId, this.userId)))
             .returning();
@@ -568,7 +570,7 @@ export class AgentModel {
         // Use both id and userId to ensure we only update current user's agent
         const [updatedAgent] = await this.db
           .update(agents)
-          .set({ slug: INBOX_SESSION_ID, virtual: true })
+          .set({ slug: INBOX_SESSION_ID, title: getAgentPersistConfig(INBOX_SESSION_ID)?.title, virtual: true })
           .where(eq(agents.id, result[0].agent.id))
           .returning();
 
@@ -587,6 +589,7 @@ export class AgentModel {
         model: persistConfig.model,
         provider: persistConfig.provider,
         slug: persistConfig.slug,
+        title: persistConfig.title,
         userId: this.userId,
         virtual: true,
       })
