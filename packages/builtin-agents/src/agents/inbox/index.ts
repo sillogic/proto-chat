@@ -1,4 +1,3 @@
-import { CloudSandboxIdentifier } from '@lobechat/builtin-tool-cloud-sandbox';
 import { GTDIdentifier } from '@lobechat/builtin-tool-gtd';
 import { NotebookIdentifier } from '@lobechat/builtin-tool-notebook';
 
@@ -18,9 +17,7 @@ export const INBOX: BuiltinAgentDefinition = {
   },
   runtime: (ctx) => ({
     plugins: [
-      'lobe-artifacts',
       'lobe-web-browsing',
-      CloudSandboxIdentifier,
       GTDIdentifier,
       NotebookIdentifier,
       ...(ctx.plugins || []),
