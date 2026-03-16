@@ -428,8 +428,18 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
       subProviderMap.get(imgAlias)!.cost += costInUSD;
     }
 
-    // 合并图片模型到总模型统计
-    modelStats.push(...imageModelStats);
+    // 合并图片模型到总模型统计（若 chatStats 已有同模型则累加，避免重复行）
+    for (const img of imageModelStats) {
+      const existing = modelStats.find(m => m.model === img.model && m.provider === img.provider);
+      if (existing) {
+        existing.inputTokens += img.inputTokens;
+        existing.outputTokens += img.outputTokens;
+        existing.requestCount += img.requestCount;
+        existing.cost = (parseFloat(existing.cost) + parseFloat(img.cost)).toFixed(8);
+      } else {
+        modelStats.push(img);
+      }
+    }
 
     // 标题生成成本
     let totalTitleCost = 0;
