@@ -9,7 +9,7 @@ const router: express.Router = express.Router();
 router.use(authenticateToken);
 
 // 辅助函数：根据 period 计算时间范围
-const getDateRange = (dateParam: string | undefined, period: 'month' | 'year') => {
+const getDateRange = (dateParam: string | undefined, period: 'day' | 'month' | 'year') => {
   const date = dateParam ? new Date(dateParam) : new Date();
   let startDate: Date;
   let endDate: Date;
@@ -19,6 +19,10 @@ const getDateRange = (dateParam: string | undefined, period: 'month' | 'year') =
     startDate = new Date(date.getFullYear(), 0, 1);
     endDate = new Date(date.getFullYear() + 1, 0, 1);
     dateFormat = 'YYYY-MM'; // 年度统计按月聚合
+  } else if (period === 'day') {
+    startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+    dateFormat = 'YYYY-MM-DD HH24:00'; // 日度统计按小时聚合
   } else {
     startDate = new Date(date.getFullYear(), date.getMonth(), 1);
     endDate = new Date(date.getFullYear(), date.getMonth() + 1, 1);
@@ -136,7 +140,7 @@ const getProtochatModelPrice = (
 router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRequest, res) => {
   try {
     const { month, period = 'month' } = req.query;
-    const { startStr, endStr, dateFormat } = getDateRange(month as string | undefined, period as 'month' | 'year');
+    const { startStr, endStr, dateFormat } = getDateRange(month as string | undefined, period as 'day' | 'month' | 'year');
 
     // 1. 获取 Chat 统计（按模型分组）
     // 只统计 protochat 供应商的成本（其他供应商不计入成本）
@@ -522,7 +526,7 @@ router.get('/cost', requirePermission('stats.read'), async (req: AuthenticatedRe
 router.get('/revenue', requirePermission('stats.read'), async (req: AuthenticatedRequest, res) => {
   try {
     const { month, period = 'month' } = req.query;
-    const { startStr, endStr, dateFormat } = getDateRange(month as string | undefined, period as 'month' | 'year');
+    const { startStr, endStr, dateFormat } = getDateRange(month as string | undefined, period as 'day' | 'month' | 'year');
 
     // 获取 ProtoChat 价格映射
     const priceMap = await buildProtochatPriceMap();
@@ -846,12 +850,8 @@ router.get('/revenue', requirePermission('stats.read'), async (req: Authenticate
 // GET /api/admin/analytics/users - 用户洞察
 router.get('/users', requirePermission('stats.read'), async (req: AuthenticatedRequest, res) => {
   try {
-    const { month } = req.query;
-    const monthDate = month ? new Date(month as string) : new Date();
-    const startOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-    const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
-    const startStr = startOfMonth.toISOString();
-    const endStr = endOfMonth.toISOString();
+    const { month, period = 'month' } = req.query;
+    const { startStr, endStr } = getDateRange(month as string | undefined, period as 'day' | 'month' | 'year');
 
     // 获取 ProtoChat 价格映射
     const priceMap = await buildProtochatPriceMap();

@@ -1,8 +1,8 @@
 import { request } from '@umijs/max';
 
 export interface AnalyticsParams {
-  month?: string; // YYYY-MM format for month, YYYY format for year
-  period?: 'month' | 'year';
+  month?: string; // YYYY-MM-DD for day, YYYY-MM for month, YYYY for year
+  period?: 'day' | 'month' | 'year';
 }
 
 // 成本分析

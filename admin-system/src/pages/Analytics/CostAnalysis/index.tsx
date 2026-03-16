@@ -21,7 +21,7 @@ import { getAdminParam } from '../../../services/system-params';
 
 const { Text } = Typography;
 
-type PeriodType = 'month' | 'year';
+type PeriodType = 'day' | 'month' | 'year';
 type TokenType = 'input' | 'output';
 
 const COLORS = {
@@ -119,6 +119,8 @@ const CostAnalysis: React.FC = () => {
     async () => {
       const dateStr = period === 'year'
         ? selectedDate.format('YYYY')
+        : period === 'day'
+        ? selectedDate.format('YYYY-MM-DD')
         : selectedDate.format('YYYY-MM');
       return getAnalyticsCost({ month: dateStr, period });
     },
@@ -243,12 +245,12 @@ const CostAnalysis: React.FC = () => {
           <Segmented
             value={period}
             onChange={(v) => setPeriod(v as PeriodType)}
-            options={[{ label: '月度', value: 'month' }, { label: '年度', value: 'year' }]}
+            options={[{ label: '日度', value: 'day' }, { label: '月度', value: 'month' }, { label: '年度', value: 'year' }]}
           />
           <Space>
-            <Text type="secondary">{period === 'year' ? '选择年份' : '选择月份'}：</Text>
+            <Text type="secondary">{period === 'year' ? '选择年份' : period === 'day' ? '选择日期' : '选择月份'}：</Text>
             <DatePicker
-              picker={period === 'year' ? 'year' : 'month'}
+              picker={period === 'year' ? 'year' : period === 'day' ? 'date' : 'month'}
               value={selectedDate}
               onChange={(d) => d && setSelectedDate(d)}
               allowClear={false}

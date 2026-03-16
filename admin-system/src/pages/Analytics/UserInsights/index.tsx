@@ -1,6 +1,6 @@
 import { PageContainer, ProCard, ProTable } from '@ant-design/pro-components';
 import { useRequest } from '@umijs/max';
-import { Card, Col, Row, Statistic, DatePicker, Space, Typography, Tag, Progress, Alert, Tooltip } from 'antd';
+import { Card, Col, Row, Statistic, DatePicker, Segmented, Space, Typography, Tag, Progress, Alert, Tooltip } from 'antd';
 import {
   WarningOutlined,
   UserOutlined,
@@ -18,6 +18,8 @@ import { getAnalyticsUsers } from '../../../services/analytics';
 import { getAdminParam } from '../../../services/system-params';
 
 const { Text } = Typography;
+
+type PeriodType = 'day' | 'month' | 'year';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -145,7 +147,8 @@ const MiniBar: React.FC<{ pct: number; color: string; gradient?: string }> = ({ 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const UserInsights: React.FC = () => {
-  const [selectedMonth, setSelectedMonth] = useState<Dayjs>(dayjs());
+  const [period, setPeriod] = useState<PeriodType>('month');
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [exchangeRate, setExchangeRate] = useState<number>(7.3);
 
   const { loading: rateLoading } = useRequest(() => getAdminParam('usd_cny_rate'), {
@@ -156,16 +159,17 @@ const UserInsights: React.FC = () => {
     },
   });
 
-  const handleMonthChange = (date: Dayjs | null) => {
-    if (date) setSelectedMonth(date);
-  };
-
   const { data: responseData, loading } = useRequest(
     async () => {
-      const res = await getAnalyticsUsers({ month: selectedMonth.format('YYYY-MM') });
+      const dateStr = period === 'year'
+        ? selectedDate.format('YYYY')
+        : period === 'day'
+        ? selectedDate.format('YYYY-MM-DD')
+        : selectedDate.format('YYYY-MM');
+      const res = await getAnalyticsUsers({ month: dateStr, period });
       return res;
     },
-    { refreshDeps: [selectedMonth] },
+    { refreshDeps: [selectedDate, period] },
   );
 
   const rawData = (responseData as any)?.data ?? responseData;
@@ -197,12 +201,17 @@ const UserInsights: React.FC = () => {
     <PageContainer
       extra={
         <Space size="large">
+          <Segmented
+            value={period}
+            onChange={(v) => setPeriod(v as PeriodType)}
+            options={[{ label: '日度', value: 'day' }, { label: '月度', value: 'month' }, { label: '年度', value: 'year' }]}
+          />
           <Space>
-            <Text type="secondary">选择月份：</Text>
+            <Text type="secondary">{period === 'year' ? '选择年份' : period === 'day' ? '选择日期' : '选择月份'}：</Text>
             <DatePicker
-              picker="month"
-              value={selectedMonth}
-              onChange={handleMonthChange}
+              picker={period === 'year' ? 'year' : period === 'day' ? 'date' : 'month'}
+              value={selectedDate}
+              onChange={(d) => d && setSelectedDate(d)}
               allowClear={false}
               style={{ width: 150 }}
             />
