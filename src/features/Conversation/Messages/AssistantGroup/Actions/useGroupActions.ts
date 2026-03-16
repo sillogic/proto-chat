@@ -10,6 +10,7 @@ import {
   ListRestart,
   RotateCcw,
   Share2,
+  Split,
   StepForward,
   Trash,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ export interface ActionItem extends ActionIconGroupItemType {
 }
 
 export interface GroupActions {
+  branching: ActionItem;
   collapse: ActionItem;
   continueGeneration: ActionItem;
   copy: ActionItem;
@@ -73,6 +75,7 @@ export const useGroupActions = ({
     translateMessage,
     delAndRegenerateMessage,
     continueGenerationMessage,
+    openThreadCreator,
   ] = useConversationStore((s) => [
     s.toggleMessageEditing,
     s.toggleMessageCollapsed,
@@ -81,10 +84,17 @@ export const useGroupActions = ({
     s.translateMessage,
     s.delAndRegenerateMessage,
     s.continueGenerationMessage,
+    s.openThreadCreator,
   ]);
 
   return useMemo<GroupActions>(
     () => ({
+      branching: {
+        handleClick: () => openThreadCreator(id),
+        icon: Split,
+        key: 'branching',
+        label: t('branching'),
+      },
       collapse: {
         handleClick: () => toggleMessageCollapsed(id),
         icon: ListChevronsDownUp,
@@ -188,6 +198,7 @@ export const useGroupActions = ({
       delAndRegenerateMessage,
       toggleMessageCollapsed,
       continueGenerationMessage,
+      openThreadCreator,
       onOpenShareModal,
       message,
     ],
