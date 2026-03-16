@@ -108,12 +108,21 @@ const WithContentId = memo<GroupActionsProps>(({ actionsConfig, id, data, conten
   // Get collapse/expand action based on current state
   const collapseAction = isCollapsed ? defaultActions.expand : defaultActions.collapse;
 
+  // Create extra actions from factory functions (e.g., branching)
+  const extraBarItems = useMemo(() => {
+    if (!actionsConfig?.extraBarActions) return [];
+    return actionsConfig.extraBarActions
+      .map((factory) => factory(id))
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [actionsConfig?.extraBarActions, id]);
+
   // Use external config if provided, otherwise use defaults
-  const barItems =
+  const baseBarItems =
     actionsConfig?.bar ??
     (hasTools
       ? [defaultActions.delAndRegenerate, defaultActions.copy]
       : [defaultActions.edit, defaultActions.copy]);
+  const barItems = [...baseBarItems, ...extraBarItems];
 
   const menuItems = actionsConfig?.menu ?? [
     defaultActions.edit,

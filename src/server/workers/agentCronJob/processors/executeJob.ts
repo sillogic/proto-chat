@@ -129,12 +129,14 @@ const _execute = async (
   const messageModel = new MessageModel(db, userId);
 
   await messageModel.create({
+    agentId,
     content: cronJob.content,
     role: 'user',
     topicId: topic.id,
   });
 
   await messageModel.create({
+    agentId,
     content,
     model: effectiveModel,
     provider,

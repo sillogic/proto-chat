@@ -54,6 +54,9 @@ export const useActionsBarConfig = (): ActionsBarConfig => {
       assistant: {
         extraBarActions: [branchingFactory],
       },
+      assistantGroup: {
+        extraBarActions: [branchingFactory],
+      },
       user: {
         extraBarActions: [branchingFactory],
       },
