@@ -424,7 +424,7 @@ const CostAnalysis: React.FC = () => {
 
       {/* ── 3. Token trend chart ──────────────────────────────────────────── */}
       <ProCard
-        title={period === 'year' ? '每月 Token 用量趋势 (按模型)' : '每日 Token 用量趋势 (按模型)'}
+        title={period === 'year' ? '每月 Token 用量趋势 (按模型)' : period === 'day' ? '每小时 Token 用量趋势 (按模型)' : '每日 Token 用量趋势 (按模型)'}
         headerBordered
         style={{ marginBottom: 16 }}
         loading={loading}

@@ -112,7 +112,7 @@ const RevenueOverview: React.FC = () => {
     { refreshDeps: [selectedDate, period] },
   );
 
-  const periodLabel = period === 'year' ? '本年' : '本月';
+  const periodLabel = period === 'year' ? '本年' : period === 'day' ? '当日' : '本月';
   const raw = (responseData as any)?.data ?? responseData;
 
   // Convert CNY → USD using live exchange rate
@@ -345,7 +345,7 @@ const RevenueOverview: React.FC = () => {
 
       {/* ── 3. Trend chart ───────────────────────────────────────────────── */}
       <ProCard
-        title={period === 'year' ? '每月收支趋势 (USD)' : '每日收支趋势 (USD)'}
+        title={period === 'year' ? '每月收支趋势 (USD)' : period === 'day' ? '每小时收支趋势 (USD)' : '每日收支趋势 (USD)'}
         headerBordered
         style={{ marginBottom: 16 }}
         loading={loading}
