@@ -361,6 +361,8 @@ export const createAgentExecutors = (context: {
               reasoning: result.metadata.reasoning,
               search: result.metadata.search,
               imageList: result.metadata.imageList,
+              model: agentConfigData.model,
+              provider: agentConfigData.provider,
               metadata: {
                 ...result.metadata.usage,
                 ...result.metadata.performance,
