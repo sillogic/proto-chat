@@ -534,9 +534,11 @@ export class AgentModel {
       const persistConfig = getAgentPersistConfig(slug);
       if (persistConfig) {
         const needsModelClear = !persistConfig.model && existing.model != null;
+        const needsModelSync = persistConfig.model && existing.model !== persistConfig.model;
         const needsProviderClear = !persistConfig.provider && existing.provider != null;
+        const needsProviderSync = persistConfig.provider && existing.provider !== persistConfig.provider;
         const needsTitleSync = persistConfig.title && existing.title !== persistConfig.title;
-        if (needsModelClear || needsProviderClear || needsTitleSync) {
+        if (needsModelClear || needsModelSync || needsProviderClear || needsProviderSync || needsTitleSync) {
           const [updated] = await this.db
             .update(agents)
             .set({

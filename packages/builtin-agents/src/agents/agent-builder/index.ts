@@ -1,6 +1,5 @@
 import { AgentBuilderIdentifier } from '@lobechat/builtin-tool-agent-builder';
 import { DEFAULT_PROVIDER } from '@lobechat/business-const';
-import { DEFAULT_MODEL } from '@lobechat/const';
 
 import type { BuiltinAgentDefinition } from '../../types';
 import { BUILTIN_AGENT_SLUGS } from '../../types';
@@ -13,8 +12,10 @@ export const AGENT_BUILDER: BuiltinAgentDefinition = {
   avatar: '/avatars/agent-builder.png',
 
   // Persist config - stored in database
+  // Use gemini-3.1-flash-lite-preview for better tool-calling reliability
+  // (gemini-2.5-flash tends to skip tool calls and just generate text)
   persist: {
-    model: DEFAULT_MODEL,
+    model: 'gemini-3.1-flash-lite-preview',
     provider: DEFAULT_PROVIDER,
   },
 
