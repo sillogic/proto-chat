@@ -21,4 +21,21 @@ export const {
   Provider,
 } = createContext<StoreApiWithSelector<Store>>();
 
+/**
+ * Optional version of useStoreApi that returns undefined instead of throwing
+ * when used outside of ChatInputProvider (e.g., in Portal-rendered components
+ * like ModelSwitchPanel in the chat header).
+ *
+ * This is safe with React hooks rules: useStoreApi internally calls useContext()
+ * (which always executes), then throws if the value is undefined. The try-catch
+ * catches that post-hook throw, not a conditional hook call.
+ */
+export const useOptionalStoreApi = (): StoreApiWithSelector<Store> | undefined => {
+  try {
+    return useStoreApi();
+  } catch {
+    return undefined;
+  }
+};
+
 export { selectors } from './selectors';

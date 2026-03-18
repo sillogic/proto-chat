@@ -2,7 +2,7 @@
 
 import { useAgentStore } from '@/store/agent';
 
-import { useChatInputStore } from '../store';
+import { useOptionalStoreApi } from '../store';
 
 /**
  * Hook to get the effective agentId for ChatInput components.
@@ -11,9 +11,14 @@ import { useChatInputStore } from '../store';
  *
  * Note: Empty string is a valid value (e.g., when Group's supervisorAgentId is not loaded yet),
  * so we only fallback when agentId is undefined (not provided).
+ *
+ * Gracefully handles missing ChatInputProvider (e.g., when rendered in a Portal
+ * outside the provider tree, like ModelSwitchPanel in the chat header).
  */
 export const useAgentId = () => {
-  const agentIdFromChatInput = useChatInputStore((s) => s.agentId);
+  const storeApi = useOptionalStoreApi();
+  const agentIdFromChatInput = storeApi?.getState().agentId;
+
   const activeAgentId = useAgentStore((s) => s.activeAgentId);
 
   // Only fallback to activeAgentId when agentIdFromChatInput is undefined (not provided)
