@@ -16,9 +16,11 @@ export const DEFAULT_LLM_CONFIG = genUserLLMConfig({
   },
 });
 
-// 修改为你实际使用的模型和提供商
-export const DEFAULT_MODEL = 'gemini-3.1-flash-lite-preview';  // ProtoChat 路由到 OpenRouter
-export const DEFAULT_MINI_MODEL = 'gemini-3.1-flash-lite-preview';  // 用于轻量级任务（标题生成、翻译等）
+// Default model — can be overridden at runtime via DEFAULT_MODEL_ID env var.
+// No rebuild needed: just set DEFAULT_MODEL_ID in .env and restart.
+const _HARDCODED_MODEL = 'gemini-3.1-flash-lite-preview';
+export const DEFAULT_MODEL = process.env.DEFAULT_MODEL_ID || _HARDCODED_MODEL;
+export const DEFAULT_MINI_MODEL = process.env.DEFAULT_MODEL_ID || _HARDCODED_MODEL;
 
 // 使用 OpenRouter 的 Qwen Embedding（通过 ProtoChat）
 // 方案1：使用 ProtoChat 的内部 ID（需要在后台配置映射）
