@@ -368,16 +368,34 @@ const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = 
   // 1. 创建ProtoChat服务实例
   const protochatService = new ProtoChatService(serverDB);
 
-  // 2. 查询模型映射（从数据库）；视频生成时忽略模型的 chat enabled 检查
-  const mapping = await protochatService.getModelMapping(modelId, {
-    ignoreModelEnabled: params?.ignoreModelEnabled,
-  });
+  // 2. 查询模型映射（从数据库）
+  //    If the requested model is not found or disabled, fall back to DEFAULT_MODEL.
+  //    This handles the case where a user's stored model has been retired/disabled
+  //    by the admin — the request still succeeds instead of returning an error.
+  let mapping;
+  let resolvedModelId = modelId;
+  try {
+    mapping = await protochatService.getModelMapping(modelId, {
+      ignoreModelEnabled: params?.ignoreModelEnabled,
+    });
+  } catch {
+    // Model not found or disabled — try DEFAULT_MODEL as fallback
+    const { DEFAULT_MODEL } = await import('@lobechat/const');
+    if (modelId !== DEFAULT_MODEL) {
+      console.warn(
+        `[ProtoChat] Model "${modelId}" unavailable, falling back to DEFAULT_MODEL "${DEFAULT_MODEL}"`,
+      );
+      resolvedModelId = DEFAULT_MODEL;
+      mapping = await protochatService.getModelMapping(DEFAULT_MODEL);
+    } else {
+      throw new Error(`ProtoChat default model "${DEFAULT_MODEL}" is also unavailable`);
+    }
+  }
 
   // 3. 转换模型ID: 'openrouter::openai/gpt-4o' → 'openai/gpt-4o'
   const actualModelId = protochatService.convertModelId(mapping.originalId);
 
   // 4. 确定实际使用的供应商runtime
-  // OpenRouter使用openrouter的runtime，DeepSeek使用deepseek的runtime
   const runtimeProvider = mapping.originalProvider;
 
   // 5. 构建运行时参数
@@ -389,7 +407,7 @@ const initProtoChatRuntime = async (payload: ClientSecretPayload, params: any = 
   // 6. 使用底层供应商初始化Runtime
   const runtime = await ModelRuntime.initializeWithProvider(runtimeProvider, runtimeParams);
 
-  // 7. 返回runtime和转换后的模型ID（调用者需要在调用chat()时使用actualModel）
+  // 7. 返回runtime和转换后的模型ID
   return {
     actualModel: actualModelId,
     runtime,
