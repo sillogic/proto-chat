@@ -1,45 +1,45 @@
 import type { ModelProviderCard } from '@/types/llm';
 
 /**
- * ProtoChat 自有供应商配置
+ * ProtoChat proprietary provider configuration
  *
- * ProtoChat是一个"套壳"供应商，整合底层供应商（OpenRouter、DeepSeek等）
- * 提供统一的AI服务，并进行积分计费。
+ * ProtoChat is a "wrapper" provider that integrates underlying providers (OpenRouter, DeepSeek, etc.)
+ * providing unified AI services with credit-based billing.
  *
- * 特点：
- * - 模型列表从后台数据库动态获取
- * - 不支持用户自定义API Key和Base URL
- * - 只有后台管理员可以配置底层供应商
+ * Features:
+ * - Model list is dynamically fetched from the backend database
+ * - Does not support user-defined API Key and Base URL
+ * - Only backend administrators can configure the underlying providers
  */
 const ProtoChat: ModelProviderCard = {
-  // 模型列表从数据库动态获取，这里为空
+  // Model list is dynamically fetched from the database, empty here
   chatModels: [],
-  // 不需要检查模型，因为是受管理的服务
+  // No model check needed as this is a managed service
   checkModel: undefined,
   description:
     'ProtoChat AI 服务是由系统管理员统一配置和管理的AI服务。提供多种主流AI模型，支持对话、图像生成等功能。使用此服务将消耗积分。',
-  // 默认启用，确保新用户可以直接使用
+  // Enabled by default to ensure new users can use it right away
   enabled: true,
-  // 供应商ID
+  // Provider ID
   id: 'protochat',
-  // 模型列表配置
+  // Model list configuration
   modelList: {
-    // 不显示模型获取按钮，因为模型列表由后台管理
+    // Hide the model fetcher button since the model list is managed by the backend
     showModelFetcher: false,
   },
-  // 供应商名称
+  // Provider name
   name: 'ProtoChat AI',
   settings: {
-    // 禁用浏览器端请求（通过服务端转发）
+    // Disable browser-side requests (routed through server-side)
     disableBrowserRequest: true,
-    // 不显示代理URL配置（由后台管理）
+    // Hide proxy URL configuration (managed by the backend)
     proxyUrl: undefined,
-    // SDK类型（实际会根据底层供应商动态选择）
+    // SDK type (dynamically selected based on the underlying provider)
     sdkType: 'openai',
-    // 不显示模型获取按钮
+    // Hide the model fetcher button
     showModelFetcher: false,
   },
-  // 不显示配置表单（由后台管理）
+  // Hide the configuration form (managed by the backend)
   showConfig: false,
   url: 'https://protochat.ai',
 };
