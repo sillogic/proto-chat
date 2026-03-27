@@ -134,7 +134,7 @@ export const LOBE_DEFAULT_MODEL_LIST: ChatModelCard[] = [
 ].flat();
 
 export const DEFAULT_MODEL_PROVIDER_LIST = [
-  ProtoChatProvider, // ProtoChat自有供应商（放在最前面）
+  ProtoChatProvider, // ProtoChat proprietary provider (placed first)
   // LobeHub provider hidden - not needed for commercial deployment
   // ...(ENABLE_BUSINESS_FEATURES ? [LobeHubProvider] : []),
   AnthropicProvider,

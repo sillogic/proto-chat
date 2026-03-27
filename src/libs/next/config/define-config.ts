@@ -381,7 +381,7 @@ export function defineConfig(config: CustomNextConfig) {
         layers: true,
       };
 
-      // 开启该插件会导致 pglite 的 fs bundler 被改表
+      // Enabling this plugin will cause the pglite fs bundler to be modified
       if (enableReactScan) {
         baseWebpackConfig.plugins.push(ReactComponentName({}));
       }
