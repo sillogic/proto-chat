@@ -26,10 +26,10 @@ const ImageWorkspaceContent = () => {
 
   return (
     <>
-      {/* 生成结果展示区 */}
+      {/* Generation result display area */}
       <GenerationFeed key={activeTopicId} />
 
-      {/* 底部输入框 */}
+      {/* Bottom input area */}
       <PromptInput disableAnimation={true} showTitle={false} />
     </>
   );

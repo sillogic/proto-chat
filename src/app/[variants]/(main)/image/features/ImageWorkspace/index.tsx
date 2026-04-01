@@ -10,12 +10,12 @@ const ImageWorkspace = () => {
   const [topic] = useQueryState('topic');
   const isCreatingWithNewTopic = useImageStore((s) => s.isCreatingWithNewTopic);
 
-  // 如果没有 topic 参数，或者正在创建新 topic 的图片，显示空状态布局
+  // If there is no topic parameter, or a new topic image is being created, show the empty state layout
   if (!topic || isCreatingWithNewTopic) {
     return <EmptyState />;
   }
 
-  // 有 topic 参数且不在创建新 topic 状态时显示主要内容
+  // When a topic parameter exists and not in the creating new topic state, show the main content
   return <Content />;
 };
 

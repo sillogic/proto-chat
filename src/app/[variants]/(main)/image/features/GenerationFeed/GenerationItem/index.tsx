@@ -43,7 +43,7 @@ export const GenerationItem = memo<GenerationItemProps>(
 
     const aspectRatio = getAspectRatio(generation, generationBatch);
 
-    // 事件处理函数
+    // Event handler functions
     const handleDeleteGeneration = useCallback(async () => {
       try {
         await deleteGeneration(generation.id);
@@ -114,7 +114,7 @@ export const GenerationItem = memo<GenerationItemProps>(
       }
     }, [generation.task.error, message, t]);
 
-    // 根据状态渲染对应组件
+    // Render the corresponding component based on status
     if (generation.task.status === AsyncTaskStatus.Success && generation.asset?.url) {
       const seedTooltip = isSupportSeed
         ? t('generation.actions.applySeed')
@@ -148,7 +148,7 @@ export const GenerationItem = memo<GenerationItemProps>(
       );
     }
 
-    // Loading state (Processing 或 Pending)
+    // Loading state (Processing or Pending)
     return (
       <LoadingState
         aspectRatio={aspectRatio}
